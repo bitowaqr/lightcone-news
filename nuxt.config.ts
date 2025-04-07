@@ -20,15 +20,24 @@ export default defineNuxtConfig({
       plugins: [tailwindTypography],
     },
   },
-  head: {
-    link: [
-      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-    ],
+  app: {
+    head: {
+      charset: 'utf-8',
+      viewport: 'width=device-width, initial-scale=1',
+      title: 'Lightcone News',
+      titleTemplate: '%s - Lightcone News',
+      meta: [
+        { name: 'description', content: 'Contextualised News. Future-oriented.' },
+      ],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+      ],
+    },
   },
   site: {
-    url: process.env.APP_URL,
-    name: process.env.APP_NAME,
-    description: process.env.APP_DESCRIPTION,
+    url: process.env.APP_URL || 'http://localhost:3000',
+    name: process.env.APP_NAME || 'Lightcone News',
+    description: process.env.APP_DESCRIPTION || 'AI-powered news aggregator...',
     image: '/favicon.ico',
   },
   sitemap: {
