@@ -69,7 +69,7 @@
 
 
 <!-- structure so I can review json raw, but with line breaks: -->
-<pre class="text-xs bg-bg-muted p-2 rounded">{{ scenario }}</pre>
+<!-- <pre class="text-xs bg-bg-muted p-2 rounded">{{ scenario }}</pre> -->
 
   </div>
 </template>
