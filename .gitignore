@@ -1,0 +1,36 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# internal documentation
+doc.*
+
+# db
+mock-db.json
+
+# internal scripts
+scripts/*
+polymarket_scenarios.json
+test-mongo-connection.js
+

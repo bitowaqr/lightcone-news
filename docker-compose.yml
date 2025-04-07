@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # MongoDB Service
+  mongo:
+    image: mongo:6.0
+    container_name: lightcone-news-mongodb
+    ports:
+      - "27017:27017" # Optional: Expose port locally if needed for direct access
+    volumes:
+      - mongodb_data:/data/db # Mount the named volume here
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - database-network
+    command: --auth
+
+  chromadb:
+    image: chromadb/chroma:0.4.24
+    container_name: lightcone-news-chromadb
+    volumes:
+      - chromadb_data:/chroma/chroma
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - database-network
+
+# Define the named volume
+volumes:
+  mongodb_data:
+  chromadb_data:
+
+networks:
+  database-network:
+    driver: bridge 

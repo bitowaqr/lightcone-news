@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Sitemap: https://lightcone.news/sitemap.xml
+
+# Disallow admin and backend routes
+Disallow: /admin/
+Disallow: /api/

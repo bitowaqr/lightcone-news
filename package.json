@@ -1,0 +1,46 @@
+{
+  "name": "lightcone-news",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "db:seed": "node scripts/seed-mongo.js",
+    "db:wipe": "node scripts/wipe-mongo.js",
+    "db:query-users": "node scripts/query-users.js",
+    "db:toggle-admin": "node scripts/toggle-admin.js"
+  },
+  "dependencies": {
+    "@nuxt/fonts": "^0.11.1",
+    "@nuxt/icon": "^1.11.0",
+    "@nuxt/ui": "^3.0.2",
+    "@nuxtjs/sitemap": "^7.2.9",
+    "@nuxtjs/tailwindcss": "^6.13.2",
+    "@pinia/nuxt": "^0.10.1",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tiptap/pm": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
+    "@tiptap/vue-3": "^2.11.7",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
+    "chromadb": "^2.2.0",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "markdown-it": "^14.1.0",
+    "mongoose": "^8.3.2",
+    "nuxt": "^3.16.2",
+    "openai": "^4.91.1",
+    "pinia": "^3.0.1",
+    "tiktoken": "^1.0.20",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "markdown-it-link-attributes": "^4.0.1"
+  }
+}
