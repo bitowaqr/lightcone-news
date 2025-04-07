@@ -19,8 +19,8 @@ export default defineEventHandler(async (event) => { // Make handler async
 
     // Fetch recent open scenarios (adjust criteria as needed)
     // Potential alternative: Fetch scenarios explicitly linked to the articles above
-    const scenarios = await Scenario.find({ 'resolutionData.status': 'OPEN' })
-       .sort({ closeDate: 1 }) // Example sort: Closest resolution date first
+    const scenarios = await Scenario.find({})
+      .sort({ 'resolutionData.expectedResolutionDate': -1 })
        .limit(SCENARIOS_LIMIT)
        .lean();
 
