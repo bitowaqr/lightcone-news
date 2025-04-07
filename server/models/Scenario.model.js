@@ -9,8 +9,8 @@ const scenarioSchema = new mongoose.Schema({
   description: { type: String },
   
   // PLATFORM & SOURCE INFO
-  platform: { type: String, trim: true, index: true }, // e.g., 'Metaculus', 'Polymarket', 'Manifold', 'Lightcone Forecast'
-  platformScenarioId: { type: String, trim: true, index: true }, 
+  platform: { type: String, trim: true }, // e.g., 'Metaculus', 'Polymarket', 'Manifold', 'Lightcone Forecast'
+  platformScenarioId: { type: String, trim: true }, 
   tags: [{ type: String, trim: true }],
 
   // TIMELINES
