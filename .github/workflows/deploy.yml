@@ -1,0 +1,26 @@
+name: Deploy to EC2 (Local Build)
+
+on:
+  push:
+    branches:
+      - main # Or your deployment branch
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3 # Use the version specified
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e # Exit immediately if a command exits with a non-zero status.
+
+            EC2_APP_PATH="/home/${{ secrets.SSH_USER }}/app"
+
+            echo "Executing deployment script on EC2..."
+            bash ~/deploy.sh 
