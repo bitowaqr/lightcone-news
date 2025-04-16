@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const SCENARIO_COLLECTION = 'scenario';
+const BATCH_SIZE = 50;
 
 class ChromaService {
   constructor() {
@@ -32,27 +33,56 @@ class ChromaService {
     }
 
   async addScenarios(scenarios, embeddings, storeScenarioDocs = false) {
-    console.log(1)
+    
     await this.initialize();
-    console.log(2)
-      const metadatas = scenarios.map(scenario => this.getScenarioMetadata(scenario));
+    
+    if (!this.scenarioCollection) {
+      console.error('ChromaDB collection not available.');
+      return;
+    }
+    if (!scenarios || scenarios.length === 0) {
+      console.log('No scenarios provided to add.');
+      return;
+    }
 
-      const scenarioIds = scenarios.map((scenario) => scenario?._id?.toString() || scenario?.id?.toString());
-      
-      if(null in scenarioIds) {
-        throw new Error('Scenario IDs array contains null values');
+    console.log(`Adding/updating ${scenarios.length} scenarios in batches of ${BATCH_SIZE}...`);
+
+    for (let i = 0; i < scenarios.length; i += BATCH_SIZE) {
+      const batch = scenarios.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${i / BATCH_SIZE + 1} (${batch.length} items)`);
+
+      try {
+        const metadatas = batch.map(scenario => this.getScenarioMetadata(scenario));
+        const scenarioIds = batch.map((scenario) => scenario?._id?.toString() || scenario?.id?.toString());
+        
+        if(null in scenarioIds) {
+          throw new Error('Scenario IDs array contains null values');
+        }
+
+        if(scenarioIds.length !== batch.length || scenarioIds.length !== embeddings.length) {
+          throw new Error('Scenario IDs and embeddings arrays must have the same length');
+        }
+        
+        await this.scenarioCollection.upsert({
+          ids: scenarioIds,
+          documents: storeScenarioDocs ? batch.map((scenario) => scenario.textForEmbedding) : undefined,
+          metadatas: metadatas,
+          embeddings: embeddings,
+        });
+        
+        console.log(`Batch ${i / BATCH_SIZE + 1} upserted successfully.`);
+
+      } catch (error) {
+        console.error(`Error upserting batch starting at index ${i}:`, error);
+        // Decide how to handle errors: continue, stop, retry?
+        // For now, just log and continue to the next batch
       }
 
-    if(scenarioIds.length !== scenarios.length || scenarioIds.length !== embeddings.length) {
-      throw new Error('Scenario IDs and embeddings arrays must have the same length');
+      // Optional: Add a small delay between batches if needed
+      // await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
-    await this.scenarioCollection.upsert({
-        ids: scenarioIds,
-        documents: storeScenarioDocs ? scenarios.map((scenario) => scenario.textForEmbedding) : undefined,
-        metadatas: metadatas,
-        embeddings: embeddings,
-    });
+
+    console.log('Finished processing all scenario batches.');
     
     return scenarioIds;
   }
