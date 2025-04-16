@@ -63,43 +63,44 @@ jobs:
             cd $EC2_APP_PATH
 
             # Create or overwrite the .env file using the secret
-            # Ensure the secret DOT_ENV_PRODUCTION is created in GitHub Actions secrets
-            # and contains the full, correctly formatted content of your .env file.
             echo "Creating .env file from secrets..."
-            # Use printf to handle potential special characters and newlines in the secret
             printf '%s\n' "${{ secrets.DOT_ENV_PRODUCTION }}" > $EC2_APP_PATH/.env
-            # Ensure correct permissions (optional but good practice)
             chmod 600 $EC2_APP_PATH/.env
 
             echo "Stopping PM2 application..."
             pm2 stop $PM2_APP_NAME || true
 
-            echo "Removing old build artifact..."
+            echo "Removing old build artifact directory..."
             rm -rf .output
 
-            echo "Extracting new build artifact (assuming it was copied to /tmp)..."
+            echo "Extracting new build artifact from /tmp..."
+            # Check if the artifact exists in /tmp (copied by scp-action)
             if [ -f /tmp/output.tar.gz ]; then
-              tar -xzf /tmp/output.tar.gz -C .
+              # Create the target directory if it doesn't exist
+              mkdir -p $EC2_APP_PATH/.output 
+              # Extract the contents of the tarball INTO the .output directory
+              tar -xzf /tmp/output.tar.gz -C $EC2_APP_PATH/.output --strip-components=1
+              echo "Artifact extracted."
             else
-              echo "ERROR: Build artifact /tmp/output.tar.gz not found!"
+              echo "ERROR: Build artifact /tmp/output.tar.gz not found! SCP step likely failed."
               exit 1
             fi
 
             echo "Updating docker-compose.yml (assuming it was copied to /tmp)..."
             if [ -f /tmp/docker-compose.yml ]; then
               cp /tmp/docker-compose.yml $EC2_APP_PATH/docker-compose.yml
+              echo "docker-compose.yml updated."
             else
               echo "Warning: /tmp/docker-compose.yml not found, using existing."
             fi
 
             echo "Restarting Docker Compose services using created .env file..."
-            # Docker Compose V1 automatically uses .env in the current directory
             docker-compose up -d --remove-orphans
 
             echo "Restarting PM2 application..."
             pm2 restart $PM2_APP_NAME
 
-            echo "Cleaning up temporary artifact..."
+            echo "Cleaning up temporary files..."
             rm -f /tmp/output.tar.gz
             rm -f /tmp/docker-compose.yml
 
