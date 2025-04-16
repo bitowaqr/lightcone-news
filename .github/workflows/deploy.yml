@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --omit=optional
+        run: npm install
 
       - name: Build Nuxt application
         # Add environment variables needed for build if any
