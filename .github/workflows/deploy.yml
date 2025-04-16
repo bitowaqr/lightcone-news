@@ -1,4 +1,4 @@
-name: Deploy to EC2 (Local Build)
+name: Deploy to EC2 (Build Artifact)
 
 on:
   push:
@@ -6,21 +6,91 @@ on:
       - main # Or your deployment branch
 
 jobs:
-  deploy:
-    name: Deploy to EC2
+  build_and_deploy:
+    name: Build and Deploy to EC2
     runs-on: ubuntu-latest
+    env:
+      # Define Node version to use - ensure it's compatible with your project
+      NODE_VERSION: '18' # Or '20' if you prefer
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Optional: Cache npm dependencies for faster installs
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm install --omit=optional
+
+      - name: Build Nuxt application
+        # Add environment variables needed for build if any
+        # Example: env:
+        #   NUXT_PUBLIC_API_BASE: ${{ secrets.API_BASE_URL }}
+        run: npm run build
+
+      - name: Archive build artifact
+        run: tar -czf output.tar.gz .output
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3 # Use the version specified
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e # Exit immediately if a command exits with a non-zero status.
-
+            # --- Main Deployment Script Starts Here ---
+            set -e
             EC2_APP_PATH="/home/${{ secrets.SSH_USER }}/app"
+            PM2_APP_NAME="lightcone"
 
-            echo "Executing deployment script on EC2..."
-            bash ~/deploy.sh 
+            echo "Starting deployment steps on EC2..."
+            cd $EC2_APP_PATH
+
+            # Create or overwrite the .env file using the secret
+            # Ensure the secret DOT_ENV_PRODUCTION is created in GitHub Actions secrets
+            # and contains the full, correctly formatted content of your .env file.
+            echo "Creating .env file from secrets..."
+            # Use printf to handle potential special characters and newlines in the secret
+            printf '%s\n' "${{ secrets.DOT_ENV_PRODUCTION }}" > $EC2_APP_PATH/.env
+            # Ensure correct permissions (optional but good practice)
+            chmod 600 $EC2_APP_PATH/.env
+
+            echo "Stopping PM2 application..."
+            pm2 stop $PM2_APP_NAME || true
+
+            echo "Removing old build artifact..."
+            rm -rf .output
+
+            echo "Extracting new build artifact (assuming it was copied to /tmp)..."
+            if [ -f /tmp/output.tar.gz ]; then
+              tar -xzf /tmp/output.tar.gz -C .
+            else
+              echo "ERROR: Build artifact /tmp/output.tar.gz not found!"
+              exit 1
+            fi
+
+            echo "Updating docker-compose.yml (assuming it was copied to /tmp)..."
+            if [ -f /tmp/docker-compose.yml ]; then
+              cp /tmp/docker-compose.yml $EC2_APP_PATH/docker-compose.yml
+            else
+              echo "Warning: /tmp/docker-compose.yml not found, using existing."
+            fi
+
+            echo "Restarting Docker Compose services using created .env file..."
+            # Docker Compose V1 automatically uses .env in the current directory
+            docker-compose up -d --remove-orphans
+
+            echo "Restarting PM2 application..."
+            pm2 restart $PM2_APP_NAME
+
+            echo "Cleaning up temporary artifact..."
+            rm -f /tmp/output.tar.gz
+            rm -f /tmp/docker-compose.yml
+
+            echo "Deployment finished successfully on EC2." 
