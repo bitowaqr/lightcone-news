@@ -4,8 +4,14 @@
   >
     <!-- ARTICLE -->
     <NuxtLink :to="`/articles/${group.story.articleId}`">
-      <div class="flex flex-col">
+    <!-- randomly flex or flex-col -->
+      <div class="flex" :class="{'flex-col': (Math.random() > 0.5)}">
+        <div v-if="group.imageUrl" class="mb-6 w-full"> 
+          <img :src="group.imageUrl" class="w-full h-full object-cover" />
+        </div>
         
+        <div class="ps-2 lg:ps-4 w-full">
+
         <h2 
         class="text-2xl leading-tight font-medium" id="article-title">
           {{ group.story.title }}
@@ -27,6 +33,7 @@
           </div>
         </div>
       </div>
+        </div>
     </NuxtLink>
 
     <!-- SCENARIOS -->

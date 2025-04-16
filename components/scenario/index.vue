@@ -5,13 +5,17 @@
       <div class="mb-6 border-b border-bg-muted pb-4">
         <h1 class="text-2xl font-bold text-fg mb-2">{{ scenario.header?.name }}</h1>
         <div class="flex items-center text-sm text-fg-muted space-x-4">
-          <span>Platform: <span class="font-medium text-fg">{{ scenario.header?.platform }}</span></span>
           <span v-if="scenario.header?.closeDate">Closes: <span class="font-medium text-fg">{{ scenario.header?.closeDate }}</span></span>
            <span 
             :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusClass]"
           >
             {{ scenario.status }}
           </span>
+        </div>
+        <div class="flex items-center text-sm space-x-4 mt-2">
+          <a :href="scenario.url" target="_blank" class="text-fg-muted hover:text-fg transition-colors">View on {{ scenario.header?.platform }}:
+            <span class="font-medium text-primary">{{ scenario.url.length > 75 ? scenario.url.slice(0, 70) + '...' : scenario.url }}</span>
+            </a>
         </div>
       </div>
 

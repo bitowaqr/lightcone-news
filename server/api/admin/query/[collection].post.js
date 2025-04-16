@@ -11,7 +11,7 @@ const requireAdmin = (event) => {
 // Basic validation for collection names
 const isValidCollection = (collectionName) => {
   // Add all models managed by the admin panel
-  const allowedCollections = ['Article', 'Scenario', 'SourceDocument', 'User'];
+  const allowedCollections = ['Article', 'Scenario', 'SourceDocument', 'User', 'StoryIdeas'];
   return allowedCollections.includes(collectionName);
 }
 
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Invalid or missing collection name' });
   }
 
-  const { filters = {}, sort = { createdAt: -1 }, limit = 20, page = 1 } = await readBody(event);
+  const { filters = {}, sort = { updatedAt: -1 }, limit = 20, page = 1 } = await readBody(event);
 
   // Basic sanitization/validation for limit and page
   const effectiveLimit = Math.min(Math.max(1, parseInt(limit) || 20), 100); // Limit between 1 and 100
@@ -54,11 +54,15 @@ export default defineEventHandler(async (event) => {
 
 
     const totalDocuments = await Model.countDocuments(sanitizedFilters);
-    const documents = await Model.find(sanitizedFilters)
-      .sort(sort)
-      .skip(skip)
-      .limit(effectiveLimit)
-      .lean(); // Use lean for performance if not modifying directly
+    let documents;
+    console.log('collectionName', collectionName);
+    
+      documents = await Model.find(sanitizedFilters)
+        .sort(sort)
+        .skip(skip)
+        .limit(effectiveLimit)
+        .lean(); // Use lean for performance if not modifying directly
+    
 
     return {
         documents,

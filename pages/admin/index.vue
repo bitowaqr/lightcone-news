@@ -2,6 +2,13 @@
   <div class="p-4 md:p-6 max-w-7xl mx-auto dark:text-gray-200">
     <h1 class="text-3xl font-bold mb-6 border-b pb-2 dark:border-gray-700">Admin Dashboard</h1>
 
+    <!-- Link to Lineup Curation -->
+    <div class="mb-4 text-right">
+      <NuxtLink to="/admin/lineup-curation" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+        Go to Lineup Curation &raquo;
+      </NuxtLink>
+    </div>
+
     <!-- Collection Management Section -->
     <section class="mb-8 p-4 border rounded dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
       <h2 class="text-xl font-semibold mb-3">Manage Collections</h2>
@@ -37,6 +44,12 @@
              {{ loadingDocuments ? 'Querying...' : 'Query' }}
            </button>
         </div>
+        <!-- Button to toggle Article Creator -->
+        <div v-if="selectedCollection === 'Article'" class="flex-shrink-0 ml-4">
+           <button @click="showCreator = !showCreator; selectedDocumentId = null;" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+             {{ showCreator ? 'Cancel Create' : 'Create New Article' }}
+           </button>
+        </div>
       </div>
        <!-- Common Status Filters (Example) -->
        <div v-if="selectedCollection === 'Article' || selectedCollection === 'SourceDocument'" class="mt-3 pt-3 border-t dark:border-gray-700">
@@ -62,10 +75,21 @@
 
       <!-- Document List Column -->
       <div class="lg:col-span-1 p-4 border rounded dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-        <h2 class="text-xl font-semibold mb-3">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-xl font-semibold">
             {{ selectedCollection }} Documents
             <span v-if="paginationInfo.totalDocuments > 0"> ({{ paginationInfo.totalDocuments }})</span>
-        </h2>
+          </h2>
+          <!-- Delete All Listed Button -->
+          <button
+            v-if="selectedCollection === 'StoryIdeas' && documents.length > 0"
+            @click="confirmDeleteListedDocuments"
+            :disabled="deletingMultiple || loadingDocuments"
+            class="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+          >
+            {{ deletingMultiple ? 'Deleting...' : 'Delete All Listed' }}
+          </button>
+        </div>
 
         <div v-if="loadingDocuments" class="text-center my-4 text-gray-500 dark:text-gray-400">Loading...</div>
         <div v-else-if="errorDocuments" class="my-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 rounded">
@@ -111,48 +135,64 @@
         <div v-else class="my-4 text-center text-gray-500 dark:text-gray-400">No documents found for the current query.</div>
       </div>
 
-      <!-- Document Editor Column -->
+      <!-- Document Editor/Creator Column -->
       <div class="lg:col-span-2 p-4 border rounded dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm min-h-[75vh] flex flex-col">
-        <h2 class="text-xl font-semibold mb-3">Document Editor</h2>
-        <div v-if="loadingSelectedDocument" class="flex-grow flex items-center justify-center text-gray-500 dark:text-gray-400">
-           Loading document...
-        </div>
-         <div v-else-if="errorSelectedDocument" class="my-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 rounded">
-            Error loading document: {{ errorSelectedDocument.message }}
-        </div>
-        <div v-else-if="selectedDocumentId && selectedDocumentData" class="flex flex-col flex-grow">
-          <!-- Top-level actions -->
-          <div class="mb-3 flex justify-end">
-            <button 
-              @click="confirmDeleteDocument" 
-              :disabled="deletingDocument" 
-              class="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-            >
-              <span v-if="deletingDocument">Deleting...</span>
-              <span v-else>Delete Document</span>
-            </button>
-          </div>
-          
-          <!-- Dynamic editor component based on selectedCollection -->
+        
+        <!-- Conditionally render Creator -->
+        <template v-if="showCreator && currentCreatorComponent">
           <component 
-            :is="currentEditorComponent" 
-            :document="selectedDocumentData" 
+            :is="currentCreatorComponent" 
+            ref="articleCreatorRef"
             :collection-name="selectedCollection"
-            @save="handleEditorSave" 
-            @cancel="clearSelection"
+            @create="handleCreatorSubmit"
+            @cancel="showCreator = false"
           />
-          
-          <!-- Error Messages -->
-          <div v-if="saveError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-            Save error: {{ saveError }}
+        </template>
+
+        <!-- Conditionally render Editor (only if not showing creator) -->
+        <template v-else>
+          <h2 class="text-xl font-semibold mb-3">Document Editor</h2>
+          <div v-if="loadingSelectedDocument" class="flex-grow flex items-center justify-center text-gray-500 dark:text-gray-400">
+             Loading document...
           </div>
-          <div v-if="deleteError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-            Delete error: {{ deleteError }}
+           <div v-else-if="errorSelectedDocument" class="my-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 rounded">
+              Error loading document: {{ errorSelectedDocument.message }}
           </div>
-        </div>
-         <div v-else class="flex-grow flex items-center justify-center text-gray-500 dark:text-gray-400">
-             <p>Select a document from the list on the left to view and edit its details.</p>
-         </div>
+          <div v-else-if="selectedDocumentId && selectedDocumentData" class="flex flex-col flex-grow">
+            <!-- Top-level actions -->
+            <div class="mb-3 flex justify-end">
+              
+              <button 
+                @click="confirmDeleteDocument" 
+                :disabled="deletingDocument" 
+                class="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+              >
+                <span v-if="deletingDocument">Deleting...</span>
+                <span v-else>Delete Document</span>
+              </button>
+            </div>
+            
+            <!-- Dynamic editor component based on selectedCollection -->
+            <component 
+              :is="currentEditorComponent" 
+              :document="selectedDocumentData" 
+              :collection-name="selectedCollection"
+              @save="handleEditorSave" 
+              @cancel="clearSelection"
+            />
+            
+            <!-- Error Messages -->
+            <div v-if="saveError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+              Save error: {{ saveError }}
+            </div>
+            <div v-if="deleteError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+              Delete error: {{ deleteError }}
+            </div>
+          </div>
+           <div v-else class="flex-grow flex items-center justify-center text-gray-500 dark:text-gray-400">
+               <p>Select a document from the list on the left to view and edit its details, or click "Create New Article".</p>
+           </div>
+        </template>
       </div>
     </section>
 
@@ -166,10 +206,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
-import ArticleEditor from '../components/admin/editors/ArticleEditor.vue';
-import ScenarioEditor from '../components/admin/editors/ScenarioEditor.vue';
-import SourceDocumentEditor from '../components/admin/editors/SourceDocumentEditor.vue';
-import GenericJsonEditor from '../components/admin/editors/GenericJsonEditor.vue';
+import ArticleEditor from '../../components/admin/editors/ArticleEditor.vue';
+import ScenarioEditor from '../../components/admin/editors/ScenarioEditor.vue';
+import SourceDocumentEditor from '../../components/admin/editors/SourceDocumentEditor.vue';
+import GenericJsonEditor from '../../components/admin/editors/GenericJsonEditor.vue';
+import StoryIdeasEditor from '../../components/admin/editors/StoryIdeasEditor.vue';
+import ArticleCreator from '../../components/admin/editors/ArticleCreator.vue';
 
 // Apply Admin Middleware
 definePageMeta({
@@ -200,6 +242,16 @@ const saveError = ref(null);
 const deletingDocument = ref(false);
 const deleteError = ref(null);
 
+// --- New State for Creation ---
+const showCreator = ref(false);
+const creatingDocument = ref(false);
+const createError = ref(null);
+const articleCreatorRef = ref(null);
+
+// --- New State for Multiple Deletion ---
+const deletingMultiple = ref(false);
+const deleteMultipleError = ref(null);
+
 // Determine which editor component to use based on selectedCollection
 const currentEditorComponent = computed(() => {
   if (!selectedCollection.value) return null;
@@ -207,18 +259,24 @@ const currentEditorComponent = computed(() => {
   const editorMap = {
     'Article': ArticleEditor,
     'Scenario': ScenarioEditor,
-    'SourceDocument': SourceDocumentEditor
+    'SourceDocument': SourceDocumentEditor,
+    'StoryIdeas': StoryIdeasEditor
   };
   
   return editorMap[selectedCollection.value] || GenericJsonEditor;
+});
+
+// Determine which creator component to use (only Article for now)
+const currentCreatorComponent = computed(() => {
+  if (!selectedCollection.value || selectedCollection.value !== 'Article') return null;
+  return ArticleCreator;
 });
 
 // Common statuses for quick filtering
 const commonStatuses = computed(() => ({
   Article: ['DRAFT', 'PENDING', 'PUBLISHED', 'ARCHIVED', 'REJECTED', 'ERROR'],
   SourceDocument: ['URL_ONLY', 'RAW_CONTENT_RETRIEVED', 'SCREENING', 'SCREENED-IN', 'SCREENED-OUT', 'PROCESSING', 'PROCESSED', 'EMBEDDED', 'DISCARDED', 'ERROR'],
-  Scenario: ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED'],
-  // Add User statuses if needed
+  Scenario: ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED']
 }));
 
 // Fetch Collections
@@ -323,6 +381,33 @@ const handleEditorSave = async (updatedDocument) => {
   }
 };
 
+// --- New Method: Handle Create from Creator ---
+const handleCreatorSubmit = async (articleData) => {
+  if (!selectedCollection.value || selectedCollection.value !== 'Article') return;
+
+  // Set submitting state in child component
+  articleCreatorRef.value?.setIsSubmitting(true);
+  articleCreatorRef.value?.setCreationError(null);
+
+  try {
+    const newDoc = await $fetch(`/api/admin/document/${selectedCollection.value}`, {
+      method: 'POST',
+      body: articleData
+    });
+    alert('Article created successfully!');
+    showCreator.value = false; // Hide creator form
+    await fetchDocuments(1); // Refresh list on page 1
+  } catch (err) {
+    console.error("Error creating document:", err);
+    const errorMessage = err.data?.message || 'Failed to create article.';
+    // Set error message in child component
+    articleCreatorRef.value?.setCreationError(errorMessage);
+  } finally {
+    // Reset submitting state in child component
+    articleCreatorRef.value?.setIsSubmitting(false);
+  }
+};
+
 // Delete Document
 const confirmDeleteDocument = () => {
   if (!selectedCollection.value || !selectedDocumentId.value) return;
@@ -358,6 +443,7 @@ const handleCollectionChange = () => {
   queryOptions.filterKey = ''; // Reset filters on collection change
   queryOptions.filterValue = '';
   clearSelection();
+  showCreator.value = false; // Hide creator on collection change
   if (selectedCollection.value) {
     fetchDocuments();
   }
@@ -370,6 +456,7 @@ const clearSelection = () => {
   errorSelectedDocument.value = null;
   saveError.value = null;
   deleteError.value = null;
+  showCreator.value = false; // Also hide creator when clearing selection
 };
 
 // --- New Methods for Enhanced UX ---
@@ -396,6 +483,44 @@ function formatDate(dateString) {
     return dateString;
   }
 }
+
+// --- New Method: Delete Listed Documents ---
+const confirmDeleteListedDocuments = () => {
+  if (selectedCollection.value !== 'StoryIdeas' || documents.value.length === 0 || deletingMultiple.value) return;
+
+  const count = documents.value.length;
+  if (window.confirm(`Are you sure you want to delete the ${count} listed ${selectedCollection.value} documents? This cannot be undone.`)) {
+    deleteListedDocuments();
+  }
+};
+
+const deleteListedDocuments = async () => {
+  if (selectedCollection.value !== 'StoryIdeas' || documents.value.length === 0) return;
+
+  deletingMultiple.value = true;
+  deleteMultipleError.value = null;
+
+  const idsToDelete = documents.value.map(doc => doc._id);
+
+  try {
+    const response = await $fetch(`/api/admin/documents/delete-multiple`, {
+      method: 'POST',
+      body: {
+        collectionName: selectedCollection.value,
+        documentIds: idsToDelete
+      }
+    });
+    alert(`${response.deletedCount} documents deleted successfully!`);
+    clearSelection(); // Clear any selected document in editor
+    await fetchDocuments(1); // Refresh list, go back to page 1
+  } catch (err) {
+    console.error("Error deleting multiple documents:", err);
+    deleteMultipleError.value = err.data?.message || 'Failed to delete documents.';
+    alert(`Error: ${deleteMultipleError.value}`); // Show error to user
+  } finally {
+    deletingMultiple.value = false;
+  }
+};
 
 // Initial Load
 onMounted(() => {

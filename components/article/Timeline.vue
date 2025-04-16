@@ -1,5 +1,10 @@
 <template>
-  <div v-if="timeline && timeline.length > 0" class="timeline-container mt-8">
+  <div 
+    v-if="timeline && timeline.length > 0" 
+    class="timeline-container mt-8"
+    :class="{ 'cursor-pointer': !expanded && timeline.length > 2 }"
+    @click="!expanded && timeline.length > 2 && !$event.target.closest('.timeline-expand') ? toggleExpand() : null"
+  >
     <h4 class="text-xs font-medium text-fg-muted mb-2">Timeline:</h4>
     
     <div class="timeline-wrapper">
@@ -15,7 +20,7 @@
         >
           <div class="timeline-bullet"></div>
           <div class="timeline-content">
-            <div class="text-sm text-fg-muted font-medium">{{ item.date }}</div>
+            <div class="text-xs text-fg-muted font-medium">{{ item.date }}</div>
             <div class="timeline-event">{{ item.event }}</div>
           </div>
         </div>
@@ -49,6 +54,7 @@ const displayedItems = computed(() => {
 });
 
 const toggleExpand = () => {
+  console.log('toggleExpand', expanded.value);
   expanded.value = !expanded.value;
 };
 </script>
@@ -126,8 +132,8 @@ const toggleExpand = () => {
 }
 
 .timeline-event {
-  line-height: 1.5;
-  margin-bottom: 2px;
+  line-height: 1.2;
+  margin-bottom: 4px;
 }
 
 /* .timeline-date {

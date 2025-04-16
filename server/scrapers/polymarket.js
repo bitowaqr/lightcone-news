@@ -1,30 +1,15 @@
 import mongoose from 'mongoose';
 import Scenario from '../models/Scenario.model.js';
+import Article from '../models/Article.model.js'; // Import Article model
 import dotenv from 'dotenv';
 import fs from 'fs'; // Import fs for file operations
 
 // Load environment variables
 dotenv.config();
 
-const POLYMARKET_API_BASE_URL = 'https://gamma-api.polymarket.com';
 const PLATFORM_NAME = 'Polymarket';
-
-async function connectDB() {
-  if (mongoose.connection.readyState >= 1) {
-    return;
-  }
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      // useNewUrlParser and useUnifiedTopology are deprecated but might be needed for older setups
-      // useNewUrlParser: true,
-      // useUnifiedTopology: true,
-    });
-    console.log('MongoDB connected successfully for Polymarket scraper.');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1); // Exit if DB connection fails
-  }
-}
+const POLYMARKET_API_BASE_URL = 'https://gamma-api.polymarket.com';
+const POLYMARKET_CLOB_API_URL = 'https://clob.polymarket.com';
 
 /**
  * Formats raw Polymarket market data (and optional event data) into the Scenario schema.
@@ -56,7 +41,9 @@ function formatPolymarketScenario(market, event = null) {
         outcomePrices = JSON.parse(market.outcomePrices);
     } catch (parseError) {
       console.warn(
-        `Skipping market due to JSON parse error for outcomes/prices: ${market.slug || 'No Market slug'}`,
+        `Skipping market due to JSON parse error for outcomes/prices: ${
+          market.slug || 'No Market slug'
+        }`,
         parseError
       );
       return null;
@@ -68,7 +55,9 @@ function formatPolymarketScenario(market, event = null) {
       outcomes.length !== outcomePrices.length
     ) {
       console.warn(
-        `Skipping market due to invalid/mismatched outcomes/prices: ${market.slug || 'No Market slug'}`
+        `Skipping market due to invalid/mismatched outcomes/prices: ${
+          market.slug || 'No Market slug'
+        }`
       );
       return null;
     }
@@ -111,12 +100,13 @@ function formatPolymarketScenario(market, event = null) {
       embedUrl = `<iframe title="polymarket-market-iframe" src="https://embed.polymarket.com/market.html?market=${marketUrlSlug}&features=volume&theme=light" width="400" height="180" frameBorder="0" />`;
       apiUrl = `https://gamma-api.polymarket.com/markets/${marketId}`;
     } else if (eventUrlSlug) {
-        // Use event slug if market slug is missing but event slug exists
-        marketUrl = `https://polymarket.com/event/${eventUrlSlug}`;
-    }
-    else {
+      // Use event slug if market slug is missing but event slug exists
+      marketUrl = `https://polymarket.com/event/${eventUrlSlug}`;
+    } else {
       marketUrl = `https://polymarket.com/`; // Generic fallback if neither slug exists
-      console.warn(`Market ${market.id} missing market and event slug, using generic URL.`);
+      console.warn(
+        `Market ${market.id} missing market and event slug, using generic URL.`
+      );
     }
 
     // Determine Resolution Status and Dates
@@ -138,12 +128,16 @@ function formatPolymarketScenario(market, event = null) {
         resolutionDate = resolutionCloseDate; // If resolved, resolution date is the close date
 
         // Determine resolution value
-        const resolvedIndex = outcomePrices.findIndex(price => parseFloat(price) === 1);
+        const resolvedIndex = outcomePrices.findIndex(
+          (price) => parseFloat(price) === 1
+        );
         if (resolvedIndex !== -1 && outcomes[resolvedIndex]) {
           resolutionValue = outcomes[resolvedIndex];
         } else {
           // Fallback if no outcome has price 1 (shouldn't happen for resolved binary/categorical)
-          console.warn(`Resolved market ${market.id} has no outcome with price 1. Outcome prices: ${market.outcomePrices}`);
+          console.warn(
+            `Resolved market ${market.id} has no outcome with price 1. Outcome prices: ${market.outcomePrices}`
+          );
         }
       } else {
         resolutionStatus = 'CLOSED'; // Closed but not resolved yet
@@ -156,20 +150,19 @@ function formatPolymarketScenario(market, event = null) {
     const eventDescription = event?.description?.trim();
     let description = null; // Top-level description from the event usually
     if (event && eventDescription) {
-        description = eventDescription;
+      description = eventDescription;
     }
 
     // Resolution Data Object
     const resolutionData = {
-        resolutionCriteria: marketDescription || null, // Market description becomes criteria
-        resolutionSource: market.resolutionSource || null,
-        resolutionSourceUrl: null, // No clear field in API data for this yet
-        expectedResolutionDate: market.endDate ? new Date(market.endDate) : null,
-        resolutionDate: resolutionDate,
-        resolutionCloseDate: resolutionCloseDate,
-        resolutionValue: resolutionValue,
+      resolutionCriteria: marketDescription || null, // Market description becomes criteria
+      resolutionSource: market.resolutionSource || null,
+      resolutionSourceUrl: null, // No clear field in API data for this yet
+      expectedResolutionDate: market.endDate ? new Date(market.endDate) : null,
+      resolutionDate: resolutionDate,
+      resolutionCloseDate: resolutionCloseDate,
+      resolutionValue: resolutionValue,
     };
-
 
     const scenarioData = {
       // CORE
@@ -178,7 +171,8 @@ function formatPolymarketScenario(market, event = null) {
 
       // PLATFORM & SOURCE INFO
       platform: PLATFORM_NAME,
-      platformScenarioId: market.id, // Use market ID as the unique identifier
+      platformScenarioId: market.id,
+      conditionId: market.conditionId,
       tags: event?.tags?.map((tag) => tag.label) || [], // Tags from parent event if available
 
       // TIMELINES
@@ -210,8 +204,8 @@ function formatPolymarketScenario(market, event = null) {
           (market.liquidity ? parseFloat(market.liquidity) : null),
         // Add other relevant market data here if needed
         numberOfTraders: null, // Not directly available in market/event data shown
-        rationaleSummary: "", // Requires separate generation/fetching
-        rationaleDetails: "", // Requires separate generation/fetching
+        rationaleSummary: '', // Requires separate generation/fetching
+        rationaleDetails: '', // Requires separate generation/fetching
         dossier: {}, // Requires separate generation/fetching
       },
 
@@ -248,13 +242,14 @@ async function scrapePolymarketData(options = {}) {
   // --- Default Options ---
   const defaults = {
     limit: 100, // Max: 100
-    active: undefined, // Fetch active markets by default
-    endDateMin: undefined,
+    endDateMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // any markets past 30 days
+    active: undefined,
     endDateMax: undefined,
     closed: undefined,
     startDateMin: undefined,
     startDateMax: undefined,
     maxItems: undefined, // Max total markets to process
+    excludeTags: [], // New: Array of tag labels to exclude
   };
   const config = { ...defaults, ...options };
 
@@ -282,17 +277,11 @@ async function scrapePolymarketData(options = {}) {
   let totalRawMarketsFetched = 0;
   let processedCount = 0;
   const formattedScenarios = []; // Array to hold formatted scenarios
-
-  console.log(
-    `Starting Polymarket event data fetch with options: ${JSON.stringify(
-      config
-    )}`
-  );
-  console.log(`Base Events URL: ${baseEventsUrl}`);
+  const excludedByTagCount = {}; // New: Track exclusions by tag
 
   while (keepGoing) {
     const urlWithOffset = `${baseEventsUrl}&offset=${offset}`;
-    console.log(`Fetching events: ${urlWithOffset}`);
+    // console.log(`Fetching events: ${urlWithOffset}`);
     try {
       const resp = await fetch(urlWithOffset);
       if (!resp.ok) {
@@ -304,14 +293,14 @@ async function scrapePolymarketData(options = {}) {
       }
       const eventsData = await resp.json();
       if (!eventsData || eventsData.length === 0) {
-        console.log('No more events found.');
+        // console.log('No more events found.');
         keepGoing = false;
         continue;
       }
 
-      console.log(
-        `Processing ${eventsData.length} events from offset ${offset}...`
-      );
+      // console.log(
+      //   `Processing ${eventsData.length} events from offset ${offset}...`
+      // );
 
       for (const event of eventsData) {
         if (!event.markets || event.markets.length === 0) continue; // Skip events with no markets
@@ -324,12 +313,41 @@ async function scrapePolymarketData(options = {}) {
             config.maxItems !== undefined &&
             processedCount >= config.maxItems
           ) {
-            console.log(
-              `Reached maxItems limit (${config.maxItems}), stopping fetch.`
-            );
             keepGoing = false; // Stop fetching more events
             break; // Exit the inner market processing loop
           }
+
+          // New: Tag Exclusion Logic
+          let excludedByTag = false;
+          let excludingTag = null;
+          if (
+            config.excludeTags.length > 0 &&
+            event.tags &&
+            event.tags.length > 0
+          ) {
+            for (const tag of event.tags) {
+              // Normalize both strings for case-insensitive comparison and trim whitespace
+              const normalizedTagLabel = tag.label.trim().toLowerCase();
+              const matchingExcludeTag = config.excludeTags.find(
+                (excludeTag) =>
+                  excludeTag.trim().toLowerCase() === normalizedTagLabel
+              );
+
+              if (matchingExcludeTag) {
+                excludedByTag = true;
+                excludingTag = tag.label; // Keep original label for reporting
+                break; // Stop checking tags for this market
+              }
+            }
+          }
+
+          if (excludedByTag) {
+            // Increment the counter for the specific tag
+            excludedByTagCount[excludingTag] =
+              (excludedByTagCount[excludingTag] || 0) + 1;
+            continue; // Skip to the next market
+          }
+          // End Tag Exclusion Logic
 
           const scenarioData = formatPolymarketScenario(market, event);
 
@@ -364,17 +382,11 @@ async function scrapePolymarketData(options = {}) {
     }
   }
 
-  console.log(`
---- Polymarket Scrape Summary (Events) ---`);
-  console.log(`Options used: ${JSON.stringify(config)}`);
-  console.log(`Total raw markets found in events: ${totalRawMarketsFetched}`);
-  console.log(`Successfully processed and formatted: ${processedCount}`);
   if (config.maxItems !== undefined && processedCount >= config.maxItems) {
     console.log(
       `(Processing stopped early due to maxItems limit: ${config.maxItems})`
     );
   }
-  console.log(`---------------------------------`);
 
   return formattedScenarios;
 }
@@ -433,202 +445,195 @@ async function fetchAndFormatSinglePolymarketMarket(marketId) {
 }
 
 /**
- * Saves scraped market data to MongoDB or JSON file
- * @param {Array} scenarios - Array of formatted market data
- * @param {boolean} useMongoDB - Whether to save to MongoDB (true) or JSON file (false)
- * @returns {Object} - Summary of save operation
+ * Fetches raw market data from the Polymarket CLOB API by its condition ID.
+ * Internal helper function.
+ * See: https://docs.polymarket.com/#get-market
+ *
+ * @param {string} conditionId - The condition_id of the market.
+ * @returns {Promise<object>} A promise that resolves to the raw market data object.
  */
-async function saveScenarioData(scenarios, useMongoDB = true) {
-  let createdCount = 0;
-  let updatedCount = 0;
-  const totalToSave = scenarios.length;
-
-  if (totalToSave === 0) {
-    console.log('No scenarios provided to save.');
-    return { created: 0, updated: 0, total: 0 };
-  }
-
-  if (useMongoDB) {
-    await connectDB(); // Ensure DB connection
-
-    console.log(`Attempting to save ${totalToSave} scenarios to MongoDB...`);
-
-    for (const scenarioData of scenarios) {
-      try {
-        // Upsert: Find based on platform and platformScenarioId, update if found, insert if not.
-        const filter = {
-          platform: PLATFORM_NAME,
-          platformScenarioId: scenarioData.platformScenarioId,
-        };
-        // Update all fields from scenarioData, set createdAt only on insert
-        const update = {
-          $set: scenarioData,
-          $setOnInsert: { createdAt: new Date() }, // Add createdAt timestamp only when inserting
-        };
-        const optionsDb = {
-          upsert: true, // Create doc if it doesn't exist
-          new: true, // Return the modified document (or new one)
-          setDefaultsOnInsert: true, // Apply schema defaults on insert
-        };
-
-        // Use findOneAndUpdate to get info about whether it was an insert or update
-        const result = await Scenario.findOneAndUpdate(
-          filter,
-          update,
-          optionsDb
-        );
-
-        // Check if the document was newly created in this operation
-        // A common check is if `createdAt` is very close to `updatedAt` after the upsert
-        // Adjust tolerance as needed (e.g., 1 second)
-        if (
-          result &&
-          result.createdAt &&
-          result.updatedAt &&
-          result.updatedAt.getTime() - result.createdAt.getTime() < 1000
-        ) {
-          createdCount++;
-        } else {
-          updatedCount++;
-        }
-      } catch (error) {
-        // Log detailed error including which scenario failed
-        console.error(
-          `Error saving scenario (ID: ${
-            scenarioData.platformScenarioId
-          }, Question: "${scenarioData.question.substring(0, 30)}..."):`,
-          error
-        );
-        // Decide if you want to stop the whole process or continue saving others
-        // For now, just log and continue
-      }
+async function getPolymarketClobMarketByConditionId(conditionId) {
+  const url = `${POLYMARKET_CLOB_API_URL}/markets/${conditionId}`;
+  console.log(`Fetching market details from: ${url}`); // Added for debugging
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(
+        `HTTP error ${response.status}: ${response.statusText}. Body: ${errorBody}`
+      );
     }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(
+      `Error fetching Polymarket CLOB market by conditionId ${conditionId}:`,
+      error
+    );
+    throw error; // Re-throw the error after logging
+  }
+}
 
-    console.log(`
---- MongoDB Save Summary ---`);
-    console.log(`Attempted: ${totalToSave}`);
-    console.log(`New scenarios created: ${createdCount}`);
-    console.log(`Existing scenarios updated: ${updatedCount}`);
-    console.log(`Failed: ${totalToSave - createdCount - updatedCount}`);
-    console.log(`---------------------------------`);
+/**
+ * Fetches market details and extracts the 'Yes' and 'No' token IDs.
+ *
+ * @param {string} conditionId - The condition_id of the market.
+ * @returns {Promise<{question: string, yesTokenId: string|null, noTokenId: string|null}>} A promise resolving to an object with market details.
+ */
+async function getMarketDetailsAndTokens(conditionId) {
+  if (!conditionId) {
+    throw new Error('conditionId is required.');
+  }
+  const marketData = await getPolymarketClobMarketByConditionId(conditionId);
+
+  let yesTokenId = null;
+  let noTokenId = null;
+
+  if (marketData && marketData.tokens && marketData.tokens.length >= 2) {
+    // Assuming the first token is 'Yes' and the second is 'No'
+    // This might need adjustment if the order isn't guaranteed.
+    // A safer approach would be to check marketData.tokens[n].outcome
+    const yesToken = marketData.tokens.find(
+      (token) => token.outcome?.toLowerCase() === 'yes'
+    );
+    const noToken = marketData.tokens.find(
+      (token) => token.outcome?.toLowerCase() === 'no'
+    );
+
+    yesTokenId = yesToken ? yesToken.token_id : null;
+    noTokenId = noToken ? noToken.token_id : null;
+
+    if (!yesTokenId || !noTokenId) {
+      console.warn(
+        `Could not reliably determine Yes/No token IDs for conditionId ${conditionId}. Found: Yes=${yesTokenId}, No=${noTokenId}`
+      );
+      // Fallback to assuming order if lookup failed but array has >= 2 elements
+      if (!yesTokenId && marketData.tokens.length > 0)
+        yesTokenId = marketData.tokens[0].token_id;
+      if (!noTokenId && marketData.tokens.length > 1)
+        noTokenId = marketData.tokens[1].token_id;
+    }
   } else {
-    // Save to JSON file
-    const filename = 'polymarket_scenarios.json';
-    try {
-      fs.writeFileSync(filename, JSON.stringify(scenarios, null, 2));
-      console.log(`${totalToSave} scenarios saved to ${filename}`);
-      createdCount = totalToSave; // Assume all are "created" for file output
-    } catch (error) {
-      console.error(`Error writing scenarios to ${filename}:`, error);
-    }
+    console.warn(
+      `Market data or tokens array is missing or incomplete for conditionId ${conditionId}`
+    );
   }
 
-  return { created: createdCount, updated: updatedCount, total: totalToSave };
+  return {
+    question: marketData?.question || 'Question not found',
+    yesTokenId: yesTokenId,
+    noTokenId: noTokenId,
+    // You could add other fields from marketData here if needed
+    rawMarketData: marketData, // Optionally return the full raw data
+  };
 }
 
 /**
- * Main function to scrape Polymarket event list and save data
- * @param {Object} options - Configuration options for the scraper (passed to scrapePolymarketData)
- * @param {boolean} useMongoDB - Whether to save to MongoDB (true) or JSON file (false)
+ * Fetches historical price data for a specific Polymarket outcome token.
+ * See: https://docs.polymarket.com/#timeseries-data
+ *
+ * @param {string} tokenId - The specific token_id for the outcome (e.g., the 'Yes' or 'No' token).
+ * @param {number} fidelity - Granularity of data points in minutes (e.g., 60 for hourly, 1440 for daily).
+ * @param {number} startTimestamp - Start time as a Unix timestamp in seconds.
+ * @param {number} [endTimestamp] - Optional end time as a Unix timestamp in seconds. Defaults to current time if omitted.
+ * @returns {Promise<object>} A promise that resolves to the history object { history: [...] }.
  */
-async function runPolymarketEventScraper(options = {}, useMongoDB = true) {
-  console.log('Starting Polymarket Event Scraper...');
+async function getPolymarketPriceHistory(
+  tokenId,
+  fidelity,
+  startTimestamp,
+  endTimestamp
+) {
+  if (!tokenId) {
+    throw new Error('tokenId is required');
+  }
+
+  // Calculate appropriate fidelity based on time range
+  const now = Math.floor(Date.now() / 1000); // Current time in seconds
+  const end = endTimestamp || now;
+  
+  // If startTimestamp is not provided, try to determine a reasonable default
+  let start = startTimestamp;
+  if (!start) {
+    // Default to 30 days ago if no start time provided
+    start = now - (30 * 24 * 60 * 60); // 30 days in seconds
+  }
+  
+  // Calculate time range in days
+  const rangeDays = (end - start) / (24 * 60 * 60);
+  
+  // Determine appropriate fidelity based on range
+  // For longer ranges, use coarser granularity to avoid too many data points
+  let calculatedFidelity;
+  if (rangeDays > 180) {
+    calculatedFidelity = 1440; // Daily for ranges > 6 months
+  } else if (rangeDays > 30) {
+    calculatedFidelity = 360; // 6 hours for ranges > 1 month
+  } else if (rangeDays > 7) {
+    calculatedFidelity = 60; // Hourly for ranges > 1 week
+  } else {
+    calculatedFidelity = 15; // 15 minutes for shorter ranges
+  }
+  
+  // Use provided fidelity if specified, otherwise use calculated value
+  const finalFidelity = fidelity || calculatedFidelity;
+
+  const params = new URLSearchParams({
+    market: tokenId, // API expects the token_id in the 'market' parameter
+    fidelity: finalFidelity.toString(),
+    startTs: start.toString(),
+    endTs: end.toString()
+  });
+
+  const url = `${POLYMARKET_CLOB_API_URL}/prices-history?${params.toString()}`;
+  console.log(`Fetching price history from: ${url}`);
+
   try {
-    const scenarios = await scrapePolymarketData(options);
-    if (scenarios && scenarios.length > 0) {
-      await saveScenarioData(scenarios, useMongoDB);
-    } else {
-      console.log('No scenarios scraped from events.');
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      // Handle 404 gracefully - might mean no data for the period
+      if (response.status === 404) {
+        console.warn(`No price history found for token ${tokenId} with status 404.`);
+        return { history: [] };
+      }
+      
+      const errorBody = await response.text();
+      throw new Error(
+        `HTTP error ${response.status}: ${response.statusText}. Body: ${errorBody}`
+      );
     }
+
+    const data = await response.json();
+    
+    // Validate response structure
+    if (!data || !Array.isArray(data.history)) {
+      console.warn(`Unexpected history data format for token ${tokenId}:`, data);
+      return { history: [] };
+    }
+    
+    return data;
   } catch (error) {
-    console.error('Error during Polymarket event scraping:', error);
-    // Decide if the error should propagate or be handled here
-    // throw error; // Uncomment to propagate
-  } finally {
-    if (useMongoDB && mongoose.connection.readyState >= 1) {
-      await mongoose.disconnect();
-      console.log('MongoDB connection closed after event scrape.');
-    }
-    console.log('Polymarket Event Scraper finished.');
+    console.error(`Error fetching Polymarket price history for token ${tokenId}:`, error);
+    return { history: [] };
   }
 }
 
-/**
- * Example function to fetch a single market and save it.
- * @param {string} marketId - The ID of the market to fetch and save.
- * @param {boolean} useMongoDB - Whether to save to MongoDB (true) or JSON file (false)
- */
-async function fetchAndSaveSingleMarket(marketId, useMongoDB = true) {
-  console.log(`Starting single market fetch for ID: ${marketId}...`);
-  let scenario = null;
-  try {
-    scenario = await fetchAndFormatSinglePolymarketMarket(marketId);
-
-    if (scenario) {
-      // Save the single scenario (pass it as an array to saveScenarioData)
-      await saveScenarioData([scenario], useMongoDB);
-    } else {
-      console.log(`Could not fetch or format market ${marketId}. Not saving.`);
-    }
-  } catch (error) {
-    console.error(`Error fetching or saving single market ${marketId}:`, error);
-  } finally {
-    if (useMongoDB && mongoose.connection.readyState >= 1) {
-      await mongoose.disconnect();
-      console.log('MongoDB connection closed after single market operation.');
-    }
-    console.log(`Single market operation finished for ID: ${marketId}.`);
-  }
-}
-
-// --- Example Usage ---
-
-// Example 1: Run the event scraper with specific options, save to JSON
-// runPolymarketEventScraper({ limit: 50, maxItems: 150, active: true }, false)
-//   .catch(error => {
-//     console.error("Unhandled error during Polymarket event scraping:", error);
-//     process.exit(1);
-//   });
-
-// Example 2: Fetch a single market by ID and save to JSON
-// fetchAndSaveSingleMarket('501011', false) // Use the example market ID
-//     .catch(error => {
-//         console.error("Unhandled error during single market fetch/save:", error);
-//         process.exit(1);
-//     });
-
-// Example 3: Run event scraper with defaults, save to MongoDB (ensure MONGODB_URI is set in .env)
-// runPolymarketEventScraper({}, true)
-//   .catch(error => {
-//     console.error("Unhandled error during Polymarket event scraping:", error);
-//     process.exit(1);
-//   });
-
-// Choose ONE example to run or comment them all out if running via import
-// Default: Run event scraper with limited items to JSON
-runPolymarketEventScraper({
-  limit: 100,
-  active: true,
-  endDateMin: new Date().toISOString(),
-}, false).catch((error) => {
-  console.error('Unhandled error during Polymarket event scraping:', error);
-  process.exit(1);
-});
-
-
-// fetchAndSaveSingleMarket('501011', false).catch((error) => {
-//   console.error('Unhandled error during single market fetch/save:', error);
-//   process.exit(1);
-// });
-
-// Export functions if needed for module usage
-export {
+export { 
   scrapePolymarketData,
   fetchAndFormatSinglePolymarketMarket,
-  saveScenarioData,
-  runPolymarketEventScraper,
-  fetchAndSaveSingleMarket,
-  formatPolymarketScenario, // Export the formatter if needed elsewhere
-};
+  getPolymarketClobMarketByConditionId,
+  getMarketDetailsAndTokens,
+  getPolymarketPriceHistory,
+}; // Export main functions
 
-// export default runPolymarketEventScraper; // Example default export
+// // test
+// const someMarkets = await scrapePolymarketData({ maxItems: 10, endDateMin: new Date(Date.now()).toISOString(), active: true });
+
+// const someMarketDetails = await getMarketDetailsAndTokens(someMarkets[0].conditionId);
+// console.log(someMarketDetails);
+
+// const somePriceHistory = await getPolymarketPriceHistory(someMarketDetails.yesTokenId, null, null, new Date(Date.now()).getTime() / 1000);
+
+// console.log(somePriceHistory);
+// process.exit(0);

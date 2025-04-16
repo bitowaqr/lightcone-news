@@ -2,7 +2,7 @@
 import { ref, watch, nextTick } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 
-const props = defineProps({ contextId: String }); // e.g., article ID
+const props = defineProps({ contextId: String, suggestedPrompts: Array }); // e.g., article ID
 const userInput = ref('');
 const isLoading = ref(false);
 const chatError = ref(null);
@@ -32,53 +32,113 @@ async function submitPrompt(promptText = userInput.value) {
   const textToSend = promptText.trim();
   if (!textToSend) return;
 
-  // Add user message to the chat history
   messages.value.push({
     sender: 'user',
     text: textToSend
   });
-  await scrollToBottom(); // Scroll after adding user message
+  await scrollToBottom();
 
   isLoading.value = true;
   chatError.value = null;
-  userInput.value = ''; // Clear input immediately after sending
-  await scrollToBottom(); // Scroll when loading starts
-  
+  userInput.value = '';
+
+  // Add placeholder AI message with a flag
+  const aiMessageIndex = messages.value.push({
+    sender: 'ai',
+    text: '',
+    isPlaceholder: true // Flag to indicate this is a placeholder
+  }) - 1;
+  await scrollToBottom();
+
   try {
-    // Use $fetch directly here, includes cookies automatically
-    const data = await $fetch('/api/chat', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
-      body: {
+      headers: {
+        'Content-Type': 'application/json',
+        // Cookies are typically sent automatically by the browser with fetch
+      },
+      body: JSON.stringify({
         prompt: textToSend,
+        history: messages.value,
         contextId: props.contextId
+      })
+    });
+
+    if (!response.ok) {
+      // If fetch fails, remove the placeholder before throwing
+      if (messages.value[aiMessageIndex]?.isPlaceholder) {
+        messages.value.pop();
       }
-    });
-    
-    // Add AI response to chat history
-    messages.value.push({
-      sender: 'ai',
-      text: data.response
-    });
-    
-    await scrollToBottom(); // Scroll to bottom after response
+      // Try to parse error from response body if possible
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // If body is not JSON or empty
+        errorData = { message: response.statusText };
+      }
+      throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+    }
+
+    if (!response.body) {
+       if (messages.value[aiMessageIndex]?.isPlaceholder) {
+        messages.value.pop();
+      }
+      throw new Error('Response body is missing.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let done = false;
+    let isFirstChunk = true; // Track if it's the first chunk
+
+    while (!done) {
+      const { value, done: readerDone } = await reader.read();
+      done = readerDone;
+      if (value) {
+        const chunk = decoder.decode(value, { stream: true });
+        const aiMessage = messages.value[aiMessageIndex];
+
+        // On the first chunk, remove the placeholder flag
+        if (isFirstChunk && aiMessage?.isPlaceholder) {
+          aiMessage.isPlaceholder = false;
+          isFirstChunk = false;
+        }
+
+        // Append text only if the message exists (it should)
+        if (aiMessage) {
+            aiMessage.text += chunk;
+            await scrollToBottom();
+        }
+      }
+    }
+
+    // Ensure placeholder is removed if stream ends empty
+    if (isFirstChunk && messages.value[aiMessageIndex]?.isPlaceholder) {
+        messages.value[aiMessageIndex].isPlaceholder = false;
+    }
+
   } catch (error) {
-     console.error("Chat error:", error.data || error);
-     chatError.value = error.data?.message || 'Could not get AI response.';
-     // Handle 401 specifically - prompt user to log in
-     if (error.statusCode === 401) {
-        chatError.value = 'Authentication required. Please login to use the chat feature.';
-     }
+    console.error("Chat error:", error);
+    // Ensure placeholder is removed on error
+    if (messages.value[aiMessageIndex]?.isPlaceholder) {
+      messages.value.pop();
+    }
+    chatError.value = error.message || 'Could not get AI response.';
+    // Handle specific error types if needed (e.g., auth)
+    // if (error.statusCode === 401) { ... }
   } finally {
-     isLoading.value = false;
+    isLoading.value = false; // Loading is finished
+    // Check if the placeholder still exists (e.g., error before first chunk) and remove it
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage && lastMessage.sender === 'ai' && lastMessage.isPlaceholder) {
+        messages.value.pop();
+    }
   }
 }
 
 // Placeholder for fetching suggested prompts - could come from articleData
-const suggestedPrompts = ref([
-    "What is the main point?",
-    "What are the implications?",
-    // Add more based on articleData if available
-]);
+const suggestedPrompts = ref(props.suggestedPrompts);
 
 function useSuggestion(prompt) {
     userInput.value = prompt;
@@ -90,7 +150,7 @@ function useSuggestion(prompt) {
 }
 
 function toggleInput() {
-  if (authStore.isAuthenticated) {
+  if (true) {
     isInputVisible.value = !isInputVisible.value;
     if (isInputVisible.value) {
       // Focus the input field when it becomes visible
@@ -108,17 +168,18 @@ function toggleInput() {
 </script>
 
 <template>
-  <div class="chat-container text-sm">
+  <div class="chat-container text-sm my-1">
     <!-- Login Prompt -->
-    <p v-if="!authStore.isAuthenticated" class="text-sm text-primary-600 dark:text-primary-400 mb-3 px-1">
+    <!-- <p v-if="!authStore.isAuthenticated" class="text-sm text-primary-600 dark:text-primary-400 mb-3 px-1">
         Please <NuxtLink to="/login" class="underline font-medium">login</NuxtLink> to use the AI chat.
-    </p>
+    </p> -->
 
     <!-- Edit Icon and Suggested Prompts in one scrollable line -->
     <div class="flex items-center gap-2 mb-3 overflow-x-auto whitespace-nowrap scrollbar-hide py-2 ps-1">
       <!-- Edit Icon -->
+        <!-- v-if="!isInputVisible && authStore.isAuthenticated"  -->
       <button 
-        v-if="!isInputVisible && authStore.isAuthenticated" 
+      v-if="!isInputVisible"
         @click="toggleInput" 
         class="text-sm bg-bg-muted hover:bg-accent-bg dark:hover:bg-accent-bg/50 text-fg-muted p-1.5 rounded-full border border-accent-bg disabled:opacity-50 transition flex items-center justify-center flex-shrink-0"
         :disabled="isLoading"
@@ -140,7 +201,7 @@ function toggleInput() {
 
     <!-- Messages Area -->
     <div 
-      v-if="messages.length > 0 || isLoading" 
+      v-if="messages.length > 0" 
       ref="messagesContainer"
       class="messages-list mb-3 max-h-96 overflow-y-auto space-y-3 p-3 border border-accent-bg rounded-lg bg-bg-muted"
     >
@@ -154,35 +215,48 @@ function toggleInput() {
             : 'items-start' // Align AI messages to the left
         ]"
       >
-        <div 
+        <!-- User Message Bubble -->
+        <div
+          v-if="message.sender === 'user'"
           :class="[
             'p-2 px-3 rounded-lg max-w-[90%] w-fit', // Common bubble styles
-            message.sender === 'user' 
-              ? 'bg-primary-100 dark:bg-primary-900 border border-primary-200 dark:border-primary-800 text-fg' // User bubble specific styles
-              : 'bg-bg dark:bg-background border border-accent-bg text-fg' // AI bubble specific styles
+            'bg-primary-100 dark:bg-primary-900 border border-primary-200 dark:border-primary-800 text-fg' // User bubble specific styles
           ]"
         >
-          <span v-if="message.sender === 'ai'" class="font-semibold text-primary dark:text-primary-400">AI: </span> 
-          <span class="whitespace-pre-wrap break-words">{{ message.text }}</span> 
+          <span class="whitespace-pre-wrap break-words">{{ message.text }}</span>
         </div>
-      </div>
 
-      
-      <div v-if="isLoading" class="flex items-start"> 
-        <div class="p-2 px-3 rounded-lg bg-bg dark:bg-background border border-accent-bg text-fg inline-flex items-center gap-2"> 
-          <span class="text-primary dark:text-primary-400">AI thinking...</span>
-          <div class="sparkle-animation">
-            <Icon name="mdi:sparkles" class="w-4 h-4 animate-sparkle text-primary dark:text-primary-400" /> 
-          </div>
-        </div>
+        <!-- AI Message Bubble / Thinking Indicator -->
+        <template v-if="message.sender === 'ai'">
+           <!-- Thinking Indicator -->
+           <div v-if="message.isPlaceholder" class="flex items-start">
+             <div class="p-2 px-3 rounded-lg bg-bg dark:bg-background border border-accent-bg text-fg inline-flex items-center gap-2">
+               <span class="text-primary dark:text-primary-400">AI thinking...</span>
+               <div class="sparkle-animation">
+                 <Icon name="mdi:sparkles" class="w-4 h-4 animate-sparkle text-primary dark:text-primary-400" />
+               </div>
+             </div>
+           </div>
+
+           <!-- Actual AI Message -->
+           <div
+             v-else
+             :class="[
+               'p-2 px-3 rounded-lg max-w-[90%] w-fit',
+               'bg-bg dark:bg-background border border-accent-bg text-fg'
+             ]"
+           >
+             <span class="font-semibold text-primary dark:text-primary-400">AI: </span>
+             <span class="whitespace-pre-wrap break-words">{{ message.text }}</span>
+           </div>
+        </template>
       </div>
     </div>
-
 
     <p v-if="chatError" class="text-red-600 text-sm mb-3 px-1">{{ chatError }}</p>
 
     <!-- Chat Input Form - Only visible when edit is clicked -->
-    <div v-if="isInputVisible && authStore.isAuthenticated" class="relative mt-2">
+    <div v-if="isInputVisible " class="relative mt-2">
       <textarea
         ref="chatInput"
         v-model="userInput"
@@ -263,7 +337,8 @@ function toggleInput() {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+.chat-container {
+  margin-top: 1rem !important;
+}
 
-/* Removed .chat-container, .user-message, .ai-message, and dark mode CSS */
-/* Tailwind handles dark mode via `dark:` prefixes */
 </style> 

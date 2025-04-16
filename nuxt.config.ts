@@ -16,9 +16,8 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css'],
   tailwindcss: {
-    config: {
-      plugins: [tailwindTypography],
-    },
+    configPath: './tailwind.config.js',
+    plugins: [tailwindTypography],
   },
   app: {
     head: {

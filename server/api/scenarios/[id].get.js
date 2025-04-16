@@ -73,6 +73,8 @@ export default defineEventHandler(async (event) => { // Make handler async
       status: scenario.resolutionData?.status || 'UNKNOWN',
       resolutionDate: scenario.resolutionData?.resolutionDate,
       resolutionValue: scenario.resolutionData?.resolutionValue,
+      url: scenario.url,
+      embedUrl: scenario.embedUrl,
 
       // Current Data (adapt based on type)
       currentProbability: scenario.scenarioType === 'BINARY' ? scenario.currentProbability : undefined,
@@ -82,7 +84,7 @@ export default defineEventHandler(async (event) => { // Make handler async
       // Context / Related items
       // TODO: Decide how to present scenarioData, sources, prompts if they exist in the model
       // sources: scenario.sources, // Adapt format if needed
-      // prompts: { suggested: scenario.suggestedPrompts || [] },
+      // suggestedPrompts: scenario.suggestedPrompts || [] ,
       // timeline: scenario.timeline, // Adapt format if needed
       detailedData: {
           // Map relevant fields from model to detailedData if needed

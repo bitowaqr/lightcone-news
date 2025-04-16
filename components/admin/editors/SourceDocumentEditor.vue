@@ -4,7 +4,7 @@
       Editing Source Document: <code class="text-sm bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded">{{ document._id }}</code>
     </h3>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1  gap-6">
       <!-- Left Column - Basic Data -->
       <div>
         <!-- Core Fields -->

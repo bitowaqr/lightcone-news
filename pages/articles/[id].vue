@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto grow bg-article h-full pt-4 md:pt-12 lg:pt-20 w-full shadow-md">
+  <div class="max-w-3xl mx-auto grow bg-article h-full pt-4 md:pt-12 lg:pt-20 w-full shadow-md">
     
     
 

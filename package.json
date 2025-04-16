@@ -16,6 +16,10 @@
     "db:toggle-admin": "node scripts/toggle-admin.js"
   },
   "dependencies": {
+    "@google/genai": "^0.8.0",
+    "@google/generative-ai": "^0.24.0",
+    "@langchain/google-genai": "^0.2.3",
+    "@langchain/openai": "^0.5.5",
     "@nuxt/fonts": "^0.11.1",
     "@nuxt/icon": "^1.11.0",
     "@nuxt/ui": "^3.0.2",
@@ -28,19 +32,28 @@
     "@tiptap/vue-3": "^2.11.7",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
+    "cheerio": "^1.0.0",
     "chromadb": "^2.2.0",
     "dotenv": "^16.4.5",
+    "exa-js": "^1.5.13",
     "jsonwebtoken": "^9.0.2",
     "markdown-it": "^14.1.0",
     "mongoose": "^8.3.2",
+    "newsapi": "^2.4.1",
     "nuxt": "^3.16.2",
     "openai": "^4.91.1",
     "pinia": "^3.0.1",
+    "puppeteer": "^24.6.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "tiktoken": "^1.0.20",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "xml2js": "^0.6.2",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
+    "fluid-tailwind": "^1.0.4",
     "markdown-it-link-attributes": "^4.0.1"
   }
 }

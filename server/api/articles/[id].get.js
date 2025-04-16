@@ -57,20 +57,19 @@ export default defineEventHandler(async (event) => { // Make handler async
       },
       precis: article.precis,
       summary: article.summary, // Add summary if available in model
+      summaryAlt: article.summaryAlt,
       // Format sources according to expected structure
       sources: (article.sources || []).map(s => ({
           url: s.url,
           name: s.publisher, // Assuming 'publisher' maps to 'name'
           // publishedDate: s.publishedDate, // Add if needed
       })),
-      prompts: {
-        suggested: article.suggestedPrompts || []
-      },
+      suggestedPrompts: article.suggestedPrompts || [],
       // Format timeline events
       timeline: formatTimeline(article.timeline),
       scenarios: relatedScenarios,
       // fullContent: article.fullContent // Add fullContent if it exists in your model
-      // imageUrl: article.imageUrl, // Add imageUrl if needed
+      imageUrl: article.imageUrl, // Add imageUrl if needed
     };
 
     return response;

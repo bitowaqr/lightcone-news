@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
     '/api/auth/login',
     '/api/auth/register',
     '/api/auth/logout',
+    '/api/chat',
     '/api/newsfeed',
     '/api/articles',
     '/api/scenarios',

@@ -22,8 +22,9 @@ const articleSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true }, 
   precis: { type: String, required: true }, // 1-3 sentences
   summary: { type: String }, // 1-3 paragraphs or 3-8 bullets
+  summaryAlt: { type: String }, // Array of bullet points
   imageUrl: { type: String, trim: true }, 
-
+  
   // Metadata & Classification
   publishedDate: { type: Date, default: null },
   updatedDate: { type: Date, default: null },
@@ -35,20 +36,30 @@ const articleSchema = new mongoose.Schema({
     default: 'DRAFT',
     required: true
   },
-
+  
   // Context
   sources: [citedSourceSchema], 
+  sourceUrls: [{ type: String, trim: true }],
   timeline: [timelineEventSchema], 
   relatedScenarioIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Scenario' }],
   suggestedPrompts: [{ type: String, trim: true }],
-  storyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Story', sparse: true }, // Optional: Link if part of a larger Story
+
+  // Newsfeed meta
+  priority: { type: Number, default: 0 },
+  relevance: { type: String, default: 'misc' },
+  
+  // story and lineup meta
+  lineupId: { type: String, trim: true },
+  storyId: {type: mongoose.Schema.Types.ObjectId, ref: 'StoryIdea'}, 
+  storyTitle: { type: String, trim: true },
+  storyDescription: { type: String, trim: true },
+  storyNotes: { type: String, trim: true },
 }, {
   timestamps: true 
 });
 
 // Indexes
 articleSchema.index({ status: 1, publishedDate: -1 });
-articleSchema.index({ status: 1, updatedDate: -1 });
 articleSchema.index({ status: 1, updatedDate: -1, tags: 1 });
 articleSchema.index({ status: 1, relatedScenarioIds: 1 });
 articleSchema.index({ status: 1, storyId: 1 });

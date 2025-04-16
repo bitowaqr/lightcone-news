@@ -10,14 +10,17 @@ const metadataSchema = new mongoose.Schema({
   tags: [{ type: String, trim: true }],
   sourceType: { 
     type: String,
-    enum: ['ARTICLE', 'MEDIA', 'SOCIAL', 'OTHER'], 
+    enum: ['ARTICLE', 'MEDIA', 'SOCIAL', 'OTHER', 'RSS'], 
   },
 }, { _id: false });
 
 const sourceDocumentSchema = new mongoose.Schema({
   // core fields
-  url: { type: String, required: true, unique: true, trim: true }, 
+  url: { type: String, required: true, trim: true }, 
   meta: metadataSchema,
+  title: { type: String },
+  subtitle: { type: String },
+  teaser: { type: String },
   content: { type: String }, 
   rawContent: { type: String }, 
   scrapedDate: { type: Date, required: true, default: Date.now }, 

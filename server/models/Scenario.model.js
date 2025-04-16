@@ -6,11 +6,13 @@ const scenarioSchema = new mongoose.Schema({
   
   // CORE
   question: { type: String, required: true, trim: true }, 
+  questionNew: { type: String, trim: true },
   description: { type: String },
   
   // PLATFORM & SOURCE INFO
   platform: { type: String, trim: true }, // e.g., 'Metaculus', 'Polymarket', 'Manifold', 'Lightcone Forecast'
   platformScenarioId: { type: String, trim: true }, 
+  conditionId: { type: String, trim: true },
   tags: [{ type: String, trim: true }],
 
   // TIMELINES
@@ -74,6 +76,7 @@ const scenarioSchema = new mongoose.Schema({
   // Scraping & Provenance
   scrapedDate: { type: Date },
   // AI Vector Embedding
+  textForEmbedding: { type: String },
   aiVectorEmbedding: { type: [Number], select: false },
 }, {
   timestamps: true
@@ -81,6 +84,7 @@ const scenarioSchema = new mongoose.Schema({
 
 // Indexes
 scenarioSchema.index({ platform: 1, platformScenarioId: 1 }, { unique: true, sparse: true }); // Unique scenario per platform
+scenarioSchema.index({ conditionId: 1 }, { unique: true, sparse: true }); // Unique scenario per conditionId
 scenarioSchema.index({ closeDate: -1 });
 scenarioSchema.index({ status: 1 });
 scenarioSchema.index({ relatedSourceDocumentIds: 1 });

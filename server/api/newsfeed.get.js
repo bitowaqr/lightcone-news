@@ -15,7 +15,14 @@ export default defineEventHandler(async (event) => { // Make handler async
     const articles = await Article.find({ status: 'PUBLISHED' })
       .sort({ publishedDate: -1 })
       .limit(ARTICLES_LIMIT)
-      .lean(); // Use .lean() for performance if not modifying docs
+      .lean(); 
+    
+    articles.sort((a, b) => {
+      if (a.publishedDate.getDate() === b.publishedDate.getDate()) {
+        return a.priority - b.priority;
+      }
+      return a.publishedDate.getDate() - b.publishedDate.getDate();
+    });
 
     // Fetch recent open scenarios (adjust criteria as needed)
     // Potential alternative: Fetch scenarios explicitly linked to the articles above
@@ -41,6 +48,7 @@ export default defineEventHandler(async (event) => { // Make handler async
         // TODO: Add logic for CATEGORICAL/NUMERIC types if needed
       }));
 
+      console.log('article.imageUrl', article.imageUrl);
       return {
         // Use article._id for groupId or generate a unique one if needed
         groupId: `article-${article._id.toString()}`,
@@ -55,7 +63,8 @@ export default defineEventHandler(async (event) => { // Make handler async
         scenarios: formattedScenarios,
         // Placeholder - adapt if needed
         additionalInfo: `Related Scenarios: ${article.relatedScenarioIds?.length || 0}`,
-        nScenarios: article.relatedScenarioIds?.length || 0
+        nScenarios: article.relatedScenarioIds?.length || 0,
+        imageUrl: article.imageUrl
       };
     });
 
