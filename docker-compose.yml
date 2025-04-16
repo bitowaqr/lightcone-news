@@ -18,7 +18,8 @@ services:
     command: --auth
 
   chromadb:
-    image: chromadb/chroma:latest
+    # image: chromadb/chroma:latest
+    image: chromadb/chroma:0.4.24
     container_name: lightcone-news-chromadb
     volumes:
       - chromadb_data:/chroma/chroma
