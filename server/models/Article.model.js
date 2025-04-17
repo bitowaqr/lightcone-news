@@ -1,6 +1,6 @@
 // server/models/Article.js
 import mongoose from 'mongoose';
-import slugify from 'slugify'; // Import slugify
+import slugify from 'slugify';
 
 // Schema for sources *cited within the published article*
 const citedSourceSchema = new mongoose.Schema({

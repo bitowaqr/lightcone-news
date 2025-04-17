@@ -1,3 +1,4 @@
+import slugify from 'slugify';
 import mongoose from 'mongoose';
 import Lineup from '../models/Lineup.model.js';
 import Article from '../models/Article.model.js';
@@ -122,11 +123,54 @@ class MongoService {
     return storyIdeas;
   }
   
-  // save (draft) article
-  async saveArticle(article) {
+  // save (draft) article - Refactored to use .save()
+  async saveArticle(articleData) {
     await this.connect();
-    const _article = await Article.findOneAndUpdate({ storyId: article.storyId }, article, { new: true, upsert: true });
-    return _article;
+
+    if (!articleData.storyId) {
+        // Handle cases where storyId might be missing, depending on requirements
+        // Maybe throw an error, or generate a default article without linking?
+        // For now, let's assume storyId is essential for finding/creating.
+        // If not, adjust the logic.
+        console.warn("Attempting to save article without a storyId. Upsert might behave unexpectedly or create duplicates if title is used as key.");
+        // As a fallback, let's try finding by title if storyId is missing, but this is less reliable
+        // This fallback assumes title is unique enough for draft stages or requires manual intervention later.
+        if (!articleData.title) throw new Error("Cannot save article without storyId or title.");
+        // Let's proceed assuming findOrCreate logic based on storyId OR title (if storyId missing)
+    }
+
+    const query = articleData.storyId ? { storyId: articleData.storyId } : { title: articleData.title }; // Prioritize storyId
+
+    try {
+        let article = await Article.findOne(query);
+
+        if (article) {
+            // Article exists, update it
+            // Update fields carefully, especially arrays/objects if needed
+            Object.keys(articleData).forEach(key => {
+                // Avoid overwriting the _id or potentially version key __v
+                if (key !== '_id' && key !== '__v') {
+                    article[key] = articleData[key];
+                }
+            });
+            // Note: If updating arrays/nested objects, more specific logic might be needed
+            // e.g., article.tags = articleData.tags; etc.
+            console.log(`Updating existing article with storyId: ${articleData.storyId || 'N/A'} / title: ${articleData.title}`);
+        } else {
+            // Article doesn't exist, create a new one
+            console.log(`Creating new article with storyId: ${articleData.storyId || 'N/A'} / title: ${articleData.title}`);
+            article = new Article(articleData);
+        }
+
+        // Crucially, call .save() to trigger middleware (including slug generation)
+        const savedArticle = await article.save();
+        return savedArticle;
+
+    } catch (error) {
+        console.error(`Error saving article with storyId: ${articleData.storyId || 'N/A'} / title: ${articleData.title}:`, error);
+        // Re-throw or handle as appropriate for your application flow
+        throw error;
+    }
   }
   
 }

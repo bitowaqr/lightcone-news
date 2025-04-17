@@ -4,7 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import dotenv from 'dotenv';
 dotenv.config();
 
-  const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
+  const GEMINI_MODEL = process.env.WORKER_MODEL || 'gemini-2.5-pro-preview-03-25';
 // const GEMINI_MODEL = 'gemini-2.0-flash';
 
 // --- Zod Schema for Structured Output ---
