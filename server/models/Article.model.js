@@ -73,32 +73,55 @@ articleSchema.index({ status: 1, storyId: 1 });
 // Index for slug is implicitly created by `unique: true`, but explicit doesn't hurt
 // articleSchema.index({ slug: 1 }); 
 
-// Middleware for generating slug
-articleSchema.pre('save', async function(next) {
-  if (this.isModified('title') || this.isNew) {
-    let baseSlug = slugify(this.title, { 
+// Middleware for generating slug - Moved to pre('validate')
+articleSchema.pre('validate', async function(next) { // <--- Changed from 'save' to 'validate'
+  // Only generate slug if title is modified or it's a new document AND slug is not already set manually
+  if ((this.isModified('title') || this.isNew) && !this.slug) {
+    // Check if title exists before trying to slugify
+    if (!this.title) {
+      // If title is also required and missing, validation will catch it.
+      // If title is not strictly required or might be set later,
+      // we might skip slug generation here or handle it differently.
+      // For now, assume title is present if we reach here due to schema requirements.
+      // Let's add a check just in case.
+       console.warn('Attempting to generate slug, but title is missing.');
+       return next(); // Let validation handle the missing title if required
+    }
+
+    let baseSlug = slugify(this.title, {
       lower: true,      // convert to lower case
-      strict: true,     // strip special characters except - a
+      strict: true,     // strip special characters except -
       remove: /[*+~.()'"!:@]/g // remove characters that slugify might not remove by default
     });
+
+    // Handle possibility of empty baseSlug if title consists only of removable characters
+    if (!baseSlug) {
+        baseSlug = 'untitled-' + Date.now(); // Or some other fallback
+    }
 
     let slug = baseSlug;
     let count = 1;
     const Article = mongoose.model('Article'); // Get model reference
 
     // Check for uniqueness and append count if needed
-    // Need to ensure we don't check against the document itself if updating
     let query = { slug: slug };
+    // If updating, ensure we don't conflict with the document itself
     if (!this.isNew) {
       query._id = { $ne: this._id };
     }
-    
-    while (await Article.findOne(query)) {
-      count++;
-      slug = `${baseSlug}-${count}`;
-      query.slug = slug; // Update query for the next check
+
+    try {
+        while (await Article.findOne(query)) {
+            count++;
+            slug = `${baseSlug}-${count}`;
+            query.slug = slug; // Update query for the next check
+        }
+        this.slug = slug;
+    } catch (error) {
+        console.error("Error during slug uniqueness check:", error);
+        // Pass the error to the next middleware/save operation
+        return next(error);
     }
-    this.slug = slug;
   }
   next();
 });
