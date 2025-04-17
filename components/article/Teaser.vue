@@ -4,8 +4,11 @@
   >
     <!-- ARTICLE -->
     <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`">
-      <div class="flex" :class="{'flex-col': layoutOption === 'vertical'}">
-        <div class="mb-6 w-full">
+      <div class="flex flex-col" :class="{
+        'flex-col': layoutOption === 'vertical' || !group.imageUrl,
+        'lg:flex-row': layoutOption === 'horizontal' && group.imageUrl
+      }">
+        <div class="mb-6 w-full max-w-[100vw] min-w-[100px]">
           <img v-if="group.imageUrl" :src="group.imageUrl" class="w-full h-full object-cover" alt="" />
         </div>
         

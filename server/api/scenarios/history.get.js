@@ -9,6 +9,13 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
 const FETCH_TIMEOUT_MS = 15_000; // 15 seconds timeout
 
 async function fetchPolymarketHistory(scenario) {
+  console.log("scenario");
+  console.log("scenario");
+  console.log("scenario");
+  console.log("scenario");
+  console.log("scenario");
+  console.log(scenario);
+  
   if (!scenario || scenario.platform !== 'Polymarket' || !scenario.clobTokenIds || Object.keys(scenario.clobTokenIds).length === 0) {
     console.warn(`[Scenario History] Invalid scenario data for Polymarket history fetch: ID ${scenario?.platformScenarioId}`);
     return null; // Cannot fetch without required info
@@ -68,7 +75,8 @@ async function fetchPolymarketHistory(scenario) {
         const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
         try {
             // Pass the calculated duration (or null) to the updated function
-            const history = await getPolymarketPriceHistory(id, durationMinutes);
+          const history = await getPolymarketPriceHistory(id, durationMinutes);
+          
             clearTimeout(timeoutId);
             if (history && Array.isArray(history.history)) {
                 return { outcome, history: history.history };

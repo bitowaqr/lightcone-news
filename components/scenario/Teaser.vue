@@ -4,7 +4,7 @@
     class="px-4 py-2 bg-accent-bg relative overflow-hidden flex justify-between items-center space-x-4 leading-tight hover:opacity-80 transition-opacity duration-100"
   >
     <div class="block mb-2 flex-1 min-w-0">
-      <p class="text-md font-medium text-fg truncate">{{ scenario.name }}</p>
+      <p class="text-md font-medium text-fg truncate whitespace-pre-wrap w-full">{{ scenario.name }}</p>
     </div>
     <div class="flex justify-end items-center shrink-0">
       <div v-if="loading" class="flex items-center">

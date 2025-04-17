@@ -22,7 +22,7 @@
             'mt-4 md:mt-8 lg:mt-12': i === 0,}">
 
             <ArticleTeaser :group="group"
-            :layoutOption="i % 2 === 0 ? 'horizontal' : 'vertical'" 
+            :layoutOption="i % 2 === 0 ? 'vertical' : 'horizontal'" 
             class="px-2 md:px-4 lg:px-8"
             />
             </div>

@@ -147,8 +147,8 @@ export const writeArticle = async (story) => {
 const testCreateDraftArticle = async () => {
   let stories = await mongoService.getStoryIdeasFromLatestLineup();
   console.log("let's go, let's write " + stories.length + ' articles');
-  let successCount,
-    errorCount = 0;
+  let successCount = 0;
+  let errorCount = 0;
   const MAX_RETRIES = 3;
   for (const story of stories) {
     let draftArticle;

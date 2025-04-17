@@ -57,7 +57,7 @@
         <div class="ml-2 text-sm" v-if="sourcesTop?.length > 0">
             <div class="flex items-center justify-center">
               <div class="line-clamp-1 shrink-1 w-fit">
-              {{ sourcesTop?.[0]?.name }} {{ sourcesTop.length > 2 ? ' + ' + (sourcesTop.length - 1 + sourcesRest.length) + ' Sources' : '' }}
+              {{ sourcesTeaserString }}
               </div>
             </div>
         </div>
@@ -136,6 +136,13 @@ const sourcesTop = computed(() => props.sources?.slice(0, 3) || []); // Show top
 const sourcesRest = computed(() =>
   sourcesCount.value > 3 ? props.sources?.slice(3) : []
 );
+const sourcesTeaserString = computed(() => {
+  let sc = sourcesCount.value;
+  if (sc === 0) return '';
+  if (sc === 1) return sourcesTop.value[0].publisher;
+  if (sc === 2) return sourcesTop.value[0].publisher + ' and ' + sourcesTop.value[1].publisher;
+  return sourcesTop.value[0].publisher + ' + ' + (sc - 1 + sourcesRest.value.length) + ' Sources';
+});
 const showAllSources = ref(false);
 const faviconErrors = ref({});
 

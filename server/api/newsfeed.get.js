@@ -4,7 +4,7 @@ import Scenario from '../models/Scenario.model'; // Import Scenario model
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 
 // Determine how many articles/scenarios to fetch for the feed
-const ARTICLES_LIMIT = 10;
+const ARTICLES_LIMIT = 20;
 const SCENARIOS_LIMIT = 5;
 const RELATED_SCENARIOS_LIMIT_PER_ARTICLE = 3;
 
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => { // Make handler async
       if (a.publishedDate.getDate() === b.publishedDate.getDate()) {
         return a.priority - b.priority;
       }
-      return a.publishedDate.getDate() - b.publishedDate.getDate();
+      return b.publishedDate.getDate() - a.publishedDate.getDate();
     });
 
     // Fetch recent open scenarios (adjust criteria as needed)
