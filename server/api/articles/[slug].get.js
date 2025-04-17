@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
     })
       .populate({
         path: 'relatedScenarioIds',
-        select: 'question platform platformScenarioId conditionId url status currentProbability options scenarioType openDate resolutionData.expectedResolutionDate' // Select fields needed for ScenarioTeaser + dynamic chance fetch
+        select: 'questionNew question platform platformScenarioId conditionId url status currentProbability options scenarioType openDate resolutionData.expectedResolutionDate' // Select fields needed for ScenarioTeaser + dynamic chance fetch
       })
       .lean(); // Use lean() for performance if not modifying the doc
 
@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
         // Map Scenario fields to what ScenarioTeaser/ScenarioDetail might expect
         // Ensure fields needed by useScenarioChance (platform, platformScenarioId) are present!
         scenarioId: scen._id.toString(), // Keep internal ID if needed for links
-        name: scen.question, 
+        name: scen.questionNew || scen.question, 
         chance: scen.currentProbability, // Pass the potentially stale chance, Teaser will fetch live
         platform: scen.platform, // Required for useScenarioChance
         platformScenarioId: scen.platformScenarioId, // Required for useScenarioChance
