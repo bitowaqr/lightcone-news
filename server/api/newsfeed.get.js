@@ -19,9 +19,9 @@ export default defineEventHandler(async (event) => { // Make handler async
     
     articles.sort((a, b) => {
       if (a.publishedDate.getDate() === b.publishedDate.getDate()) {
-        return a.priority - b.priority;
+        return a.priority - b.priority; // Lower priority values come first
       }
-      return b.publishedDate.getDate() - a.publishedDate.getDate();
+      return a.publishedDate.getDate() - b.publishedDate.getDate(); // More recent dates come first
     });
 
     // Fetch recent open scenarios (adjust criteria as needed)
