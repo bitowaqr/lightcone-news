@@ -28,6 +28,8 @@ services:
     restart: unless-stopped
     networks:
       - database-network
+    environment:
+      - RUST_BACKTRACE=1
 
 # Define the named volume
 volumes:

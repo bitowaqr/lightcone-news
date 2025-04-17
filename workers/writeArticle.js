@@ -45,9 +45,9 @@ export const writeArticle = async (story) => {
   console.log('Journalist Agent finished.');
 
   // 4. Save the draft article
-  console.log('Saving draft article...');
-  const savedDraft = await mongoService.saveArticle(draftArticle);
-  console.log('Draft article saved successfully.');
+  // console.log('Saving draft article...');
+  // const savedDraft = await mongoService.saveArticle(draftArticle);
+  // console.log('Draft article saved successfully.');
 
   const sourcesObjs = story.sources.filter((source) =>
     draftArticle.sourceUrls.includes(source.url)

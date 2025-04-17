@@ -71,7 +71,9 @@ class EmbeddingService {
       }
     }
     if (batch.length > 0) {
+      console.log('Batch size = ', batch.length, ". Embedding...");
       let out = await this.embeddingFunction(batch, useOpenAI);
+      console.log('Batch size = ', batch.length, ". Embedding done.");
       results.push(...out);
     }
     return results;

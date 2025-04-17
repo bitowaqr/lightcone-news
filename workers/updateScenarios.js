@@ -4,7 +4,7 @@ import { mongoService } from '../server/services/mongo.js';
 import { embeddingService } from '../server/services/embedding.js';
 import { chromaService } from '../server/services/chroma.js';
 import { scenariosLabeller } from '../server/agents/scenariosLabeller.js';
-const MAX_ITEMS = 2; // use for testing only!
+const MAX_ITEMS = undefined; // use for testing only!
 const GEMINI_BATCH_SIZE = 20; // max ~50
 const EXCLUDE_TAGS = [
   'Sports',
