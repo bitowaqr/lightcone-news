@@ -11,7 +11,7 @@ dotenv.config();
 // const GEMINI_MODEL = 'gemini-2.5-pro-exp-03-25';
 // const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
 // const OPENAI_MODEL = 'gpt-4.1';
-const MODEL = 'gemini-2.5-pro-exp-03-25'
+const MODEL = 'gemini-2.5-pro-preview-03-25'
 
 // --- Zod Schema for Structured Output ---
 const articleSchema = z.object({
