@@ -7,7 +7,7 @@ import { checkRateLimit } from '../utils/rateLimit';
 export default defineEventHandler(async (event) => {
   // Define rate limits
   const chatLimits = [
-    { name: 'Hourly', windowMs: 60 * 60 * 1000, maxRequests: 1 }, // 100 requests per hour
+    { name: 'Hourly', windowMs: 60 * 60 * 1000, maxRequests: 100 }, // 100 requests per hour
     { name: 'Daily', windowMs: 24 * 60 * 60 * 1000, maxRequests: 1000 } // 1000 requests per day
   ];
 
