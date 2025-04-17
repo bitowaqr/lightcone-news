@@ -3,11 +3,10 @@
     class="pb-10 h-full flex flex-col"
   >
     <!-- ARTICLE -->
-    <NuxtLink :to="`/articles/${group.story.articleId}`">
-    <!-- randomly flex or flex-col -->
-      <div class="flex" :class="{'flex-col': (Math.random() > 0.5)}">
-        <div v-if="group.imageUrl" class="mb-6 w-full"> 
-          <img :src="group.imageUrl" class="w-full h-full object-cover" />
+    <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`">
+      <div class="flex" :class="{'flex-col': layoutOption === 'vertical'}">
+        <div class="mb-6 w-full">
+          <img v-if="group.imageUrl" :src="group.imageUrl" class="w-full h-full object-cover" alt="" />
         </div>
         
         <div class="ps-2 lg:ps-4 w-full">
@@ -29,46 +28,64 @@
           {{ group.story.publishedDate }}
         </div>
         <div class="text-xs text-fg-muted leading-none">
-            {{ group.story.sources.length }} sources
+            {{ group.story.sources?.length || 0 }} sources
           </div>
         </div>
       </div>
         </div>
     </NuxtLink>
 
-    <!-- SCENARIOS -->
-    <div class="mt-10 mb-2 pb-1 border-b border-dotted border-fg-muted text-sm text-fg-muted">
-        How the story might continue...
-    </div>
-
-    <div v-if="group.scenarios && group.scenarios.length > 0" class="">
-      <div class="space-y-2">
-        <div v-for="scenario in group.scenarios" :key="scenario.scenarioId" class="">
-          <NuxtLink
-            :to="`/scenarios/${scenario.scenarioId}`"
-            class="text-regular text-fg leading-tight flex items-center bg-accent-bg py-2.5 px-3 space-x-4 justify-between hover:opacity-80 transition-opacity duration-100"
-          >
-            <div class="">
-              {{ scenario.name }}
+    <!-- Fallback if slug is missing -->
+    <div v-else class="opacity-50 cursor-not-allowed">
+       <div class="flex" :class="{'flex-col': layoutOption === 'vertical'}">
+        <div class="mb-6 w-full">
+          <img v-if="group.imageUrl" :src="group.imageUrl" class="w-full h-full object-cover" alt="" />
+        </div>
+        <div class="ps-2 lg:ps-4 w-full">
+          <h2 class="text-2xl leading-tight font-medium text-fg-muted" id="article-title">
+            {{ group.story?.title || 'Article data missing' }}
+          </h2>
+           <div id="article-precis" class="text-fg-muted mb-2 mt-4">
+            <div class="line-clamp-4">{{ group.story?.precis || '...' }}</div>
+          </div>
+           <!-- META -->
+          <div id="article-meta" class="flex items-center space-x-2 py-2 mt-auto">
+            <div class="text-xs text-fg-muted leading-none border-r border-fg-muted pr-2 my-1">
+              {{ group.story?.publishedDate || '...' }}
             </div>
-            <div v-if="scenario.chance" class="flex flex-col items-center">
-              <div class="text-lg text-fg leading-tight">
-                {{ scenario.chance !== undefined ? (scenario.chance * 100).toFixed(0) : 'N/A' }}%
-              </div>
-              <div class="text-xs text-fg-muted leading-none">chance</div>
+            <div class="text-xs text-fg-muted leading-none">
+               {{ group.story?.sources?.length || 0 }} sources
             </div>
-          </NuxtLink>
+          </div>
         </div>
       </div>
-      <div v-if="group.nScenarios > 3" class="mt-2">
+    </div>
+
+    <!-- SCENARIOS -->
+    <div v-if="group.scenarios && group.scenarios.length > 0" class="">
+    <div class="mt-8 mb-1 border-fg-muted text-xs font-medium text-fg-muted">
+       Related scenarios:
+    </div>
+
+      <div class="space-y-2">
+        <div v-for="scenario in group.scenarios" :key="scenario.scenarioId" class="">
+          <ScenarioTeaser :scenario="scenario" />
+        </div>
+      </div>
+      <!-- Check if slug exists before rendering the 'more scenarios' link -->
+      <div v-if="group.nScenarios > group.scenarios.length && group?.story?.slug" class="mt-2">
         <NuxtLink
-          :to="`/articles/${group.story.articleId}`"
-          class="text-fg-muted mt-1 italic block"
+          :to="`/articles/${group.story.slug}`"
+          class="text-fg-muted mt-1 italic block text-xs hover:underline"
         >
-          + {{ group.nScenarios - 3 }} more
-          {{ group.nScenarios - 3 > 1 ? 'Scenarios' : 'Scenario' }}
+          + {{ group.nScenarios - group.scenarios.length }} more
+          {{ group.nScenarios - group.scenarios.length > 1 ? 'Scenarios' : 'Scenario' }}
         </NuxtLink>
       </div>
+    </div>
+     <!-- Placeholder if no scenarios -->
+    <div v-else class="text-sm text-fg-muted italic pt-2 ps-2">
+        No related scenarios available yet.
     </div>
   </div>
 </template>
@@ -78,7 +95,23 @@ const props = defineProps({
   group: {
     type: Object,
     required: true,
-    default: () => ({}),
+    // Provide a more robust default including nested structures
+    default: () => ({ 
+        story: { 
+            slug: null, 
+            title: 'Loading...', 
+            precis: '', 
+            publishedDate: '', 
+            sources: [] 
+        }, 
+        imageUrl: null, 
+        scenarios: [], 
+        nScenarios: 0 
+    }),
+  },
+  layoutOption: {
+    type: String,
+    default: 'horizontal',
   },
 });
 </script>

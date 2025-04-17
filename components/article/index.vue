@@ -1,18 +1,18 @@
 <template>
   <article class="p-6 pb-20">
     <div v-if="articleData">
-      <h2 class="text-2xl font-bold mb-1">{{ articleData.header?.title }}</h2>
-      <div class="text-xs text-gray-500 mb-1">
-        Updated: {{ articleData.header?.publishedDate }}
+      <h2 class="text-2xl font-bold mb-1">{{ articleData.title }}</h2>
+      <div class="text-xs text-gray-500 mb-1" v-if="articleData.publishedDate">
+        Updated: {{ articleData.publishedDate }}
       </div>
 
-      <div v-html="precis" class="mt-6 mb-2 leading-relaxed font-semibold"></div>
+      <div v-html="precis.value" class="mt-6 mb-2 leading-relaxed font-semibold"></div>
 
       <div v-if="articleData.imageUrl" class="mt-6 mb-4 relative h-[360px] -ms-6 -me-6 w-[calc(100%+48px)]">
-      <img  :src="articleData.imageUrl" class="w-full h-full object-cover" />
+        <img :src="articleData.imageUrl" class="w-full h-full object-cover" alt="Article image" />
       </div>
 
-      <div class="mb-2  border-b border-fg-muted w-10"></div>
+      <div class="mb-2 border-b border-fg-muted w-10"></div>
       <!-- Summary View Toggle -->
       <div class="flex items-center space-x-2 mb-4 text-xs text-fg-muted">
         <span class="font-medium text-fg-muted pb-1">View:</span> 
@@ -38,28 +38,28 @@
       <!-- Full Content -->
       <div
       v-if="!showAltSummary"
-        v-html="summary"
-        class="para-spacing lg:text-lg"
+        v-html="summary.value"
+        class="prose prose-lg dark:prose-invert max-w-none"
       ></div>
       <div
       v-if="showAltSummary"
-        v-html="summaryAlt"
-        class="para-spacing lg:text-lg leading-snug"
+        v-html="summaryAlt.value"
+        class="prose prose-lg dark:prose-invert max-w-none"
       ></div>
 
-      <ArticleSources :sources="articleData.sources" class="mt-10"/>
+      <ArticleSources v-if="articleData.sources?.length" :sources="articleData.sources" class="mt-10"/>
       
       
-      <ArticlePrompts :context-id="articleId" :suggested-prompts="articleData.suggestedPrompts" class="mt-8" />
+      <ArticlePrompts v-if="articleData._id" :context-id="articleData._id" :suggested-prompts="articleData.suggestedPrompts" class="mt-8" />
 
-      <ArticleTimeline :timeline="articleData.timeline" />
+      <ArticleTimeline v-if="articleData.timeline?.length" :timeline="articleData.timeline" class="mt-10"/>
 
       <!-- Related Scenarios -->
       <div
-        v-if="articleData.scenarios && articleData.scenarios.length > 0"
-        class="mt-6"
+        v-if="articleData.scenarios?.length"
+        class="mt-10 pt-6 border-t border-bg-muted"
       >
-        <h4 class="text-xs font-medium text-fg-muted mb-2">Related Scenarios</h4>
+        <h4 class="text-base font-semibold text-fg mb-4">Related Scenarios</h4>
         <div class="grid grid-cols-1 gap-4"
         :class="{ 'md:grid-cols-2': articleData.scenarios.length > 1 }"
         >
@@ -71,29 +71,31 @@
         </div>
       </div>
     </div>
-    <div v-else>
-      <p>Article data is not available.</p>
+    <div v-else class="text-center py-10">
+      <p class="text-fg-muted">Article data is not available.</p>
     </div>
   </article>
 </template>
 
 <script setup>
 // Import necessary composables
-import { ref } from 'vue'; // Keep ref for precis/summary rendering
+import { ref, computed } from 'vue'; // Keep ref for precis/summary rendering
 import { useCookie } from '#app'; // Import useCookie
 import { renderMarkdown } from '~/composables/useMarkdown';
 import ArticleSources from './Sources.vue'; 
 import ArticleTimeline from './Timeline.vue'; 
+import ArticlePrompts from './Prompts.vue'; // Ensure Prompts is imported
+import ScenarioTeaser from '~/components/scenario/Teaser.vue'; // Ensure Teaser is imported
 
 const props = defineProps({
-  articleId: {
+  articleSlug: {
     type: String,
-    required: true,
+    required: false,
   },
   articleData: {
     type: Object,
-    required: false, // Can be null/undefined initially
-    default: null,
+    required: true, // Data is required for display
+    default: () => null, // Default should be null to trigger the v-else
   },
 });
 
@@ -105,24 +107,21 @@ const showAltSummary = useCookie('lightcone-summary-view', {
 });
 
 // Use the composable's render function
-const precis = renderMarkdown(props.articleData?.precis);
-const summary = renderMarkdown(props.articleData?.summary);
-const summaryAlt = renderMarkdown(props.articleData?.summaryAlt);
+const precis = computed(() => props.articleData ? renderMarkdown(props.articleData.precis) : '');
+const summary = computed(() => props.articleData ? renderMarkdown(props.articleData.summary) : '');
+const summaryAlt = computed(() => props.articleData ? renderMarkdown(props.articleData.summaryAlt) : '');
 </script>
 
 <style scoped>
-.para-spacing :deep(p) {
-  margin-bottom: 1.25rem;
+.prose :deep(p),
+.prose :deep(ul),
+.prose :deep(ol) {
+  margin-bottom: 1em;
 }
-.para-spacing :deep(h2) {
-  margin-bottom: 1.25rem;
-}
-.para-spacing :deep(h3) {
-  margin-bottom: 1.25rem;
-}
-@media (min-width: 768px) {
-  .para-spacing :deep(p) {
-    margin-bottom: 1.5rem;
-  }
+
+.prose :deep(h2),
+.prose :deep(h3) {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
 }
 </style>

@@ -42,31 +42,53 @@ const authStore = useAuthStore();
 const route = useRoute();
 const scenarioId = computed(() => route.params.id);
 
-// Fetch scenario data - SSR by default
-// API endpoint /api/scenarios/{id} handles auth check internally
+// --- useFetch with watch: false --- 
 const { data: scenarioData, pending, error, refresh } = await useFetch(() => {
-  const id = scenarioId.value;
-  if (!id) {
-    // If there's no valid ID (e.g., during navigation away), don't attempt to fetch
-    return null;
+  // Access the id value *at the time refresh() is called*
+  const id = route.params.id;
+  console.log(`[Scenario Page useFetch] Factory invoked. route.params.id: ${id}`);
+  if (!id || id === 'null' || id === 'undefined') {
+    console.log('[Scenario Page useFetch] ID invalid, not returning a URL.');
+    return; // Return undefined
   }
-  return `/api/scenarios/${id}`;
+  const url = `/api/scenarios/${id}`;
+  console.log(`[Scenario Page useFetch] Intending to fetch: ${url}`);
+  return url;
 }, {
-  key: `scenario-${scenarioId.value}`, // Important for dynamic routes
-  // lazy: false (default)
+  key: `scenario-${route.params.id || 'initial'}`, // Dynamic key
+  watch: false, // Disable automatic watching
+  immediate: false // Don't fetch immediately
 });
 
-// Watch for authentication changes to refresh data if needed
+// --- Watcher to trigger manual refresh --- 
+watch(
+  () => route.params.id,
+  (newId) => {
+    // Refresh only if we have a new, valid id
+    if (newId && (typeof newId === 'string')) { // Basic validation
+      console.log(`[Scenario Page] Watcher: route.params.id changed to ${newId}, calling refresh()...`);
+      refresh();
+    } else {
+       console.log(`[Scenario Page] Watcher: route.params.id changed to invalid (${newId}), NOT refreshing.`);
+    }
+  },
+  { immediate: true } // Run watcher immediately for initial load
+);
+
+// Watch for authentication changes 
 watch(() => authStore.isAuthenticated, (isAuth) => {
   if (isAuth && error.value && error.value.statusCode === 401) {
-    console.log('Auth status changed to authenticated, refreshing scenario...');
-    refresh();
+    console.log('Auth status changed to authenticated, attempting scenario refresh...');
+    if (route.params.id) { // Check if ID is valid
+        refresh();
+    }
   }
 });
 
+// Computed props for template state
 const requiresLogin = computed(() => !authStore.isAuthenticated && !pending.value && error.value?.statusCode === 401);
 const isNotFound = computed(() => error.value?.statusCode === 404);
-const fetchError = computed(() => error.value && ![401, 404].includes(error.value.statusCode));
+const fetchError = computed(() => !pending.value && error.value && ![401, 404].includes(error.value.statusCode));
 
 </script>
 

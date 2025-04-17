@@ -1,5 +1,6 @@
 // server/models/Article.js
 import mongoose from 'mongoose';
+import slugify from 'slugify'; // Import slugify
 
 // Schema for sources *cited within the published article*
 const citedSourceSchema = new mongoose.Schema({
@@ -20,6 +21,12 @@ const timelineEventSchema = new mongoose.Schema({
 const articleSchema = new mongoose.Schema({
   // Core Article Content (Curated/Generated for Lightcone)
   title: { type: String, required: true, trim: true }, 
+  slug: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    index: true 
+  },
   precis: { type: String, required: true }, // 1-3 sentences
   summary: { type: String }, // 1-3 paragraphs or 3-8 bullets
   summaryAlt: { type: String }, // Array of bullet points
@@ -63,6 +70,38 @@ articleSchema.index({ status: 1, publishedDate: -1 });
 articleSchema.index({ status: 1, updatedDate: -1, tags: 1 });
 articleSchema.index({ status: 1, relatedScenarioIds: 1 });
 articleSchema.index({ status: 1, storyId: 1 });
+// Index for slug is implicitly created by `unique: true`, but explicit doesn't hurt
+// articleSchema.index({ slug: 1 }); 
+
+// Middleware for generating slug
+articleSchema.pre('save', async function(next) {
+  if (this.isModified('title') || this.isNew) {
+    let baseSlug = slugify(this.title, { 
+      lower: true,      // convert to lower case
+      strict: true,     // strip special characters except - a
+      remove: /[*+~.()'"!:@]/g // remove characters that slugify might not remove by default
+    });
+
+    let slug = baseSlug;
+    let count = 1;
+    const Article = mongoose.model('Article'); // Get model reference
+
+    // Check for uniqueness and append count if needed
+    // Need to ensure we don't check against the document itself if updating
+    let query = { slug: slug };
+    if (!this.isNew) {
+      query._id = { $ne: this._id };
+    }
+    
+    while (await Article.findOne(query)) {
+      count++;
+      slug = `${baseSlug}-${count}`;
+      query.slug = slug; // Update query for the next check
+    }
+    this.slug = slug;
+  }
+  next();
+});
 
 // Middleware for synchronizing with Scenario model
 articleSchema.pre('save', async function(next) {

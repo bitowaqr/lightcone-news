@@ -1,9 +1,11 @@
 import { scrapeScenarios } from '../server/scrapers/index.js';
+import Scenario from '../server//models/Scenario.model.js';
 import { mongoService } from '../server/services/mongo.js';
 import { embeddingService } from '../server/services/embedding.js';
 import { chromaService } from '../server/services/chroma.js';
 import { scenariosLabeller } from '../server/agents/scenariosLabeller.js';
-const MAX_ITEMS = undefined; // use for testing only!
+const MAX_ITEMS = 2; // use for testing only!
+const GEMINI_BATCH_SIZE = 20; // max ~50
 const EXCLUDE_TAGS = [
   'Sports',
   'nba',
@@ -23,71 +25,85 @@ const EXCLUDE_TAGS = [
 ];
 
 export async function updateScenarios() {
-  console.log('Updating scenarios...');
-
+  
   // 1. Scrape Predictions Markets
   const scenarios = await scrapeScenarios({
     maxItems: MAX_ITEMS,
     excludeTags: EXCLUDE_TAGS,
-    startDateMin: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    startDateMin: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
   });
-  console.log(scenarios.length, ' scenarios scraped');
 
-  // 2. Save/update to MongoDB
-  const savedScenarios = await mongoService.saveScenarios(scenarios);
-  console.log(savedScenarios.length, ' scenarios saved to MongoDB');
-
-  // 3. Call Labeller
-  const chunkSize = 50;
-  const newScenarioQuestions = [];
-
-    for (let i = 0; i < savedScenarios.length; i += chunkSize) {
-      console.log(`Processing chunk ${i / chunkSize + 1} of ${Math.ceil(savedScenarios.length / chunkSize)}`);
-    const chunk = savedScenarios.slice(i, i + chunkSize);
-    const questions = await scenariosLabeller(chunk);
-    newScenarioQuestions.push(...questions);
+  console.log("Saving/updating scenarios: ", scenarios.length);
+  const savedScenarios = [];
+  const scenariosToLabel = [];
+  for (const scenario of scenarios) {
+    const savedScenario = await Scenario.findOneAndUpdate({ platformScenarioId: scenario.platformScenarioId }, scenario, { new: true, upsert: true });
+    if (!savedScenario.questionNew) {
+      scenariosToLabel.push(savedScenario);
+    }
+    savedScenarios.push(savedScenario);
   }
 
-    // 4. Update MongoDB with new questions
-    console.log(newScenarioQuestions.filter(q => q.questionNew !== q.questionOld).length, ' new scenario questions generated');
-    for (const q of newScenarioQuestions) {
-      if(!q._id || q.questionNew === q.questionOld) continue;
-      await mongoService.updateScenario({
-        _id: q._id,
-        questionNew: q.questionNew,
-      });
+  console.log("Scenarios missing questionNew: ", scenariosToLabel.length);
+  // generate 'questionNew' if missing and update scenarios
+  if (scenariosToLabel.length > 0) {
+    console.log("labelling scenarios: ", scenariosToLabel.length);
+    const scenarioToLabelBatches = [];
+    scenariosToLabel.forEach((s, i) => {
+      const batchIndex = Math.floor(i / GEMINI_BATCH_SIZE);
+      if(!scenarioToLabelBatches[batchIndex]) {
+        scenarioToLabelBatches[batchIndex] = [];
+      }
+      scenarioToLabelBatches[batchIndex].push(s);
+    });
+
+    // call labeller for each batch in parallel
+    console.log("Calling labeller for ", scenarioToLabelBatches.length, " batches and ", scenariosToLabel.length, " scenarios");
+    const questionsResults = await Promise.all(scenarioToLabelBatches.map(batch => scenariosLabeller(batch)));
+    const newlyLabelledScenarios = questionsResults.flat();
+
+    // update scenarios with new questions
+    for (const q of newlyLabelledScenarios) {
+      await Scenario.findOneAndUpdate({ _id: q._id }, { questionNew: q.questionNew });
     }
+    console.log("->", newlyLabelledScenarios.filter(q => q.questionNew !== q.questionOld).length, " new question labels");
+  }
 
-  // 3. Only process new scenarios
-  const newScenarios = await chromaService.scenariosNotInCollection(
-    savedScenarios
-  );
+  // 2. Identify scenarios needing embedding
+  console.log("identifying scenarios needing embedding");
+  const scenarioIdsToEmbed = await chromaService.areNew(savedScenarios.map(s => s._id));
+  console.log('-> Scenarios to embed: ', scenarioIdsToEmbed.length);
 
-  if (newScenarios.length == 0)
-    return console.log('No new scenarios for Chroma');
+  if (scenarioIdsToEmbed.length > 0) {
+    const scenariosToEmbed = await Scenario.find({ _id: { $in: scenarioIdsToEmbed } });
 
-  // 4. Generate embeddings
-  const embeddings = await embeddingService.generate(
-    newScenarios.map((s) => s.textForEmbedding),
-    true
-  );
-  console.log(embeddings.length, ' embeddings generated.');
+    const textsForEmbedding = scenariosToEmbed.map((s) => embeddingService.scenarioToMd(s));
 
-  // 5. Add to Chroma
-  const chromedScenarios = await chromaService.addScenarios(
-    newScenarios,
-    embeddings
-  );
-  console.log(chromedScenarios.length, ' scenarios added to Chroma');
+    const embeddings = await embeddingService.generate(
+      textsForEmbedding, 
+      true
+    );
+    
+
+    // add to chroma
+    console.log("saving to chroma: ", scenariosToEmbed.length);
+    const chromedScenarios = await chromaService.addScenarios(
+      scenariosToEmbed,
+      embeddings
+    );
+    console.log('Scenarios chromed:', chromedScenarios.length);
+  }
 
   // done.
   return console.log('Scenarios pipeline completed');
 }
 
 try {
+  await mongoService.connect();
   await updateScenarios();
-  await mongoService.disconnect();
   console.log('MongoDB connection closed.');
 } catch (error) {
   console.error('Error closing connections:', error);
+} finally {
+  await mongoService.disconnect();
 }

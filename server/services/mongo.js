@@ -36,6 +36,7 @@ class MongoService {
   }
 
   async saveScenarios(scenarios) {
+    throw new Error('Not implemented');
       
     if (!scenarios || scenarios.length === 0) {
         throw new Error('No scenarios to save');
@@ -61,14 +62,7 @@ class MongoService {
           let _scenario;
           if (existing) {
             const updateFields = {
-              status: scenario.status || existing.status,
-              currentProbability: scenario.currentProbability || existing.currentProbability,
-              currentValue: scenario.currentValue || existing.currentValue,
-              'scenarioData.volume': scenario.scenarioData?.volume || existing.scenarioData?.volume,
-              'scenarioData.liquidity': scenario.scenarioData?.liquidity || existing.scenarioData?.liquidity,
-              'scenarioData.numberOfTraders': scenario.scenarioData?.numberOfTraders || existing.scenarioData?.numberOfTraders,
-              'scenarioData.comments': scenario.scenarioData?.comments || existing.scenarioData?.comments,
-              resolutionData: scenario.resolutionData || existing.resolutionData
+              ...scenario,
             };
             _scenario = await Scenario.findOneAndUpdate(filter, { $set: updateFields }, { new: true }).lean();
           } else {
@@ -94,7 +88,10 @@ class MongoService {
     // );
 
     return savedScenarios;
-    }
+  }
+
+
+  
   
   // save lineup
   async saveLineup(lineup) {

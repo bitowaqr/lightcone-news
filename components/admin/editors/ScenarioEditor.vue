@@ -373,7 +373,7 @@
             <input
               id="volume"
               type="number"
-              v-model.number="editableDoc.scenarioData.volume"
+              v-model.number="editableDoc.volume"
               class="w-full px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
@@ -382,7 +382,7 @@
             <input
               id="liquidity"
               type="number"
-              v-model.number="editableDoc.scenarioData.liquidity"
+              v-model.number="editableDoc.liquidity"
               class="w-full px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
@@ -391,7 +391,7 @@
             <input
               id="commentCount"
               type="number"
-              v-model.number="editableDoc.scenarioData.commentCount"
+              v-model.number="editableDoc.commentCount"
               class="w-full px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
@@ -400,19 +400,19 @@
             <input
               id="numberOfTraders"
               type="number"
-              v-model.number="editableDoc.scenarioData.numberOfTraders"
+              v-model.number="editableDoc.numberOfTraders"
               class="w-full px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
-          <!-- Consider a JSON viewer/editor for scenarioData.dossier or other complex fields -->
+          <!-- Consider a JSON viewer/editor for dossier or other complex fields -->
         </div>
         <div>
           <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Rationale Summary</label>
-          <MarkdownEditor v-model="editableDoc.scenarioData.rationaleSummary" />
+          <MarkdownEditor v-model="editableDoc.rationaleSummary" />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Rationale Details</label>
-          <MarkdownEditor v-model="editableDoc.scenarioData.rationaleDetails" />
+          <MarkdownEditor v-model="editableDoc.rationaleDetails" />
         </div>
 
         <!-- History View (Read Only) -->
@@ -559,16 +559,14 @@ watchEffect(() => {
       embedUrl: '',
       probabilityHistory: [],
       valueHistory: [],
-      scenarioData: {
-        comments: [],
-        commentCount: null,
-        volume: null,
-        liquidity: null,
-        numberOfTraders: null,
-        rationaleSummary: "",
+      comments: [],
+      commentCount: null,
+      volume: null,
+      liquidity: null,
+      numberOfTraders: null,
+      rationaleSummary: "",
         rationaleDetails: "",
-        dossier: {},
-      },
+      dossier: {},
       resolutionData: {
         resolutionCriteria: '',
         resolutionSource: '',

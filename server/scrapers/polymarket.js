@@ -35,10 +35,17 @@ function formatPolymarketScenario(market, event = null) {
 
     let outcomes = [];
     let outcomePrices = [];
+    let clobTokenIds = {};
     try {
       if (market.outcomes) outcomes = JSON.parse(market.outcomes);
       if (market.outcomePrices)
         outcomePrices = JSON.parse(market.outcomePrices);
+      if (market.clobTokenIds && outcomes.length > 0) {
+        let tokens = JSON.parse(market.clobTokenIds);
+        for (let i = 0; i < outcomes.length; i++) {
+          clobTokenIds[outcomes[i]] = tokens[i];
+        }
+      }
     } catch (parseError) {
       console.warn(
         `Skipping market due to JSON parse error for outcomes/prices: ${
@@ -94,11 +101,10 @@ function formatPolymarketScenario(market, event = null) {
     const marketId = market.id;
     let marketUrl = `https://polymarket.com/event/${eventUrlSlug}`; // Default fallback using event
     let embedUrl = null;
-    let apiUrl = null;
+    let apiUrl = `https://gamma-api.polymarket.com/markets/${marketId}`;
     if (marketUrlSlug) {
       marketUrl = `https://polymarket.com/market/${marketUrlSlug}`;
       embedUrl = `<iframe title="polymarket-market-iframe" src="https://embed.polymarket.com/market.html?market=${marketUrlSlug}&features=volume&theme=light" width="400" height="180" frameBorder="0" />`;
-      apiUrl = `https://gamma-api.polymarket.com/markets/${marketId}`;
     } else if (eventUrlSlug) {
       // Use event slug if market slug is missing but event slug exists
       marketUrl = `https://polymarket.com/event/${eventUrlSlug}`;
@@ -164,6 +170,8 @@ function formatPolymarketScenario(market, event = null) {
       resolutionValue: resolutionValue,
     };
 
+    
+
     const scenarioData = {
       // CORE
       question: market.question.trim(),
@@ -173,12 +181,11 @@ function formatPolymarketScenario(market, event = null) {
       platform: PLATFORM_NAME,
       platformScenarioId: market.id,
       conditionId: market.conditionId,
+      clobTokenIds: clobTokenIds,
       tags: event?.tags?.map((tag) => tag.label) || [], // Tags from parent event if available
 
       // TIMELINES
       openDate: market.startDate ? new Date(market.startDate) : null,
-      // closeDate removed, now in resolutionData.expectedResolutionDate
-
       scenarioType: scenarioType,
 
       // CURRENT STATE
@@ -193,28 +200,13 @@ function formatPolymarketScenario(market, event = null) {
       embedUrl: embedUrl,
 
       // Data about the scenario
-      scenarioData: {
-        // Include comment count if available from the event
-        commentCount: event?.commentCount,
-        volume:
-          market.volumeNum ??
-          (market.volume ? parseFloat(market.volume) : null), // Prefer volumeNum
+      volume: market.volumeNum ??
+          (market.volume ? parseFloat(market.volume) : undefined), // Prefer volumeNum
         liquidity:
           market.liquidityNum ??
-          (market.liquidity ? parseFloat(market.liquidity) : null),
-        // Add other relevant market data here if needed
-        numberOfTraders: null, // Not directly available in market/event data shown
-        rationaleSummary: '', // Requires separate generation/fetching
-        rationaleDetails: '', // Requires separate generation/fetching
-        dossier: {}, // Requires separate generation/fetching
-      },
-
+          (market.liquidity ? parseFloat(market.liquidity) : undefined),
       // Resolution Data
       resolutionData: resolutionData, // Assign the constructed object
-
-      // Relationships
-      relatedArticleIds: [], // To be populated later
-      relatedScenarioIds: [], // To be populated later
 
       // Scraping & Provenance
       scrapedDate: new Date(),
@@ -222,7 +214,6 @@ function formatPolymarketScenario(market, event = null) {
 
       // AI Vector Embedding - leave empty, handled elsewhere
     };
-
     return scenarioData;
   } catch (error) {
     console.error(
@@ -529,64 +520,48 @@ async function getMarketDetailsAndTokens(conditionId) {
 }
 
 /**
- * Fetches historical price data for a specific Polymarket outcome token.
+ * Fetches historical price data for a specific Polymarket outcome token using interval=max.
  * See: https://docs.polymarket.com/#timeseries-data
  *
  * @param {string} tokenId - The specific token_id for the outcome (e.g., the 'Yes' or 'No' token).
- * @param {number} fidelity - Granularity of data points in minutes (e.g., 60 for hourly, 1440 for daily).
- * @param {number} startTimestamp - Start time as a Unix timestamp in seconds.
- * @param {number} [endTimestamp] - Optional end time as a Unix timestamp in seconds. Defaults to current time if omitted.
+ * @param {number} [marketDurationMinutes] - Optional: The approximate duration of the market in minutes. Used to calculate optimal fidelity. Defaults to 90 days if not provided.
  * @returns {Promise<object>} A promise that resolves to the history object { history: [...] }.
  */
 async function getPolymarketPriceHistory(
   tokenId,
-  fidelity,
-  startTimestamp,
-  endTimestamp
+  marketDurationMinutes
 ) {
   if (!tokenId) {
     throw new Error('tokenId is required');
   }
 
-  // Calculate appropriate fidelity based on time range
-  const now = Math.floor(Date.now() / 1000); // Current time in seconds
-  const end = endTimestamp || now;
-  
-  // If startTimestamp is not provided, try to determine a reasonable default
-  let start = startTimestamp;
-  if (!start) {
-    // Default to 30 days ago if no start time provided
-    start = now - (30 * 24 * 60 * 60); // 30 days in seconds
-  }
-  
-  // Calculate time range in days
-  const rangeDays = (end - start) / (24 * 60 * 60);
-  
-  // Determine appropriate fidelity based on range
-  // For longer ranges, use coarser granularity to avoid too many data points
-  let calculatedFidelity;
-  if (rangeDays > 180) {
-    calculatedFidelity = 1440; // Daily for ranges > 6 months
-  } else if (rangeDays > 30) {
-    calculatedFidelity = 360; // 6 hours for ranges > 1 month
-  } else if (rangeDays > 7) {
-    calculatedFidelity = 60; // Hourly for ranges > 1 week
-  } else {
-    calculatedFidelity = 15; // 15 minutes for shorter ranges
-  }
-  
-  // Use provided fidelity if specified, otherwise use calculated value
-  const finalFidelity = fidelity || calculatedFidelity;
+  const TARGET_DATA_POINTS = 50;
+  const MIN_FIDELITY_MINUTES = 1;
+  const MAX_FIDELITY_MINUTES = 1440; // 1 day
+  const DEFAULT_DURATION_MINUTES = 90 * 24 * 60; // 90 days as default
+
+  // Use provided duration or default if invalid
+  const durationMinutes = (marketDurationMinutes && marketDurationMinutes > 0) 
+    ? marketDurationMinutes 
+    : DEFAULT_DURATION_MINUTES;
+
+  // Calculate desired fidelity
+  let calculatedFidelity = Math.round(durationMinutes / TARGET_DATA_POINTS);
+
+  // Clamp fidelity to reasonable bounds
+  const finalFidelity = Math.max(
+      MIN_FIDELITY_MINUTES,
+      Math.min(calculatedFidelity, MAX_FIDELITY_MINUTES)
+  );
 
   const params = new URLSearchParams({
     market: tokenId, // API expects the token_id in the 'market' parameter
+    interval: 'max',
     fidelity: finalFidelity.toString(),
-    startTs: start.toString(),
-    endTs: end.toString()
   });
 
   const url = `${POLYMARKET_CLOB_API_URL}/prices-history?${params.toString()}`;
-  console.log(`Fetching price history from: ${url}`);
+  console.log(`Fetching price history from: ${url}`); // Log includes fidelity now
 
   try {
     const response = await fetch(url);
@@ -633,7 +608,9 @@ export {
 // const someMarketDetails = await getMarketDetailsAndTokens(someMarkets[0].conditionId);
 // console.log(someMarketDetails);
 
-// const somePriceHistory = await getPolymarketPriceHistory(someMarketDetails.yesTokenId, null, null, new Date(Date.now()).getTime() / 1000);
+// // Need to estimate duration for the test
+// const estimatedDurationMinutes = (new Date().getTime() - new Date(someMarkets[0].openDate).getTime()) / (1000 * 60); 
+// const somePriceHistory = await getPolymarketPriceHistory(someMarketDetails.yesTokenId, estimatedDurationMinutes);
 
 // console.log(somePriceHistory);
 // process.exit(0);

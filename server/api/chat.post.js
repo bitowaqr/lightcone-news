@@ -2,9 +2,34 @@ import { defineEventHandler, createError, readBody } from 'h3';
 import Article from '../models/Article.model';
 // import { askPerplexity } from '../agents/askPerplexity';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-
+import { checkRateLimit } from '../utils/rateLimit';
 
 export default defineEventHandler(async (event) => {
+  // Define rate limits
+  const chatLimits = [
+    { name: 'Hourly', windowMs: 60 * 60 * 1000, maxRequests: 1 }, // 100 requests per hour
+    { name: 'Daily', windowMs: 24 * 60 * 60 * 1000, maxRequests: 1000 } // 1000 requests per day
+  ];
+
+  // Apply rate limiting
+  try {
+    await checkRateLimit(event, {
+      limits: chatLimits, // Pass the array of limits
+      endpointName: 'chat' // Base name for storage keys
+    });
+  } catch (error) {
+    // Handle potential errors (e.g., 429 Too Many Requests)
+    if (error.statusCode === 429) {
+      console.log('rate limit error', error);
+      return error.message;
+    } else {
+      // Log unexpected errors
+      console.error("Unexpected error during rate limit check:", error);
+      // Return a generic server error
+      return createError({ statusCode: 500, statusMessage: 'Internal Server Error' });
+    }
+  }
+
   // Set the Content-Type header for streaming text
   event.node.res.setHeader('Content-Type', 'text/plain');
   event.node.res.setHeader('Transfer-Encoding', 'chunked');

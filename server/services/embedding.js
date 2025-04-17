@@ -79,7 +79,6 @@ class EmbeddingService {
 
   scenarioToMd(scenario) {
       // Ensure scenario and nested objects exist before accessing properties
-
       let text = []
       if(scenario?.question) {
         text.push(`# Question\n${scenario.question}`);

@@ -1,7 +1,6 @@
 // server/models/Scenario.js
 import mongoose from 'mongoose';
 
-
 const scenarioSchema = new mongoose.Schema({
   
   // CORE
@@ -13,6 +12,7 @@ const scenarioSchema = new mongoose.Schema({
   platform: { type: String, trim: true }, // e.g., 'Metaculus', 'Polymarket', 'Manifold', 'Lightcone Forecast'
   platformScenarioId: { type: String, trim: true }, 
   conditionId: { type: String, trim: true },
+  clobTokenIds: { type: Object, default: {} }, // keys = token outcome and values token prices
   tags: [{ type: String, trim: true }],
 
   // TIMELINES
@@ -36,6 +36,7 @@ const scenarioSchema = new mongoose.Schema({
   
   // URLS
   url: { type: String, unique: true, sparse: true, trim: true }, // Direct URL to the source (if external)
+  apiUrl: { type: String, trim: true }, // API URL for platforms like Polymarket
   embedUrl: { type: String, trim: true }, // URL to embed the scenario in a UI
   
   // HISTORY
@@ -43,19 +44,21 @@ const scenarioSchema = new mongoose.Schema({
   valueHistory: [{ timestamp: Date, value: mongoose.Schema.Types.Mixed }], // Optional: History for other types
   
   // Data about the scenario
-  scenarioData: {
+  volume: { type: Number },
+  liquidity: { type: Number },
+  numberOfTraders: { type: Number },
+  // COMMENTS
+  commentCount: { type: Number },
+  comments: [{
     type: mongoose.Schema.Types.Mixed,
-    default: {
-      comments: [],
-      volume: null,
-      liquidity: null,
-      numberOfTraders: null,
-      rationaleSummary: "",
-      rationaleDetails: "",
-      dossier: {},
-    }
-  },
+    default: {}
+  }],
+  // RATIONALE
+  rationaleSummary: { type: String },
+  rationaleDetails: { type: String },
+  dossier: { type: mongoose.Schema.Types.Mixed },
   
+  // RESOLUTION
   resolutionData: {
     type: new mongoose.Schema({
       resolutionCriteria: { type: String },

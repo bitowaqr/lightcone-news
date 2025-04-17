@@ -21,7 +21,8 @@
               'border-b border-dotted border-fg-muted': i !== newsfeedData.teaserGroups.length-1,
             'mt-4 md:mt-8 lg:mt-12': i === 0,}">
 
-            <ArticleTeaser :group="group" 
+            <ArticleTeaser :group="group"
+            :layoutOption="i % 2 === 0 ? 'horizontal' : 'vertical'" 
             class="px-2 md:px-4 lg:px-8"
             />
             </div>

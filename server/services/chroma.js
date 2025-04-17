@@ -35,6 +35,7 @@ class ChromaService {
   async addScenarios(scenarios, embeddings, storeScenarioDocs = false) {
     
     await this.initialize();
+    let successfullyAdded = [];
     
     if (!this.scenarioCollection) {
       console.error('ChromaDB collection not available.');
@@ -59,16 +60,15 @@ class ChromaService {
           throw new Error('Scenario IDs array contains null values');
         }
 
-        if(scenarioIds.length !== batch.length || scenarioIds.length !== embeddings.length) {
-          throw new Error('Scenario IDs and embeddings arrays must have the same length');
-        }
-        
+        const batchEmbeddings = embeddings.slice(i, i + BATCH_SIZE);
+
         await this.scenarioCollection.upsert({
           ids: scenarioIds,
           documents: storeScenarioDocs ? batch.map((scenario) => scenario.textForEmbedding) : undefined,
           metadatas: metadatas,
-          embeddings: embeddings,
+          embeddings: batchEmbeddings,
         });
+        successfullyAdded.push(...scenarioIds);
         
         console.log(`Batch ${i / BATCH_SIZE + 1} upserted successfully.`);
 
@@ -84,7 +84,7 @@ class ChromaService {
 
     console.log('Finished processing all scenario batches.');
     
-    return scenarioIds;
+    return successfullyAdded;
   }
     
   async getScenarios(embeddings, nResults = 10, filter = {}) {
@@ -113,6 +113,18 @@ class ChromaService {
       ids: [id],
     });
     return results.ids.length === 0;
+  }
+
+  async areNew(ids) {
+    if(!ids || ids.length === 0) {
+      return [];
+    }
+    const idsString = ids.map((id) => id.toString());
+    await this.initialize();
+    const results = await this.scenarioCollection.get({
+      ids: idsString,
+    });
+    return idsString.filter(id => !results.ids.includes(id));
   }
 }
 

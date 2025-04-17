@@ -4,7 +4,7 @@
     
 
     <!-- Loading State -->
-    <div v-if="pending">Loading article {{ articleId }}...</div>
+    <div v-if="pending">Loading article...</div>
 
 
 
@@ -36,7 +36,7 @@
 
     <!-- Success State -->
     <div v-else-if="articleData" >
-      <Article :article-id="articleId" :article-data="articleData" />
+      <Article :article-slug="articleSlug" :article-data="articleData" />
     </div>
     
 
@@ -50,38 +50,57 @@
 
 <script setup>
 import { useAuthStore } from '~/stores/auth';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const authStore = useAuthStore();
 const route = useRoute();
-const articleId = computed(() => route.params.id);
+const articleSlug = computed(() => route.params.slug);
 
-// Fetch article data - SSR by default
-// API endpoint /api/articles/{id} handles auth check internally
+// Fetch article data using the slug
 const { data: articleData, pending, error, refresh } = await useFetch(() => {
-  const id = articleId.value;
-  if (!id) {
-    // If there's no valid ID (e.g., during navigation away), don't attempt to fetch
-    return null;
+  const slug = route.params.slug;
+  console.log(`[Article Page useFetch] Factory invoked. route.params.slug: ${slug}`);
+  if (!slug || slug === 'null' || slug === 'undefined') {
+    console.log('[Article Page useFetch] Slug invalid, not returning a URL.');
+    return;
   }
-  return `/api/articles/${id}`;
+  const url = `/api/articles/${slug}`;
+  console.log(`[Article Page useFetch] Intending to fetch: ${url}`);
+  return url;
 }, {
-  key: `article-${articleId.value}`, // Important for dynamic routes
-  // lazy: false (default)
+  key: `article-${route.params.slug || 'initial'}`,
+  watch: false,
+  immediate: false
 });
 
 // Watch for authentication changes to refresh data if needed
 watch(() => authStore.isAuthenticated, (isAuth) => {
   if (isAuth && error.value && error.value.statusCode === 401) {
-    console.log('Auth status changed to authenticated, refreshing article...');
-    refresh();
+    console.log('Auth status changed to authenticated, attempting article refresh...');
+    if (route.params.slug) {
+        refresh();
+    }
   }
 });
 
+// Watch for route slug changes to manually refresh
+watch(
+  () => route.params.slug,
+  (newSlug) => {
+    if (newSlug && (typeof newSlug === 'string')) {
+      console.log(`[Article Page] Watcher: route.params.slug changed to ${newSlug}, calling refresh()...`);
+      refresh();
+    } else {
+      console.log(`[Article Page] Watcher: route.params.slug changed to invalid (${newSlug}), NOT refreshing.`);
+    }
+  },
+  { immediate: true }
+);
+
 const requiresLogin = computed(() => !authStore.isAuthenticated && !pending.value && error.value?.statusCode === 401);
 const isNotFound = computed(() => error.value?.statusCode === 404);
-const fetchError = computed(() => error.value && ![401, 404].includes(error.value.statusCode));
+const fetchError = computed(() => !pending.value && error.value && ![401, 404].includes(error.value.statusCode));
 
 </script>
 

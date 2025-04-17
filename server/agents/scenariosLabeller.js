@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { zodToJsonSchema } from "zod-to-json-schema";
 import dotenv from 'dotenv';
 import Scenario from '../models/Scenario.model.js';
-import { mongoService } from '../services/mongo.js';
 dotenv.config();
 
 const GEMINI_MODEL = 'gemini-2.0-flash';
@@ -78,7 +77,6 @@ ${JSON.stringify(scenariosKeyInfo, null, 2)}
 # Task:
 Please read and analyze these scenarios, and generate new, extremely concise, more informative questions. Provide the result **only** as a single JSON object conforming to the specified structure.`;
 
-  console.log('Calling LLM to generate new scenario questions...');
 
     const messages = [
       { role: 'system', content: systemPrompt },

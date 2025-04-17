@@ -42,9 +42,11 @@ export default defineEventHandler(async (event) => { // Make handler async
 
       const formattedScenarios = relatedScenarios.map(scenario => ({
         scenarioId: scenario._id.toString(),
-        name: scenario.question, // Use 'question' from Scenario model
+        name: scenario.questionNew || scenario.question, // Use 'question' from Scenario model
         // Use 'currentProbability' or calculate based on type
         chance: scenario.scenarioType === 'BINARY' ? scenario.currentProbability : null,
+        platform: scenario.platform,
+        platformScenarioId: scenario.platformScenarioId,
         // TODO: Add logic for CATEGORICAL/NUMERIC types if needed
       }));
 
@@ -54,6 +56,7 @@ export default defineEventHandler(async (event) => { // Make handler async
         groupId: `article-${article._id.toString()}`,
         story: {
           articleId: article._id.toString(),
+          slug: article.slug,
           title: article.title,
           precis: article.precis, // Assuming precis is the desired field
           // Use publishedDate directly or format it
@@ -76,6 +79,8 @@ export default defineEventHandler(async (event) => { // Make handler async
       name: scenario.question, // Use 'question' from Scenario model
       // Use 'currentProbability' or adapt based on type
       chance: scenario.scenarioType === 'BINARY' ? scenario.currentProbability : null,
+      platform: scenario.platform,
+      platformScenarioId: scenario.platformScenarioId,
       // TODO: Add logic for CATEGORICAL/NUMERIC types if needed
       // Add other relevant fields like closeDate if needed
       // closeDate: scenario.closeDate ? formatRelativeTime(scenario.closeDate) : 'N/A',
