@@ -16,6 +16,7 @@
     "db:toggle-admin": "node scripts/toggle-admin.js"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.787.0",
     "@google/genai": "^0.8.0",
     "@google/generative-ai": "^0.24.0",
     "@langchain/google-genai": "^0.2.3",

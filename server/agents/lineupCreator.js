@@ -174,10 +174,7 @@ Description: ${item.description || 'N/A'}`
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];
-console.log(1)
     const response = await model.invoke(messages);
-  console.log(2)
-  console.log(response)
   return response?.tool_calls?.[0]?.args || {};
 };
 
