@@ -122,6 +122,12 @@ class MongoService {
     
     return storyIdeas;
   }
+
+  async updateStoryStatus(storyId, status) {
+    await this.connect();
+    const story = await StoryIdeas.findOneAndUpdate({ _id: storyId }, { $set: { status } }, { new: true });
+    return story;
+  }
   
   // save (draft) article - Refactored to use .save()
   async saveArticle(articleData) {

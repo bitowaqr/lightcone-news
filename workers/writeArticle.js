@@ -13,8 +13,8 @@ dotenv.config();
 
 // --- Constants ---
 const SHUFFLE_SOURCES = true;
-const MAX_SOURCES = 10;
-const SCENARIOS_N = 20;
+const MAX_SOURCES = 20;
+const SCENARIOS_N = 25;
 const PROMPTS_N = 10;
 const TAGS_N = 10;
 
@@ -32,6 +32,11 @@ export const writeArticle = async (story) => {
         ' sources'
     );
     sources = sources.slice(0, MAX_SOURCES);
+  }
+  try {
+    await mongoService.updateStoryStatus(story._id, 'draftingArticle');
+  } catch (error) {
+    console.error(error);
   }
 
   // 2. Scrape the sources
@@ -139,6 +144,11 @@ export const writeArticle = async (story) => {
   // 8. Save the article
   console.log('Saving final article...');
   const savedArticle = await mongoService.saveArticle(article);
+  try {
+    await mongoService.updateStoryStatus(story._id, 'articleWritten');
+  } catch (error) {
+    console.error(error);
+  }
   console.log('Article saved successfully.');
   return savedArticle;
 };
@@ -170,4 +180,5 @@ const testCreateDraftArticle = async () => {
   console.log(`Success rate: ${successCount / (successCount + errorCount)}`);
   await mongoService.disconnect();
 };
-testCreateDraftArticle();
+
+// testCreateDraftArticle();

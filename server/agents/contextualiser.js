@@ -93,9 +93,16 @@ Perform the following tasks based on the input, keeping the target audience and 
     * Filter Scenarios and select the most relevant ones. 
     * The **sole criteria** for inclusion are a) **plausible causality**, b) **joint underlying cause**, or other c) **plausible causal linkages** (even if indirectly).
     * Be **critical and intellectually honest**. Discard any scenario where the causal link is purely coincidental, or non-existent. Reflect the target audience's preference for signal over noise. Example: For an article on a US-China tariff agreement, do *not* include a scenario about China winning a sports championship, even if tagged 'China'.
-    * **If in doubt, err on the side of including scenarios, but make sure to ORDER them by relevance, ie the most relevant scenario should be first, the least relevant last.** 
+    * If in doubt, err on the side of including scenarios. 
     * Sometimes, there will be no relevant scenarios, and you should output an empty list.
-    * If multiple scenarios meet the inclusion criteria, order them from most to least relevant. As a secondary criterion, order by 'liquidity', ie forecasts with higher volume and liquidity should be ranked higher, because the probabilitic forecast is more likely to be accurate.
+    * ORDERING: the order if scenarios is very important. For the ordering, use the following criteria, in this order of importance:
+      1) Relevance: if the scenarios is directly related to the article, it should definitely be first. The 'distance' to the article only gives you an indication of how semantically similar the scenario is to the article. You need to use your judgement to determine if the scenario is actually relevant to the article. The question is not whether 'topics are related' but if the readers gets useful additional context from the scenario and its probabilistic forecast, that helps them to better understand and contextualise the story covered in the article.
+      2) Uncertainty: A scenario is useful it it helps users to navigate uncertainty. Scenarios with 100% or 0% probability are already resolved, and may be part of the article already or covered in other news. Thus, prioritise scenarios with a probability between 1% and 99%!
+      3) Timeline: if there are multiple instanced of the same scenario, order them by the date of the event (will event x happen by May, will event y happen by June, will event z happen by July, etc).
+      3) Distance to article (lower distance means the scenario is semantically more similar)
+      4) Ticker (if available)
+      5) Tags (if available)
+      
 
 2.  **Review Timeline (If Applicable):**
     * Evaluate timeline information. Generate a new timeline **only if** it provides useful contextual information that helps the user better understand or contextualize the event in "Article".

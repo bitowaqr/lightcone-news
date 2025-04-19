@@ -98,12 +98,12 @@ export async function updateScenarios() {
   return console.log('Scenarios pipeline completed');
 }
 
-try {
-  await mongoService.connect();
-  await updateScenarios();
-  console.log('MongoDB connection closed.');
-} catch (error) {
-  console.error('Error closing connections:', error);
-} finally {
-  await mongoService.disconnect();
-}
+// try {
+//   await mongoService.connect();
+//   await updateScenarios();
+//   console.log('MongoDB connection closed.');
+// } catch (error) {
+//   console.error('Error closing connections:', error);
+// } finally {
+//   await mongoService.disconnect();
+// }

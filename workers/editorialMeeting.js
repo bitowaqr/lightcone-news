@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 
-export const createLineup = async (opts = {}) => {
+export const createLineup = async () => {
   
   console.log('Starting lineup creation...');
   await mongoService.connect();
@@ -41,23 +41,23 @@ export const createLineup = async (opts = {}) => {
 };
 
 // Example usage (for testing):
-const runTest = async () => {
-  try {
-    const lineupData = await createLineup();
-    console.log('\n--- Generated Lineup ---');
-      // Ensure lineupData is not null/undefined before stringifying
-      if (lineupData) {
-          fs.writeFileSync('lineup.json', JSON.stringify(lineupData, null, 2));
-          console.log('Lineup data saved to lineup.json');
-      } else {
-          console.log('No lineup data was generated.');
-      }
-    console.log('------------------------');
-  } catch (error) {
-    console.error('Test run failed:', error);
-  } finally {
-    await mongoService.disconnect();
-  }
-};
+// const runTest = async () => {
+//   try {
+//     const lineupData = await createLineup();
+//     console.log('\n--- Generated Lineup ---');
+//       // Ensure lineupData is not null/undefined before stringifying
+//       if (lineupData) {
+//           fs.writeFileSync('lineup.json', JSON.stringify(lineupData, null, 2));
+//           console.log('Lineup data saved to lineup.json');
+//       } else {
+//           console.log('No lineup data was generated.');
+//       }
+//     console.log('------------------------');
+//   } catch (error) {
+//     console.error('Test run failed:', error);
+//   } finally {
+//     await mongoService.disconnect();
+//   }
+// };
 
-runTest(); // Uncomment to run the test when executing this file directly
+// runTest(); // Uncomment to run the test when executing this file directly

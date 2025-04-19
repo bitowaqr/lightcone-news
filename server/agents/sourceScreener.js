@@ -120,7 +120,7 @@ Do not include any explanations or text outside of this JSON object. Only output
       // Log warnings for any URLs returned by AI that weren't in the original list
       response.keptUrls.forEach(url => {
           if (!originalUrlMap.has(url)) {
-              console.warn(`sourceScreener: AI returned URL "${url}" which was not found in the original validated list.`);
+              console.warn(`sourceScreener: AI returned non-matching URL "${url?.substring(0, 15)}..."`);
           }
       });
 

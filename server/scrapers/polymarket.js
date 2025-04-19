@@ -22,8 +22,8 @@ function formatPolymarketScenario(market, event = null) {
     // Basic validation
     if (!market.question || !market.conditionId) {
       console.warn(
-        `Skipping market due to missing essential data (question/conditionId): ${
-          market.slug || 'No Market slug'
+        `Skipping due to missing data: ${
+          market?.slug?.substring(0, 15) || 'No Market slug'
         }`
       );
       return null;
