@@ -18,11 +18,24 @@ export default defineEventHandler(async (event) => { // Make handler async
       .lean(); 
     
     articles.sort((a, b) => {
-      if (a.publishedDate.getDate() === b.publishedDate.getDate()) {
-        return a.priority - b.priority; // Lower priority values come first
+      const aDate = new Date(a.publishedDate);
+      const bDate = new Date(b.publishedDate);
+      
+      // Calculate time difference in milliseconds
+      const timeDiff = Math.abs(aDate - bDate);
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+      
+      // If articles are published within 24 hours of each other
+      if (hoursDiff <= 24) {
+        // Sort by priority (lower priority value comes first)
+        return (a.priority || 0) - (b.priority || 0);
+      } else {
+        // Sort by publishedDate (newer first)
+        return bDate - aDate;
       }
-      return a.publishedDate.getDate() - b.publishedDate.getDate(); // More recent dates come first
     });
+
+    console.log('articles', articles.map(a => a.title.slice(0, 15) + '... ' + a.publishedDate));
 
     // Fetch recent open scenarios (adjust criteria as needed)
     // Potential alternative: Fetch scenarios explicitly linked to the articles above
@@ -50,7 +63,6 @@ export default defineEventHandler(async (event) => { // Make handler async
         // TODO: Add logic for CATEGORICAL/NUMERIC types if needed
       }));
 
-      console.log('article.imageUrl', article.imageUrl);
       return {
         // Use article._id for groupId or generate a unique one if needed
         groupId: `article-${article._id.toString()}`,
