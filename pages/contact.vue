@@ -55,7 +55,7 @@ const resetForm = () => {
       <!-- Show Form if not success -->
       <div v-if="submissionStatus !== 'success'">
         <p class="mb-6">
-          Have questions or feedback? We'd appreciate hearing from you. Please use the form below.
+          Have questions, feedback or suggestions? We'd love to hear from you!
         </p>
         
         <form @submit.prevent="handleSubmit" class="space-y-4">
