@@ -14,8 +14,7 @@ export async function updateScenarios() {
   // 1. Scrape Predictions Markets
   console.log("scraping predictions markets");
   const scenarios = await scrapeScenarios();
-  console.log("scraped ", scenarios.length, " scenarios");
-  fs.writeFileSync('scenarios.json', JSON.stringify(scenarios, null, 2));
+  console.log("-> scraped ", scenarios.length, " scenarios");
   
   console.log("Saving/updating scenarios: ", scenarios.length);
   const savedScenarios = [];
