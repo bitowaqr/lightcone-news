@@ -2,6 +2,7 @@ import { scrapeFeeds } from '../server/scrapers/index.js';
 import { sourceScreenerBatch } from '../server/agents/sourceScreener.js';
 import { callLineupCreator } from '../server/agents/lineupCreator.js';
 import { mongoService } from '../server/services/mongo.js';
+import Article from '../server/models/Article.model.js';
 import fs from 'fs';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -22,13 +23,25 @@ export const createLineup = async () => {
   const screenedNewsItems = await sourceScreenerBatch(allNewsItems);
   console.log(`Sources remaining after screening: ${screenedNewsItems.length}`);
 
-  // 2. Call lineupCreator with Screened Items
-  console.log('Calling lineupCreator...');
-  const lineup = await callLineupCreator(screenedNewsItems);
-  console.log('Lineup created with', lineup.stories.length, 'stories');
+  // 2. Fetch Existing Published Articles for Context
+  console.log('Fetching existing published articles for context...');
+  const existingArticles = await Article.find({ status: 'PUBLISHED' })
+    .sort({ publishedDate: -1 })
+    .limit(50)
+    .lean();
+  console.log(`Fetched ${existingArticles.length} existing published articles.`);
+
+  // 3. Call lineupCreator with Screened Items and Existing Articles
+  console.log('Calling lineupCreator with new items and existing context...');
+  const lineup = await callLineupCreator(screenedNewsItems, existingArticles);
+  console.log('Lineup created with', lineup.stories?.length || 0, 'stories');
 
   
-  // 3. Save Lineup to MongoDB
+  // 4. Save Lineup to MongoDB
+  if (!lineup.stories || lineup.stories.length === 0) {
+    console.log('No stories in the generated lineup. Skipping save.');
+    return [];
+  }
   const lineupId = new Date().toISOString().split('T')[0];
   lineup.stories.forEach(story => {
     story.lineupId = lineupId;

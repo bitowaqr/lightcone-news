@@ -1,181 +1,216 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import dotenv from 'dotenv';
+import { formatRelativeTime } from '../utils/formatRelativeTime.js';
 dotenv.config();
 
 const GEMINI_MODEL = process.env.WORKER_MODEL ||  'gemini-2.5-pro-preview-03-25';
 
 // --- LLM Tool Definition ---
-const passOnLineupTool = new tool(
-  async ({ stories }) => ({ stories }),
-  {
-    name: 'pass_on_stories_for_lineup',
-    description:
-      'Pass on the structured news stories for the lineup with sources.',
-    schema: z.object({
-      stories: z
-        .array(
-          z.object({
-            priority: z
-              .number()
-              .int()
-              .min(0)
-              .describe(
-                'Priority ranking of the story in the lineup (0 = show first in feed).'
-            ),
-            relevance: z
-              .string()
-              .describe(
-                'Relevance of the story, should be one of: "critical", "important", "relevant", "noteworthy", "misc"'
-              ),
-            title: z
-              .string()
-              .describe(
-                'A concise, engaging title for the overall news story narrative.'
-              ),
-            description: z
-              .string()
-              .optional()
-              .describe(
-                "A brief (1-2 sentence) description summarizing the overall story's significance according to Lightcone objectives."
-              ),
-            sources: z
-              .array(
-                z.object({
-                  title: z
-                    .string()
-                    .describe(
-                      'The original title of the source news item reporting this event.'
-                    ),
-                  url: z
-                    .string()
-                    .describe(
-                      'The URL of the source news item reporting this event.'
-                    ),
-                  publisher: z
-                    .string()
-                    .describe(
-                      'The publisher of the source news item reporting this event.'
-                    ),
-                  description: z
-                    .string()
-                    .optional()
-                    .describe(
-                      'The original description/teaser of the source news item.'
-                    ),
-                  publishedDate: z
-                    .string()
-                    .optional()
-                    .describe(
-                      'The original published date of the source news item.'
-                    ),
-                })
-              ),
-            notes: z
-              .string()
-              .optional()
-              .describe(
-                'Any additional notes or comments about the story, including why it was selected and any other information that may be relevant for the editorial team.'
-              ),
-          })
-        ),
-    }),
-  }
+// const passOnLineupTool = new tool(
+//   async ({ stories }) => ({ stories }),
+//   {
+//     name: 'pass_on_stories_for_lineup',
+//     description:
+//       'Passes the selected and structured stories for the news lineup, distinguishing between new stories and updates to existing ones.',
+//     schema: z.object({
+//       stories: z
+//         .array(
+//           z.object({
+//             priority: z
+//               .number()
+//               .int()
+//               .min(0)
+//               .describe(
+//                 'Priority ranking (0 = highest/show first). Lower numbers are higher priority.'
+//             ),
+//             relevance: z
+//               .string()
+//               .describe(
+//                 'Relevance of the story, should be one of: "critical", "important", "relevant", "noteworthy", "misc"'
+//               ),
+//             title: z
+//               .string()
+//               .describe(
+//                 'Concise, informative title. For updates, should reflect the *new* development.'
+//               ),
+//             description: z
+//               .string()
+//               .describe(
+//                 "Brief explanation (2-4 sentences) of why the story/update is important. If it's an update, clearly explain what was previously reported and what is new."
+//               ),
+//             sources: z
+//               .array(
+//                 z.object({
+//                   title: z
+//                     .string()
+//                     .describe(
+//                       'Original title from the source news item.'
+//                     ),
+//                   url: z
+//                     .string()
+//                     .describe(
+//                       'Original URL from the source news item.'
+//                     ),
+//                   publisher: z
+//                     .string()
+//                     .describe(
+//                       'Publisher of the source news item.'
+//                     ),
+//                   description: z
+//                     .string()
+//                     .optional()
+//                     .describe(
+//                       'Optional: Original description from the source.'
+//                     ),
+//                    publishedDate: z
+//                     .string()
+//                     .optional()
+//                     .describe(
+//                       'Optional: Original published date string from the source item.'
+//                     ),
+//                 })
+//               )
+//               .min(1)
+//               .describe("List of relevant source news items supporting the story or *update*. Order by importance."),
+//             notes: z
+//               .string()
+//               .optional()
+//               .describe(
+//                 'Internal editorial notes: Reasoning for selection/priority, source assessment, potential angles, etc.'
+//               ),
+//             updatedArticleId: z
+//               .string()
+//               .optional()
+//               .describe(
+//                 'If relevance is "update", provide the _id of the existing Lightcone Article being updated. Otherwise, omit or leave null.'
+//               ),
+//           })
+//         )
+//         .describe("An array of story objects selected for the lineup."),
+//     }),
+//   }
+// );
+const lineupSchema = zodToJsonSchema(z.object({
+  stories: z.array(z.object({
+    priority: z.number().int().min(0),
+    relevance: z.string().describe('Relevance of the story, should be one of: "critical", "important", "relevant", "noteworthy", "misc"'),
+    title: z.string().describe('Concise, informative title. For updates, should reflect the *new* development.'),
+    description: z.string().describe("Brief explanation (2-4 sentences) of why the story/update is important. If it's an update, clearly explain what was previously reported and what is new."),
+    sources: z.array(z.object({
+      title: z.string().describe('Original title from the source news item.'),
+      url: z.string().describe('Original URL from the source news item.'),
+      publisher: z.string().describe('Publisher of the source news item.'),
+      description: z.string().optional().describe('Optional: Original description from the source.'),
+      publishedDate: z.string().optional().describe('Optional: Original published date string from the source item.'),
+    })).min(1).describe("List of relevant source news items supporting the story or *update*. Order by importance."),
+    notes: z.string().optional().describe('Internal editorial notes: Reasoning for selection/priority, source assessment, potential angles, etc.'),
+    updatedArticleId: z.string().optional().describe('If relevance is "update", provide the _id of the existing Lightcone Article being updated. Otherwise, omit or leave null.'),
+  })).describe("An array of story objects selected for the lineup."),
+}),
 );
 
 // --- LLM Configuration ---
 
 const model = new ChatGoogleGenerativeAI({
   model: GEMINI_MODEL,
-  temperature: 0.3, // Lower temperature for more focused selection
+  temperature: 0.3,
   apiKey: process.env.GEMINI_API_KEY,
-}).bindTools([passOnLineupTool]);
+})
+const structuredLlm = model.withStructuredOutput(lineupSchema);
 
-const callLineupCreator = async (newsItems) => {
+// --- Main Agent Function ---
+
+const callLineupCreator = async (newsItems, existingArticles = []) => {
+
   const formattedNewsList = newsItems
     .map(
       (item, index) => `
---- Item ${index + 1} ---
-Title: ${item.title}
+--- Scraped News Article ${index + 1} ---
+Title: ${item.title || 'N/A'}
 Publisher: ${item.meta?.publisher || 'N/A'}
-URL: ${item.url}
-Description: ${item.description || 'N/A'}`
+URL: ${item.url || 'N/A'}
+Description: ${item.description || 'N/A'}
+Published: ${item.meta?.publishedDate || 'N/A'}
+`
     )
-    .join('\n');
+    .join('\\n');
 
-  // 3. Define LLM Prompts
-  const systemPrompt = `
-  # Role: Chief Editor for Lightcone.news
-  
-  # Context:
-  You are the chief editor responsible for creating the daily news lineup for Lightcone.news. Lightcone is a news aggregator that prioritizes **important** news stories with potential long-term significance, providing **deep context (past, present, future)**. Readers turn to Lightcone to understand what news are important and why, and 'where the world is going'.
-  
-  # Objectives:
-  Your goal is to review what other news organizations are reporting on, and select and structure the most important news items for the Lightcone.news lineup.
-  
-  Adhere to Lightcone's philosophy: **extreme clarity, conciseness, directness, factual accuracy, and intellectual honesty.** Aim for **signal over noise**, targeting an intelligent audience seeking substance. Avoid sensationalism or trivial news.
-  
-  
-  # Input:
-  You will receive a list of recent news items scraped from various sources (e.g., Al Jazeera, Tagesschau, DW, BBC, France24, etc), formatted in markdown. Each item may include title, description, publisher, and source URL.
-  
-  # Task:
-  1.  **Analyze & Select:** Review the entire list of news items. Select only **important and relevant stories** based on Lightcone's objectives. Prioritize stories with potential global impact, significant developments in ongoing issues, or events that offer insight into future trends. Also include **important** stories that only affect a specific region or country, if multiple sources are reporting on the same story, but give it a lower priority.
-  2.  **Group Sources by Specific Events:** Group together news items that report on the exact same event or development (e.g., multiple sources covering the same peace talks). However, maintain separation between distinct events even if they relate to the same broader topic or region. For example, some trade negotiations between Poland and France, and a political scandal occurring in France should be treated as separate stories, each with their own title and description, as they represent different developments with unique implications and significance (unless there is a connection between the two events).
-  3.  **Structure Output:** For each selected story:
-      *   Assign a \`priority\` rank. Lower numbers mean higher priority (i.e. 0 = highest).
-      *   Assign a \`relevance\` type.
-      *   Create a concise, informative \`title\`.
-      *   Write a brief (2-3 sentence) \`description\` explaining *why* this story is important.
-      *  List all relevant \`sources\` for each story (ordered from most to least important). For each source, you **must** include the original \`title\`, \`url\`, \`publisher\`, and optionally the \`description\` from the input list.
-  4.  Discard News items and sources that are trivial, local, or opinion pieces, that do not contribute to the overall story, that are clearly clickbait, sensational, or misleading. Lightcone only aggregates high-quality journalism and important news stories.
-  
-  # Tool Usage:
-  You **MUST** use the \`pass_on_stories_for_lineup\` tool to return your final selection. The tool takes two arguments:
-  1.  \`stories\`: An array of story objects, each containing \`priority\`, \`relevance\`, \`title\`, \`description\`, an array of \`sources\`, and \`notes\`.
-  Do not output the lineup directly in your response; use the tool.
-  
-  # Example Story Structure (within the tool call):
-  \`\`\`json
-  {
-    "priority": 0,
-    "relevance": "important",
-    "title": "US and China Hold High-Level Trade Talks",
-    "description": "Signals potential shift in economic policy with global trade implications.",
-    "sources": [
-      {
-            "title": "US Treasury Secretary meets Chinese counterpart in Geneva",
-            "description": "Focus on tariff reductions and market access discussed.",
-            "url": "http://example.com/news1",
-            "publisher": "Al Jazeera",
-          },
-          {
-            "title": "China Announces Pilot Program for Relaxed Foreign Investment Rules",
-            "url": "http://example.com/news2",
-            "publisher": "DW",
-            "description": "New zones in Shanghai and Shenzhen mentioned.",
-          }
-      ],
-      "notes": "This story is important because it is about a trade deal between the US and China. The two sources seem to express different views on the trade deal, which may be worth investigating further and reporting on. I also found two opinion pieces on the same story, which are not useful for the lineup and thus not included, but it seems to be a story that is currently trending, so I gave it a high priority."
-  }
-  \`\`\`
-  
-  # Final Instruction:
-  Process the provided news list and return the curated lineup using the \`pass_on_stories_for_lineup\` tool.`
+  const formattedExistingArticles = existingArticles
+    .map(
+        (article, index) => `
+--- Existing Lightcone Article / current newsfeed item ${index + 1} ---
+_id: ${article._id}
+Title: ${article.title}
+summary: ${article.summary || 'N/A'}
+`
+    )
+    .join('\\n');
 
-  const userPrompt = `# News Items List:
-  ${formattedNewsList}
-  
-  # Task:
-  You are the chief editor of Lightcone.news. Please analyze these items, select the most important stories according to Lightcone.news objectives, and provide the structured lineup using the \`pass_on_stories_for_lineup\` tool.`;
+
+  const systemPrompt = `# Role: Chief Editor for Lightcone.news
+
+# Context:
+You are the chief editor creating the news lineup for Lightcone.news, an aggregator focusing on **important** global stories with **deep context (past, present, future)**. Readers seek understanding of significance and trajectory ('where the world is going'). Your goal is to intelligently update the *existing* news feed by adding truly new stories or significant updates to already published ones.
+
+# Philosophy:
+Adhere strictly to: **extreme clarity, conciseness, directness, factual accuracy, intellectual honesty.** Prioritize **signal over noise**. Avoid sensationalism, clickbait, and trivial news. Target an intelligent audience seeking substance.
+
+# Input:
+1.  \`Existing Lightcone Articles List\`: Articles *already published* on Lightcone.news (includes _id, Title, summary).
+2.  \`Scraped News Article List\`: Recent news items scraped from various sources (BBC, Al Jazeera, etc.).
+
+# Core Task: Compare & Curate
+Review *both* lists. Your primary goal is to decide what makes it into today's lineup based on novelty and significance *relative to what's already published*.
+
+1.  **Analyze & Compare:**
+    *   For each \`New Item\`, determine if it represents:
+        *   A) A **genuinely new story** (topic/event not covered in \`Existing Articles List\`).
+        *   B) A **significant update** to an \`Existing Article\`. (Requires substantial new info, major event turn, critical new context. Minor follow-ups or re-reporting the same facts are NOT significant).
+        *   C) Information already covered or trivial/irrelevant news (Discard these).
+2.  **Select & Prioritize:**
+    *   Select stories corresponding to (A) and (B).
+    *   Prioritize based on global impact, significant developments, future trend insights. Lower priority for regional stories unless they are major updates to existing high-priority articles.
+    *   Group sources from \`New Items List\` that cover the *exact same new event/development*.
+3.  **Structure Output (Using Tool):** For each selected story:
+    *   \`priority\`: Rank (0 = highest).
+    *   \`relevance\`: Use "update" for type (B) stories. Otherwise, categorize importance (e.g., "critical", "important", "relevant", "noteworthy", "misc").
+    *   \`title\`: Concise title reflecting the *new* development for updates.
+    *   \`description\`: 2-4 sentences explaining importance. **Crucially for updates:** Briefly state previous context (implicitly referencing the existing story) AND clearly articulate **what is new**.
+    *   \`sources\`: List relevant source items from \`New Items List\` supporting the story *or the update*. Include \`title\`, \`url\`, \`publisher\`, optional \`description\`, \`publishedDate\`. Order by importance. Must have at least one source.
+    *   \`notes\` (Optional): Your reasoning, source assessment, etc.
+    *   \`updatedArticleId\`: **Required if \`relevance\` is "update"**. Provide the \`ID\` from the \`Existing Articles List\`. Omit otherwise.
+
+# Output format:
+You are passing back a JSON object (be careful with quotation marks) in the following format:
+${JSON.stringify(lineupSchema)}
+
+# Final Instruction:
+Process the \`New Items List\` considering the \`Existing Articles List\`. Return the curated lineup using the tool, focusing on adding value beyond current publications.
+  `;
+
+  const userPrompt = `
+# Existing Lightcone Article List (Recently Published on Lightcone.news):
+${formattedExistingArticles || 'No existing articles provided.'}
+
+# Scraped News Article List (Scraped from External Sources):
+${formattedNewsList || 'No new items provided.'}
+
+# Task:
+You are the chief editor. Analyze the \`Scraped News Article List\` in relation to the \`Existing Lightcone Article List\`. Identify significant new stories or updates. Provide the structured JSON object 'stories', adhering to all instructions in the system prompt. Focus on novelty and significance relative to what is already published.
+  `;
+
 
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];
-    const response = await model.invoke(messages);
-  return response?.tool_calls?.[0]?.args || {};
+  const response = await structuredLlm.invoke(messages);
+  console.log(response.stories);
+  return { stories: response?.stories || [] };
 };
 
 export { callLineupCreator };
+
