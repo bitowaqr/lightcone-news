@@ -6,7 +6,8 @@ import dotenv from 'dotenv';
 import { formatRelativeTime } from '../utils/formatRelativeTime.js';
 dotenv.config();
 
-const GEMINI_MODEL = process.env.WORKER_MODEL ||  'gemini-2.5-pro-preview-03-25';
+// const GEMINI_MODEL = process.env.WORKER_MODEL ||  'gemini-2.5-pro-preview-03-25';
+const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
 
 // --- LLM Tool Definition ---
 // const passOnLineupTool = new tool(
@@ -99,6 +100,7 @@ const lineupSchema = zodToJsonSchema(z.object({
     relevance: z.string().describe('Relevance of the story, should be one of: "critical", "important", "relevant", "noteworthy", "misc"'),
     title: z.string().describe('Concise, informative title. For updates, should reflect the *new* development.'),
     description: z.string().describe("Brief explanation (2-4 sentences) of why the story/update is important. If it's an update, clearly explain what was previously reported and what is new."),
+    update: z.boolean().describe('Whether the story is an update to an existing article. If true, the story is an update and the updateArticleId field is required.'),
     sources: z.array(z.object({
       title: z.string().describe('Original title from the source news item.'),
       url: z.string().describe('Original URL from the source news item.'),
@@ -107,7 +109,7 @@ const lineupSchema = zodToJsonSchema(z.object({
       publishedDate: z.string().optional().describe('Optional: Original published date string from the source item.'),
     })).min(1).describe("List of relevant source news items supporting the story or *update*. Order by importance."),
     notes: z.string().optional().describe('Internal editorial notes: Reasoning for selection/priority, source assessment, potential angles, etc.'),
-    updatedArticleId: z.string().optional().describe('If relevance is "update", provide the _id of the existing Lightcone Article being updated. Otherwise, omit or leave null.'),
+    updatedArticleId: z.string().optional().describe('If update is true, provide the _id of the existing Lightcone Article being updated. Otherwise, omit or leave null.'),
   })).describe("An array of story objects selected for the lineup."),
 }),
 );
@@ -208,7 +210,6 @@ You are the chief editor. Analyze the \`Scraped News Article List\` in relation 
     { role: 'user', content: userPrompt },
   ];
   const response = await structuredLlm.invoke(messages);
-  console.log(response.stories);
   return { stories: response?.stories || [] };
 };
 

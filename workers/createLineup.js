@@ -33,7 +33,15 @@ export const createLineup = async () => {
 
   // 3. Call lineupCreator with Screened Items and Existing Articles
   console.log('Calling lineupCreator with new items and existing context...');
-  const lineup = await callLineupCreator(screenedNewsItems, existingArticles);
+  let lineup;
+  try {
+    lineup = await callLineupCreator(screenedNewsItems, existingArticles);
+  } catch (error) {
+    console.error('Error calling lineupCreator:', error);
+    console.log('Retrying lineupCreator...');
+    lineup = await callLineupCreator(screenedNewsItems, existingArticles);
+  }
+  if(!lineup) throw new Error('No lineup created');
   console.log('Lineup created with', lineup.stories?.length || 0, 'stories');
 
   

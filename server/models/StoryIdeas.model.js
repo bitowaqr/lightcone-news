@@ -26,6 +26,8 @@ const storyIdeaSchema = new mongoose.Schema(
         'At least one source is required per story',
       ],
     },
+    update: { type: Boolean, default: false },
+    updatedArticleId: { type: String, trim: true },
     notes: { type: String, trim: true },
     status: { type: String, default: 'idea', enum: ['idea', 'draftingArticle', 'articleWritten','archived'] },
     lineupId: { type: String, trim: true, default: new Date().toISOString().split('T')[0] },
