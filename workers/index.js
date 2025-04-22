@@ -1,13 +1,10 @@
 // workers/scheduler.js
 // import cron from 'node-cron';
-import { withRetry } from './utils/withRetry.js'; // Adjust path if you put it elsewhere
-
-// --- Import the tasks ---
+import { withRetry } from './utils/withRetry.js'; 
 import { updateScenarios } from './updateScenarios.js';
-// Import createLineup from editorialMeeting.js
-import { createLineup } from './editorialMeeting.js'; // <-- Updated import
+import { createLineup } from './createLineup.js'; 
 import { writeArticle } from './writeArticle.js';
-import { mongoService } from '../server/services/mongo.js'; // Import mongoService if needed for fetching stories
+import { mongoService } from '../server/services/mongo.js'; 
 
 
 // --- Define the main execution sequence ---

@@ -4,35 +4,19 @@ import { mongoService } from '../server/services/mongo.js';
 import { embeddingService } from '../server/services/embedding.js';
 import { chromaService } from '../server/services/chroma.js';
 import { scenariosLabeller } from '../server/agents/scenariosLabeller.js';
-const MAX_ITEMS = undefined; // use for testing only!
 const GEMINI_BATCH_SIZE = 20; // max ~50
-const EXCLUDE_TAGS = [
-  'Sports',
-  'nba',
-  'basketball',
-  'mlb',
-  'nhl',
-  'nfl',
-  'formula 1',
-  'soccer',
-  'epl',
-  'f1',
-  'baseball',
-  'nfl draft',
-  'gold',
-  'ufc',
-  'mma',
-];
+import fs from 'fs';
 
 export async function updateScenarios() {
+  console.log("updating scenarios");
+  
   
   // 1. Scrape Predictions Markets
-  const scenarios = await scrapeScenarios({
-    maxItems: MAX_ITEMS,
-    excludeTags: EXCLUDE_TAGS,
-    startDateMin: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-  });
-
+  console.log("scraping predictions markets");
+  const scenarios = await scrapeScenarios();
+  console.log("scraped ", scenarios.length, " scenarios");
+  fs.writeFileSync('scenarios.json', JSON.stringify(scenarios, null, 2));
+  
   console.log("Saving/updating scenarios: ", scenarios.length);
   const savedScenarios = [];
   const scenariosToLabel = [];
@@ -69,9 +53,22 @@ export async function updateScenarios() {
     console.log("->", newlyLabelledScenarios.filter(q => q.questionNew !== q.questionOld).length, " new question labels");
   }
 
+  // open scenarios 
+  console.log("identifying open scenarios");
+  const openScenarios = savedScenarios.filter(s => {
+    if(s.status === 'RESOLVED' || s.status === "CANCELED") {
+      return false;
+    }
+    if (s.scenarioType === 'BINARY') {
+      return s.currentProbability > 0.0001 && s.currentProbability < 0.9999;
+    }
+    return true;
+  });
+  console.log("-> of ", savedScenarios.length, " saved scenarios, ", openScenarios.length, " are open");
+
   // 2. Identify scenarios needing embedding
   console.log("identifying scenarios needing embedding");
-  const scenarioIdsToEmbed = await chromaService.areNew(savedScenarios.map(s => s._id));
+  const scenarioIdsToEmbed = await chromaService.areNew(openScenarios.map(s => s._id));
   console.log('-> Scenarios to embed: ', scenarioIdsToEmbed.length);
 
   if (scenarioIdsToEmbed.length > 0) {
@@ -92,6 +89,19 @@ export async function updateScenarios() {
       embeddings
     );
     console.log('Scenarios chromed:', chromedScenarios.length);
+  }
+
+  console.log("identifying resolved scenarios");
+  
+  // all savedScenarios that are in openScenarios
+  const openScenarioIds = openScenarios.map(s => s._id);
+  const resolvedScenarios = savedScenarios.filter(s => !openScenarioIds.includes(s._id));
+  console.log("->", resolvedScenarios.length, " resolved scenarios flagged for deletion");
+
+  if(resolvedScenarios.length > 0) {
+    console.log("deleting closed scenarios from chroma: ", resolvedScenarios.length);
+    await chromaService.deleteScenarios(resolvedScenarios.map(s => s._id));
+    console.log("closed scenarios deleted from chroma");
   }
 
   // done.

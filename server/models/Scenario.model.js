@@ -27,7 +27,7 @@ const scenarioSchema = new mongoose.Schema({
   // CURRENT STATE
   status: {
     type: String,
-    enum: ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED'],
+    enum: ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED', 'UPCOMING', 'UNKNOWN'],
     default: 'OPEN'
   },
   currentProbability: { type: Number, min: 0, max: 1 }, // BINARY 
@@ -47,13 +47,13 @@ const scenarioSchema = new mongoose.Schema({
   volume: { type: Number },
   liquidity: { type: Number },
   numberOfTraders: { type: Number },
-  // COMMENTS
+  numberOfPredictions: { type: Number },
+  votes: { type: Number },
   commentCount: { type: Number },
   comments: [{
     type: mongoose.Schema.Types.Mixed,
     default: {}
   }],
-  // RATIONALE
   rationaleSummary: { type: String },
   rationaleDetails: { type: String },
   dossier: { type: mongoose.Schema.Types.Mixed },

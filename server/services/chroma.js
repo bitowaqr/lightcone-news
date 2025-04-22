@@ -126,6 +126,42 @@ class ChromaService {
     });
     return idsString.filter(id => !results.ids.includes(id));
   }
+
+
+  async deleteScenarios(ids) {
+    await this.initialize();
+    const scenariosExisting = await this.scenarioCollection.get({
+      ids: ids,
+    });
+    console.log("-> deleting ", scenariosExisting.ids.length, " scenarios");
+    if(scenariosExisting.ids.length === 0) {
+      return;
+    }
+    await this.scenarioCollection.delete({
+      ids: ids,
+    });
+  }
+
+  async getTotalSavedScenarios() {
+    await this.initialize();
+    const results = await this.scenarioCollection.count();
+    return results;
+  }
+
+  // async delete_collection() {
+  //   throw new Error("DONT USE THIS!");
+  //   await this.client.deleteCollection({
+  //     name: SCENARIO_COLLECTION,
+  //   });
+  // }
 }
 
 export const chromaService = new ChromaService();
+
+
+// get total number of saved scenarios
+// (async () => {
+//   const chromaService = new ChromaService();
+//   const total = await chromaService.getTotalSavedScenarios();
+//   console.log("-> total saved scenarios: ", total);
+// })();
