@@ -1,7 +1,7 @@
 <template>
   <div class="container mx-auto px-4 py-8 max-w-4xl">
     <h1 class="text-3xl font-bold mb-2 text-primary-700 dark:text-primary-300">Privacy Policy</h1>
-      <p class="text-fg-muted text-xs !mt-0 mb-6">Last Updated: 19 April 2025</p>
+      <p class="text-fg-muted text-xs !mt-0 mb-6">Last Updated: 23 April 2025</p>
     
     <div class="bg-article p-6 rounded-lg shadow-sm prose dark:prose-invert prose-headings:text-primary-700 dark:prose-headings:text-primary-300 prose-a:text-primary-600 dark:prose-a:text-primary-400">
 
@@ -119,11 +119,11 @@
       <p class="mb-4">We use cookies and similar tracking technologies (like web beacons or pixels) to collect and use personal information about you, including to track usage patterns and manage sessions. A cookie is a small text file stored on your device.</p>
       <ul>
         <li><strong>Strictly Necessary Cookies:</strong> These cookies are essential for you to browse the website and use its features, such as accessing secure areas of the site or managing your login session. These cookies do not require consent.</li>
-        <li><strong>Performance and Analytics Cookies:</strong> These cookies collect information about how you use our website, like which pages you visited and which links you clicked on. None of this information can be used to identify you. It is all aggregated and, therefore, anonymized. Their sole purpose is to improve website functions. This includes cookies from third-party analytics services as long as the cookies are for the exclusive use of the owner of the website visited. We will ask for your consent before placing these cookies.</li>
-        <li><strong>Functionality Cookies:</strong> These cookies allow our website to remember choices you have made in the past, like your language preference or user name and password for automatic login. We will ask for your consent before placing these cookies.</li>
+        <li><strong>Performance and Analytics Cookies:</strong> These cookies collect aggregated, anonymized information about how you use our website (e.g., pages visited, links clicked) to help us improve website functions. We currently use Google Analytics for this purpose, integrated via the `nuxt-gtag` module. The collection of this data is subject to your explicit consent provided via our cookie consent banner. If consent is not granted, these cookies will not be placed, and analytics data will not be collected.</li>
+        <li><strong>Functionality Cookies:</strong> These cookies allow our website to remember choices you have made in the past, like your language preference or user name and password for automatic login. We will ask for your consent before placing these cookies where required by law.</li>
         <li><strong>Marketing Cookies:</strong> (We currently do not use marketing cookies, but reserve the right to, subject to consent). These cookies track your online activity to help advertisers deliver more relevant advertising or to limit how many times you see an ad. These cookies can share that information with other organizations or advertisers.</li>
       </ul>
-      <p class="mb-4">You can manage your cookie preferences through your browser settings or potentially through a cookie consent banner provided on our Service. Please note that disabling certain cookies may affect the functionality of the Service.</p>
+      <p class="mb-4">You can manage your cookie preferences through the consent banner provided on our Service or via your browser settings. Please note that disabling strictly necessary cookies may affect the functionality of the Service.</p>
 
       <h2 class="mt-8 text-xl mb-2">Children's Privacy</h2>
       <p class="mb-4">Our Service does not address anyone under the age of 16 ("Children"). We do not knowingly collect personally identifiable information from children under 16. If you are a parent or guardian and you are aware that your Child has provided us with Personal Data, please contact us. If we become aware that we have collected Personal Data from a child under age 16 without verification of parental consent, we take steps to remove that information from our servers.</p>

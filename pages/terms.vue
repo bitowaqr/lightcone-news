@@ -1,7 +1,7 @@
 <template>
   <div class="container mx-auto px-4 py-8 max-w-4xl mb-4">
     <h1 class="text-3xl font-bold mb-2 text-primary-700 dark:text-primary-300">Terms of Service</h1>
-      <p class="text-fg-muted text-xs !mt-0 !mb-6">Last Updated: 19 April 2025</p>
+      <p class="text-fg-muted text-xs !mt-0 !mb-6">Last Updated: 23 April 2025</p>
 
     <div class="bg-article p-6 rounded-lg shadow-sm prose dark:prose-invert prose-headings:text-primary-700 dark:prose-headings:text-primary-300 prose-a:text-primary-600 dark:prose-a:text-primary-400">
 
@@ -19,16 +19,39 @@
 
       <h2 class="mt-8 text-xl mb-2">4. Use of the Service and User Conduct</h2>
       <p class="mb-4">You agree to use the Service only for lawful purposes and in accordance with these Terms. You agree not to use the Service:</p>
-      // ... ul elements ...
+      <ul>
+        <li>In any way that violates any applicable federal, state, local, or international law or regulation (including, without limitation, any laws regarding the export of data or software to and from Germany, the EU, the US or other countries).</li>
+        <li>For the purpose of exploiting, harming, or attempting to exploit or harm minors in any way by exposing them to inappropriate content, asking for personally identifiable information, or otherwise.</li>
+        <li>To transmit, or procure the sending of, any advertising or promotional material, including any "junk mail," "chain letter," "spam," or any other similar solicitation.</li>
+        <li>To impersonate or attempt to impersonate PRIORB, a PRIORB employee, another user, or any other person or entity (including, without limitation, by using email addresses associated with any of the foregoing).</li>
+        <li>To engage in any other conduct that restricts or inhibits anyone's use or enjoyment of the Service, or which, as determined by us, may harm PRIORB or users of the Service, or expose them to liability.</li>
+      </ul>
       <p class="mb-4">Additionally, you agree not to:</p>
-      // ... ul elements ...
+      <ul>
+        <li>Use the Service in any manner that could disable, overburden, damage, or impair the site or interfere with any other party's use of the Service, including their ability to engage in real-time activities through the Service.</li>
+        <li>Use any robot, spider, or other automatic device, process, or means to access the Service for any purpose, including monitoring or copying any of the material on the Service.</li>
+        <li>Use any manual process to monitor or copy any of the material on the Service, or for any other purpose not expressly authorized in these Terms, without our prior written consent.</li>
+        <li>Use any device, software, or routine that interferes with the proper working of the Service.</li>
+        <li>Introduce any viruses, Trojan horses, worms, logic bombs, or other material that is malicious or technologically harmful.</li>
+        <li>Attempt to gain unauthorized access to, interfere with, damage, or disrupt any parts of the Service, the server on which the Service is stored, or any server, computer, or database connected to the Service.</li>
+        <li>Attack the Service via a denial-of-service attack or a distributed denial-of-service attack.</li>
+        <li>Otherwise attempt to interfere with the proper working of the Service.</li>
+      </ul>
 
       <h2 class="mt-8 text-xl mb-2">5. Intellectual Property Rights</h2>
       <p class="mb-4">The Service and its entire contents, features, and functionality (including but not limited to all information, software, text, displays, images, video, and audio, and the design, selection, and arrangement thereof), are owned by PRIORB, its licensors, or other providers of such material and are protected by German and international copyright, trademark, patent, trade secret, and other intellectual property or proprietary rights laws.</p>
       <p class="mb-4">These Terms permit you to use the Service for your personal, non-commercial use only. You must not reproduce, distribute, modify, create derivative works of, publicly display, publicly perform, republish, download, store, or transmit any of the material on our Service, except as follows:</p>
-      // ... ul elements ...
+      <ul>
+        <li>Your computer may temporarily store copies of such materials in RAM incidental to your accessing and viewing those materials.</li>
+        <li>You may store files that are automatically cached by your Web browser for display enhancement purposes.</li>
+        <li>You may print or download one copy of a reasonable number of pages of the Service for your own personal, non-commercial use and not for further reproduction, publication, or distribution.</li>
+      </ul>
       <p class="mb-4">You must not:</p>
-      // ... ul elements ...
+      <ul>
+        <li>Modify copies of any materials from this site.</li>
+        <li>Use any illustrations, photographs, video or audio sequences, or any graphics separately from the accompanying text.</li>
+        <li>Delete or alter any copyright, trademark, or other proprietary rights notices from copies of materials from this site.</li>
+      </ul>
       <p class="mb-4">If you print, copy, modify, download, or otherwise use or provide any other person with access to any part of the Service in breach of the Terms, your right to use the Service will stop immediately and you must, at our option, return or destroy any copies of the materials you have made. No right, title, or interest in or to the Service or any content on the Service is transferred to you, and all rights not expressly granted are reserved by PRIORB.</p>
       <p class="mb-4">The Lightcone News name, the PRIORB name, and all related names, logos, product and service names, designs, and slogans are trademarks of PRIORB or its affiliates or licensors. You must not use such marks without the prior written permission of PRIORB.</p>
 

@@ -26,6 +26,7 @@ export default {
           DEFAULT: 'var(--foreground)',
           muted: 'var(--foreground-muted)',
         },
+        'secondary-bg': 'var(--secondary-bg)',
         primary: {
           '50': 'var(--primary-50)',
           '100': 'var(--primary-100)',
