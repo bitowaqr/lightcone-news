@@ -102,7 +102,7 @@ const props = defineProps({
 // Use a cookie to store the preference. Default to true (bullet points)
 // useCookie handles SSR and client-side persistence automatically.
 const showAltSummary = useCookie('lightcone-summary-view', { 
-  default: () => true, 
+  default: () => false, 
   maxAge: 60 * 60 * 24 * 365 // Persist for 1 year
 });
 
