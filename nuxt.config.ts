@@ -10,6 +10,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/sitemap',
+    'nuxt-gtag',
   ],
   imports: {
     dirs: ['composables', 'stores'],
@@ -48,6 +49,9 @@ export default defineNuxtConfig({
       const articles = await $fetch('/api/newsfeed'); // Fetch articles from the newsfeed API
       return articles.map(article => `/articles/${article.id}`); // Adjust the route as needed
     },
+  },
+  gtag: {
+    id: process.env.GTAG_ID,
   },
 
   runtimeConfig: {
