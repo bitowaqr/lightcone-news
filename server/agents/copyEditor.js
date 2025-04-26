@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const OPENAI_MODEL = 'gpt-4.5-preview';
-const USE_AZURE = false;
+const USE_AZURE = true;
 
 // 1. Define the Zod schema for the output tool
 const finalArticleSchema = z

@@ -6,6 +6,7 @@ import { createLineup } from './createLineup.js';
 import { writeArticle } from './writeArticle.js';
 import { feedCurator } from '../server/agents/feedCurator.js';
 import { mongoService } from '../server/services/mongo.js'; 
+import cron from 'node-cron';
 
 
 // --- Define the main execution sequence ---
@@ -124,7 +125,7 @@ async function runAllTasks() {
 }
 
 // --- Schedule the Task ---
-const cronExpression = '0 1/3 * * *'; // Run at 1:00, 4:00, 7:00, 10:00, 13:00, 16:00, 19:00, 22:00 Eastern Time
+const cronExpression = '0 1-23/3 * * *'; // Run at 1:00, 4:00, 7:00, 10:00, 13:00, 16:00, 19:00, 22:00 Eastern Time
 console.log(`[Scheduler] Initializing cron job with schedule: "${cronExpression}"`);
 cron.schedule(cronExpression, runAllTasks, {
       scheduled: true,
@@ -134,4 +135,6 @@ cron.schedule(cronExpression, runAllTasks, {
   // Optional: Immediate run for testing
   console.log('[Scheduler] Performing initial run...');
   runAllTasks();
+  
+
   
