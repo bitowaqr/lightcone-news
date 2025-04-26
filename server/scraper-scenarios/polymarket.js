@@ -573,7 +573,13 @@ async function getPolymarketPriceHistory(
       return { history: [] };
     }
     
-    return data;
+    // Standardize the output format to match what HistoryChart expects: { t: ms, y: prob }
+    const standardizedHistory = data.history.map(item => ({
+        t: item.t * 1000, // Convert seconds to milliseconds
+        y: item.p         // Use 'p' as the source for probability 'y'
+    }));
+    
+    return { history: standardizedHistory };
   } catch (error) {
     console.error(`Error fetching Polymarket price history for token ${tokenId}:`, error);
     return { history: [] };

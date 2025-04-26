@@ -34,3 +34,5 @@ scripts/*
 polymarket_scenarios.json
 test-mongo-connection.js
 
+# deploy script
+deploy.sh
