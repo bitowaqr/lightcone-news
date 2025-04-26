@@ -1,7 +1,7 @@
 import { defineEventHandler, getQuery, createError } from 'h3';
 import mongoose from 'mongoose';
 import Scenario from '../../models/Scenario.model.js'; // Adjust path as needed
-import { getPolymarketPriceHistory } from '../../scrapers/polymarket.js'; // Adjust path as needed
+import { getPolymarketPriceHistory } from '../../scraper-scenarios/polymarket.js'; // Adjust path as needed
 
 // Simple cache (optional, but recommended for performance)
 const cache = new Map();

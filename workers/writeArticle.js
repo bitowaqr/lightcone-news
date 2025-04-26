@@ -1,6 +1,5 @@
 import { mongoService } from '../server/services/mongo.js';
 import dotenv from 'dotenv';
-const { scrapeArticles } = await import('../server/scrapers/index.js');
 import { callJournalist } from '../server/agents/journalist.js';
 import { timelineResearcher } from '../server/agents/timelineResearcher.js';
 import { timelineAssistant } from '../server/agents/timelineAssistant.js';
@@ -9,6 +8,7 @@ import { contextualiser } from '../server/agents/contextualiser.js';
 import { copyEditor } from '../server/agents/copyEditor.js';
 import { extractJsonFromString } from '../server/utils/extractJson.js';
 import fs from 'fs';
+import { withRetry } from './utils/withRetry.js';
 dotenv.config();
 
 // --- Constants ---
@@ -39,26 +39,45 @@ export const writeArticle = async (story) => {
     console.error(error);
   }
 
+  // 1b. Fetch existing article if this is an update
+  let existingArticle = null;
+  if (story.update && story.updatedArticleId) {
+    console.log(`This is an update for article ${story.updatedArticleId}. Fetching existing article...`);
+    try {
+      // Use the newly added mongoService method
+      existingArticle = await mongoService.getArticleById(story.updatedArticleId);
+
+      if (existingArticle) {
+        console.log(`Fetched existing article titled: ${existingArticle.title}`);
+      } else {
+        console.warn(`Could not find existing article with ID: ${story.updatedArticleId}. Proceeding as new article.`);
+        story.update = false; // Treat as new if original not found
+      }
+    } catch (fetchError) {
+      console.error(`Error fetching existing article ${story.updatedArticleId}:`, fetchError);
+      console.warn('Proceeding as if it were a new article due to fetch error.');
+      story.update = false; // Treat as new on error
+    }
+  }
+
   // 2. Scrape the sources
   console.log('Scraping ' + sources.length + ' sources...');
+  // Note: We might want to pass both new and existing sources to the journalist in updates
+  // For now, passing all sources associated with the *story idea*
   const scrapedSources = await scrapeArticles(sources);
   console.log(scrapedSources.length + ' sources scraped.');
 
   // 3. Call the Journalist Agent
   console.log('Journalist Agent started.');
-  const draftArticle = await callJournalist(story, scrapedSources);
+  const draftArticle = await callJournalist(story, scrapedSources, existingArticle); // Pass existingArticle
   console.log('Journalist Agent finished.');
 
-  // 4. Save the draft article
-  // console.log('Saving draft article...');
-  // const savedDraft = await mongoService.saveArticle(draftArticle);
-  // console.log('Draft article saved successfully.');
-
+  // Filter source objects to include only those used by the journalist
   const sourcesObjs = story.sources.filter((source) =>
-    draftArticle.sourceUrls.includes(source.url)
+    draftArticle.sourceUrls?.includes(source.url) // Use optional chaining
   );
 
-  // 4. Create the article markdown
+  // 4. Create the article markdown for downstream agents
   const articleMd = `# Title:${draftArticle.title}\n\n# Precis:\n${draftArticle.precis}\n\n# Summary:\n${draftArticle.summary}`;
 
   // 5. Research the timeline and 6. Find potentially relevant scenarios (in parallel)
@@ -80,66 +99,89 @@ export const writeArticle = async (story) => {
   console.log('findScenariosForArticle started.');
   const scenariosPromise = findScenariosForArticle(articleMd, SCENARIOS_N);
 
-  const [timeline, scenarios] = await Promise.all([
+  const [newTimeline, newScenarios] = await Promise.all([
     timelinePromise,
     scenariosPromise,
   ]);
   console.log('timelineResearcher and findScenariosForArticle finished.');
 
   console.log('scenariosToMarkdown started.');
-  const scenariosStr = scenarios
+  const scenariosStr = newScenarios
     .map((s, i) => `# Scenario ${i + 1}:\n_id: ${s._id}\n${s.description}\n\n`)
     .join('\n\n---\n\n');
   console.log('scenariosToMarkdown finished.');
 
   console.log('contextualiser started.');
-  const contextContent = await contextualiser({
-    articleMd,
-    timeline,
-    scenarios: scenariosStr,
-    numberOfPrompts: PROMPTS_N,
-    numberOfTags: TAGS_N,
-  });
+  let contextContent;
+  contextContent = await withRetry(
+    () => contextualiser({
+      articleMd,
+      timeline: newTimeline, // Pass newly generated timeline
+      scenarios: scenariosStr, // Pass newly found scenarios
+      numberOfPrompts: PROMPTS_N,
+      numberOfTags: TAGS_N,
+    }),
+    'Contextualiser',
+    2,
+    5000
+  );
   console.log('contextualiser finished.');
 
-  const scenariosIncluded = scenarios.filter((scenario) =>
+  // Prepare scenario objects for copy editor (use newly found ones)
+  const scenariosIncluded = newScenarios.filter((scenario) =>
     contextContent.scenarios.some((s) => s._id === scenario._id.toString())
   );
 
   // 7. Call the Copy Editor Agent
   const copyEditorInput = {
-    draftArticle: draftArticle,
-    timeline: timeline,
-    scenarios: scenariosIncluded,
-    suggestedPrompts: contextContent.prompts,
-    tags: contextContent.tags,
+    draftArticle: draftArticle, // Journalist output
+    // Newly generated context
+    newTimeline: newTimeline,
+    newScenarios: scenariosIncluded,
+    newSuggestedPrompts: contextContent.prompts,
+    newTags: contextContent.tags,
+    // Existing context (if available)
+    existingArticleContext: existingArticle ? {
+      timeline: existingArticle.timeline,
+      scenarios: existingArticle.relatedScenarioIds, // Pass IDs, copy editor needs to fetch if details needed
+      suggestedPrompts: existingArticle.suggestedPrompts,
+      tags: existingArticle.tags
+    } : null,
   };
 
   console.log('Copy Editor Agent started.');
-  const editedArticle = await copyEditor(copyEditorInput);
+  const editedArticle = await copyEditor(copyEditorInput); // Copy editor needs prompt update
   console.log('Copy Editor Agent finished.');
 
+  // Assemble the final article object for saving
   const article = {
-    ...editedArticle,
+    // Use existing article ID if this is an update
+    ...(existingArticle ? { _id: existingArticle._id } : {}),
+
+    // Content from copy editor
+    ...editedArticle, // This should contain final title, precis, summary, timeline, scenarios, prompts, tags
+
+    // Meta-data
     sources: sourcesObjs,
-    sourceUrls: draftArticle.sourceUrls,
+    sourceUrls: draftArticle.sourceUrls, // Take source URLs from journalist (might include old+new)
     priority: story.priority,
     relevance: story.relevance,
     lineupId: story.lineupId,
-    storyId: story._id,
-    storyTitle: story.title,
+    storyId: existingArticle ? existingArticle.storyId : story._id, // Link to the *original* story idea if updating
+    storyTitle: story.title, // Keep the story idea title for reference
     storyDescription: story.description,
     storyNotes: story.notes,
+    status: 'DRAFT', // Start as DRAFT, feedCurator will decide final status
   };
 
-  try {
-    fs.writeFileSync(
-      'article' + story.priority + '.md',
-      JSON.stringify(article, null, 2)
-    );
-  } catch (error) {
-    console.error(error);
-  }
+  // try {
+  //   fs.writeFileSync(
+  //     'article' + story.priority + '.md',
+  //     JSON.stringify(article, null, 2)
+  //   );
+  // } catch (error) {
+  //   console.error(error);
+  // }
 
   // 8. Save the article
   console.log('Saving final article...');

@@ -208,7 +208,7 @@ async function scrapeMetaculusData(options = {}, returnAll = false) {
         if (processedCount >= config.maxItems) break;
 
         overallBatchNum++; // Increment overall batch number
-        console.log(`Processing batch ${overallBatchNum}...`); // Log overall progress
+        // console.log(`Processing batch ${overallBatchNum}...`); // Log overall progress
 
         const batchPosts = posts.slice(i, Math.min(i + batchSize, posts.length));
         
@@ -259,11 +259,10 @@ async function runMetaculusTests() {
         open_time__gt: '2025-01-01',
         scheduled_resolve_time__lt: '2035-01-01'
     }, false);
-    console.log(`Fetched ${recentOpenBinary.length} posts.`);
+    console.log(`[Metaculus] Fetched ${recentOpenBinary.length} posts.`);
     // fs store to file
     fs.writeFileSync('recentOpenBinary.json', JSON.stringify(recentOpenBinary, null, 2));
     
-    process.exit(0);
     // Test 2: Fetch a specific post by ID (use a known BINARY post ID, e.g., 14184)
     console.log("\n--- Test 2: Fetching single post by ID (e.g., 14184 -somethign about Canadian Prime Minister) ---");
     const specificPostIdBinary = 36677; // Post ID for "Will the WHO declare that mpox..."
@@ -325,13 +324,6 @@ async function runMetaculusTests() {
     console.log("\n--- Metaculus Testing Complete ---");
 }
 
-// Ensure this is run only when executing the file directly
-if (process.argv[1] && process.argv[1].endsWith('metaculus.js')) {
-     runMetaculusTests().catch(console.error);
-     // Removed .finally(() => process.exit(0)); - let node exit naturally after async ops unless errors occur
-}
-
-
 // Export functions for external use
 export {
   scrapeMetaculusData,
@@ -340,4 +332,5 @@ export {
   // Add other exports if needed
 };
 
+// runMetaculusTests().catch(console.error);
 

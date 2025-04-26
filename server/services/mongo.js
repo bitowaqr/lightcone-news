@@ -133,19 +133,26 @@ class MongoService {
   async saveArticle(articleData) {
     await this.connect();
 
-    if (!articleData.storyId) {
+    // Determine the primary key for finding/updating
+    // Priority: _id > storyId > title
+    let query;
+    if (articleData._id) {
+        query = { _id: articleData._id };
+        console.log(`Attempting to save article using provided _id: ${articleData._id}`);
+    } else if (articleData.storyId) {
         // Handle cases where storyId might be missing, depending on requirements
         // Maybe throw an error, or generate a default article without linking?
         // For now, let's assume storyId is essential for finding/creating.
         // If not, adjust the logic.
-        console.warn("Attempting to save article without a storyId. Upsert might behave unexpectedly or create duplicates if title is used as key.");
-        // As a fallback, let's try finding by title if storyId is missing, but this is less reliable
-        // This fallback assumes title is unique enough for draft stages or requires manual intervention later.
-        if (!articleData.title) throw new Error("Cannot save article without storyId or title.");
-        // Let's proceed assuming findOrCreate logic based on storyId OR title (if storyId missing)
+        query = { storyId: articleData.storyId };
+        console.log(`Attempting to save article using storyId: ${articleData.storyId}`);
+    } else if (articleData.title) {
+        // Fallback to title if _id and storyId are missing
+        console.warn("Attempting to save article using title as key (fallback). Ensure title is unique or handle potential issues.");
+        query = { title: articleData.title };
+    } else {
+        throw new Error("Cannot save article: requires _id, storyId, or title.");
     }
-
-    const query = articleData.storyId ? { storyId: articleData.storyId } : { title: articleData.title }; // Prioritize storyId
 
     try {
         let article = await Article.findOne(query);
@@ -179,6 +186,98 @@ class MongoService {
     }
   }
   
+  // Add this function to your mongoService implementation
+  /**
+   * Fetches articles based on a list of statuses.
+   * @param {string[]} statuses - An array of statuses (e.g., ['DRAFT', 'PUBLISHED']).
+   * @returns {Promise<Array<object>>} - A promise resolving to an array of article documents.
+   */
+  async getArticlesByStatus(statuses = []) {
+    if (!this.isConnected) await this.connect();
+    if (!Array.isArray(statuses) || statuses.length === 0) {
+        console.warn('getArticlesByStatus called with invalid or empty statuses array.');
+        return [];
+    }
+    try {
+      // Ensure you import your Article model correctly at the top of mongo.js
+      // e.g., import Article from '../models/Article.model.js';
+      const articles = await Article.find({ status: { $in: statuses } }).lean();
+      return articles;
+    } catch (error) {
+      console.error(`Error fetching articles with statuses ${statuses.join(', ')}:`, error);
+      throw error; // Re-throw to be handled by caller
+    }
+  }
+
+  // Add this function to your mongoService implementation
+ /**
+  * Updates the status and priority of multiple articles based on curation decisions.
+  * @param {Array<object>} curationDecisions - Array from feedCurator output.
+  * Each object should have _id, newStatus, newPriority.
+  * @returns {Promise<object>} - A promise resolving to the bulk write result.
+  */
+ async updateMultipleArticleStatusesAndPriorities(curationDecisions = []) {
+    if (!this.isConnected) await this.connect();
+    if (!Array.isArray(curationDecisions) || curationDecisions.length === 0) {
+      console.warn('updateMultipleArticleStatusesAndPriorities called with no decisions.');
+      return { ok: 1, nModified: 0 }; // Indicate success with no changes
+    }
+
+    const bulkOps = curationDecisions.map(decision => ({
+      updateOne: {
+        filter: { _id: decision._id },
+        // Update status and priority. Set publishedDate if status changes to PUBLISHED
+        update: {
+          $set: {
+            status: decision.newStatus,
+            priority: decision.newPriority,
+            // Set publishedDate only when transitioning to PUBLISHED *from* a non-published state
+            ...(decision.newStatus === 'PUBLISHED' && decision.currentStatus !== 'PUBLISHED' && { publishedDate: new Date() }),
+            // Optionally, set updatedDate whenever status/priority changes
+            updatedDate: new Date(),
+          }
+        }
+      }
+    }));
+
+    try {
+      // Ensure you import your Article model correctly at the top of mongo.js
+      const result = await Article.bulkWrite(bulkOps, { ordered: false }); // ordered: false allows other updates if one fails
+      console.log(`[MongoService] Bulk update status/priority result: Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
+      if (result.writeErrors && result.writeErrors.length > 0) {
+          console.error('[MongoService] Bulk update finished with write errors:', result.writeErrors);
+      }
+       if (result.hasWriteErrors()) {
+           console.error('[MongoService] Bulk update encountered write errors.');
+            // Depending on severity, you might want to throw an error here
+            // throw new Error('Bulk update encountered write errors.');
+       }
+      return result;
+    } catch (error) {
+      console.error('Error during bulk article status/priority update:', error);
+      throw error; // Re-throw for handling in the worker
+    }
+  }
+
+  // Add this function to fetch a single article by its ID
+  async getArticleById(articleId) {
+    if (!this.isConnected) await this.connect();
+    if (!articleId) {
+        console.warn('getArticleById called with no articleId.');
+        return null;
+    }
+    if (!mongoose.Types.ObjectId.isValid(articleId)) {
+        console.warn(`getArticleById called with invalid ObjectId: ${articleId}`);
+        return null;
+    }
+    try {
+        const article = await Article.findById(articleId).lean();
+        return article;
+    } catch (error) {
+        console.error(`Error fetching article with ID ${articleId}:`, error);
+        throw error; // Re-throw to be handled by caller
+    }
+  }
 }
 
 // Create and export a singleton instance

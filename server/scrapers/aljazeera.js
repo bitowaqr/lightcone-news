@@ -10,7 +10,6 @@ const MAIN_URL = "https://www.aljazeera.com/";
 const scrapeFeed = async () => {
     let browser = null;
     try {
-        console.log(`Launching Puppeteer for Al Jazeera`);
         browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: 'new', // Use 'new' headless mode
@@ -146,7 +145,7 @@ const scrapeFeed = async () => {
             }
         });
 
-        console.log(`Parsed ${articles.length} unique articles from Al Jazeera main feed.`);
+        
         return articles;
 
     } catch (error) {
@@ -155,7 +154,6 @@ const scrapeFeed = async () => {
         return [];
     } finally {
         if (browser) {
-            console.log(`Closing Puppeteer for Al Jazeera`);
             await browser.close();
         }
     }
@@ -182,7 +180,7 @@ const scrapeFeed = async () => {
 const scrapeArticle = async (url) => {
     let browser = null;
     try {
-        console.log(`Launching Puppeteer for Al Jazeera article: ${url}`);
+        console.log(`Launching Puppeteer for Al Jazeera: ${url}`);
         browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: 'new',
@@ -193,7 +191,6 @@ const scrapeArticle = async (url) => {
 
         await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
         const htmlContent = await page.content();
-        console.log(`Successfully fetched content for: ${url}`);
 
         const $ = cheerio.load(htmlContent);
 
@@ -302,7 +299,6 @@ const scrapeArticle = async (url) => {
         return { url: url, title: null, rawContent: null, meta: { publisher: "Al Jazeera" }, error: error.message };
     } finally {
         if (browser) {
-            console.log(`Closing Puppeteer for Al Jazeera article: ${url}`);
             await browser.close();
         }
     }

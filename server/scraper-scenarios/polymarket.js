@@ -22,7 +22,7 @@ function formatPolymarketScenario(market, event = null) {
     // Basic validation
     if (!market.question || !market.conditionId) {
       console.warn(
-        `Skipping due to missing data: ${
+        `[Polymarket] Skipping due to missing data: ${
           market?.slug?.substring(0, 15) || 'No Market slug'
         }`
       );
@@ -360,7 +360,6 @@ async function scrapePolymarketData(options = {}) {
       }
 
       if (eventsData.length < fetchLimit) {
-        console.log('Fetched last page of events.');
         keepGoing = false;
       } else {
         offset += fetchLimit;
@@ -375,7 +374,7 @@ async function scrapePolymarketData(options = {}) {
 
   if (config.maxItems !== undefined && processedCount >= config.maxItems) {
     console.log(
-      `(Processing stopped early due to maxItems limit: ${config.maxItems})`
+      `[Polymarket] (Processing stopped early due to maxItems limit: ${config.maxItems})`
     );
   }
 
@@ -393,7 +392,6 @@ async function fetchAndFormatSinglePolymarketMarket(marketId) {
     return null;
   }
   const url = `${POLYMARKET_API_BASE_URL}/markets/${marketId}`;
-  console.log(`Fetching single market: ${url}`);
 
   try {
     const resp = await fetch(url);
@@ -414,21 +412,10 @@ async function fetchAndFormatSinglePolymarketMarket(marketId) {
 
     // Use the shared formatter function (no event data available here)
     const formattedScenario = formatPolymarketScenario(marketData, null);
-
-    if (formattedScenario) {
-      console.log(
-        `Successfully fetched and formatted market ${marketId}: "${formattedScenario.question.substring(
-          0,
-          50
-        )}..."`
-      );
-    } else {
-      console.error(`Failed to format data for market ${marketId}.`);
-    }
     return formattedScenario;
   } catch (error) {
     console.error(
-      `Error fetching or processing single market ${marketId}:`,
+      `[Polymarket] Error fetching/processing market ${marketId}:`,
       error
     );
     return null;
@@ -445,7 +432,6 @@ async function fetchAndFormatSinglePolymarketMarket(marketId) {
  */
 async function getPolymarketClobMarketByConditionId(conditionId) {
   const url = `${POLYMARKET_CLOB_API_URL}/markets/${conditionId}`;
-  console.log(`Fetching market details from: ${url}`); // Added for debugging
   try {
     const response = await fetch(url);
     if (!response.ok) {

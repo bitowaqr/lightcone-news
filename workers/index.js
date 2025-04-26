@@ -1,9 +1,10 @@
 // workers/scheduler.js
 // import cron from 'node-cron';
 import { withRetry } from './utils/withRetry.js'; 
-import { updateScenarios } from './updateScenarios.js';
+import { updateAndEmbedScenarios } from '../server/scraper-scenarios/index.js';
 import { createLineup } from './createLineup.js'; 
 import { writeArticle } from './writeArticle.js';
+import { feedCurator } from '../server/agents/feedCurator.js';
 import { mongoService } from '../server/services/mongo.js'; 
 
 
@@ -15,12 +16,12 @@ async function runAllTasks() {
 
   try {
         // --- Task 1: Update Scenarios ---
-        await withRetry(
-            () => updateScenarios(),
-            'UpdateScenarios',
-            3, // maxRetries
-            60_000 // delayMs (1 minute)
-        );
+        // await withRetry(
+        //     () => updateAndEmbedScenarios(),
+        //     'UpdateScenarios',
+        //     3, // maxRetries
+        //     60_000 // delayMs (1 minute)
+        // );
         console.log("[Scheduler] UpdateScenarios completed successfully.");
 
         // --- Task 2: Create Lineup ---
@@ -82,6 +83,34 @@ async function runAllTasks() {
                  console.warn(`${errorCount} articles failed during the WriteArticles task.`);
                  // Optionally throw new Error(...) if any failure is critical
              }
+        }
+
+        // --- Task 4: Curate Feed --- 
+        console.log("[Scheduler] Starting Feed Curation task...");
+        let curationDecisions;
+        try {
+            curationDecisions = await withRetry(
+                () => feedCurator(),
+                'FeedCuration',
+                3, // Retries for curation
+                60_000 // Delay
+            );
+            console.log("[Scheduler] Feed Curation completed successfully.");
+
+            // --- Task 5: Apply Curation Decisions ---
+            if (curationDecisions && curationDecisions.curatedFeed && curationDecisions.curatedFeed.length > 0) {
+                console.log(`[Scheduler] Applying ${curationDecisions.curatedFeed.length} curation decisions...`);
+                await mongoService.updateMultipleArticleStatusesAndPriorities(curationDecisions.curatedFeed);
+                console.log("[Scheduler] Curation decisions applied successfully.");
+            } else {
+                console.log("[Scheduler] No curation decisions to apply.");
+            }
+
+        } catch (curationError) {
+            console.error("[Scheduler] Feed Curation or Application failed critically:", curationError);
+            // Decide how to handle this - maybe the feed stays as is?
+            // For now, log the error and let the workflow finish.
+            // Consider adding monitoring/alerting here.
         }
 
         console.log(`[Scheduler] Task sequence completed successfully at ${new Date().toISOString()}.`);

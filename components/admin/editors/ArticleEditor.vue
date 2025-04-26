@@ -27,6 +27,17 @@
           <p v-if="validationErrors.title" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ validationErrors.title }}</p>
         </div>
 
+        <!-- Priority -->
+        <div class="mb-4">
+          <label for="priority" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Priority</label>
+          <input
+            id="priority"
+            type="number"
+            v-model.number="editableDoc.priority"
+            class="w-full md:w-1/4 px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
         <!-- Status -->
         <div class="mb-4">
           <label for="status" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Status</label>
@@ -46,12 +57,20 @@
             <button 
               v-if="editableDoc.status !== 'PUBLISHED'"
               @click="publishArticle"
-              class="px-3 py-2 bg-sky-600 text-white rounded hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm whitespace-nowrap"
+              :disabled="saving"
+              class="px-3 py-2 bg-sky-600 text-white rounded hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm whitespace-nowrap disabled:opacity-50"
               title="Set status to PUBLISHED and save"
             >
-              Publish Now
+              {{ saving && publishMessage === 'Publishing...' ? 'Publishing...' : 'Publish Now' }}
             </button>
           </div>
+          <!-- Publish Feedback -->
+          <p v-if="publishMessage && publishMessage !== 'Publishing...'" 
+             class="mt-2 text-sm font-medium"
+             :class="{'text-green-600 dark:text-green-400': !saveError, 'text-red-600 dark:text-red-400': saveError}"
+          >
+            {{ publishMessage }}
+          </p>
         </div>
 
         <!-- Publish Date -->
@@ -140,6 +159,32 @@
             Summary Alt (Bullet points)
           </label>
           <MarkdownEditor v-model="editableDoc.summaryAlt" large />
+        </div>
+
+        <!-- Lineup ID -->
+        <div class="mb-4">
+          <label for="lineupId" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Lineup ID</label>
+          <input
+            id="lineupId"
+            v-model="editableDoc.lineupId"
+            class="w-full md:w-1/2 px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <!-- Story ID -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Related Story Idea ID</label>
+          <div v-if="editableDoc.storyId" class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-2 rounded border dark:border-gray-700">
+            <code class="text-sm text-gray-700 dark:text-gray-300">{{ editableDoc.storyId }}</code>
+            <button
+              @click="navigateToStoryIdea"
+              class="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800"
+              title="Go to Story Idea"
+            >
+              View Story
+            </button>
+          </div>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400 italic">No related story idea.</p>
         </div>
       </div>
 
@@ -341,13 +386,15 @@
     <div class="mt-6 pt-4 border-t dark:border-gray-700 flex flex-wrap gap-3 items-center">
       <button 
         @click="saveChanges" 
-        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+        :disabled="saving"
+        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
       >
-        Save Changes
+        {{ saving ? 'Saving...' : 'Save Changes' }}
       </button>
       <button 
         @click="cancel" 
-        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        :disabled="saving"
+        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
       >
         Cancel
       </button>
@@ -369,14 +416,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue';
 import MarkdownEditor from '../MarkdownEditor.vue';
 import JsonViewerModal from '../JsonViewerModal.vue';
+import { navigateTo } from '#app';
 
 const props = defineProps({
   document: {
     type: Object,
     required: true
+  },
+  saving: { // Prop from parent indicating save in progress
+    type: Boolean,
+    default: false
+  },
+  saveError: { // Prop from parent containing save error message/object
+    type: [String, Object, null],
+    default: null
   }
 });
 
@@ -391,6 +447,8 @@ const validationErrors = reactive({});
 const imageError = ref(false);
 const sourcesCollapsed = ref(true); // State for sources collapse
 const timelineCollapsed = ref(true); // State for timeline collapse
+const publishMessage = ref(null);
+let publishTimeout = null;
 
 // Computed properties for formatting
 const publishedDateFormatted = computed({
@@ -481,7 +539,10 @@ function validate() {
 }
 
 // Publish and Save
-function publishArticle() {
+async function publishArticle() {
+  clearTimeout(publishTimeout); // Clear any existing message timeout
+  publishMessage.value = 'Publishing...';
+
   editableDoc.status = 'PUBLISHED';
   // Set publish date only if it's not already set
   if (!editableDoc.publishedDate) {
@@ -497,6 +558,8 @@ function saveChanges() {
     const firstErrorEl = document.querySelector('.border-red-300');
     if (firstErrorEl) firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
+  } else {
+    publishMessage.value = null; // Clear publish message on regular save
   }
   
   emit('save', editableDoc);
@@ -508,6 +571,21 @@ function cancel() {
 
 function viewRawJson() {
   showJsonModal.value = true;
+}
+
+// Navigate to related Story Idea
+function navigateToStoryIdea() {
+  if (editableDoc.storyId) {
+    // Navigate to admin page, targeting StoryIdeas collection, filtering by this storyId
+    navigateTo({ 
+      path: '/admin', 
+      query: { 
+        collection: 'StoryIdeas', 
+        filterKey: '_id',
+        filterValue: editableDoc.storyId 
+      }
+    });
+  }
 }
 
 // Watch for document changes from parent
@@ -537,5 +615,42 @@ onMounted(() => {
   Object.keys(validationErrors).forEach(key => {
     validationErrors[key] = null;
   });
+});
+
+// Watch for save completion/error from parent to update publish feedback
+watch(() => props.saving, (newValue, oldValue) => {
+  if (oldValue === true && newValue === false) { // Saving just finished
+    if (publishMessage.value === 'Publishing...') { // Check if it was a publish action
+      if (props.saveError) {
+        publishMessage.value = `Publish failed: ${props.saveError}`;
+        // Keep error message displayed longer or until next action
+      } else {
+        publishMessage.value = 'Published successfully!';
+        // Clear the success message after a few seconds
+        publishTimeout = setTimeout(() => {
+          publishMessage.value = null;
+        }, 3000);
+      }
+    }
+  }
+});
+
+// Clear message if user starts editing again or error changes
+watch(editableDoc, () => {
+  clearTimeout(publishTimeout);
+  if (publishMessage.value !== 'Publishing...') {
+    publishMessage.value = null;
+  }
+}, { deep: true });
+
+watch(() => props.saveError, (newError) => {
+  if (newError && publishMessage.value === 'Publishing...') {
+    publishMessage.value = `Publish failed: ${newError}`;
+  }
+});
+
+// Clear timeout on unmount
+onUnmounted(() => {
+  clearTimeout(publishTimeout);
 });
 </script> 

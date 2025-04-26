@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const SCENARIO_COLLECTION = 'scenario';
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 16;
 
 class ChromaService {
   constructor() {

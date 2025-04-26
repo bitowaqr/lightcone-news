@@ -1,0 +1,266 @@
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import dotenv from 'dotenv';
+import { mongoService } from '../services/mongo.js'; // Assuming mongoService can fetch articles by status
+import { formatRelativeTime } from '../../utils/formatRelativeTime.js'; // Use consistent relative time formatting
+
+dotenv.config();
+
+const GEMINI_MODEL = process.env.WORKER_MODEL || 'gemini-2.5-pro-preview-03-25';
+const MAX_FEED_SIZE = 25; // Allow slightly more flexibility as per instructions
+const MAX_AGE_HOURS = 48; // Articles older than this are strong candidates for removal
+
+// --- Zod Schema for Structured Output ---
+const curatedArticleSchema = z.object({
+  _id: z.string().describe('The MongoDB _id of the article.'),
+  currentStatus: z.string().describe('The current status of the article (e.g., DRAFT, PUBLISHED).'),
+  currentPriority: z.number().optional().describe('The current priority of the article.'),
+  newStatus: z
+    .enum(['PUBLISHED', 'ARCHIVED'])
+    .describe('The proposed new status for the article.'),
+  newPriority: z
+    .number()
+    .int()
+    .min(0)
+    .describe(
+      'The proposed new priority (0 = highest/top of feed). Lower numbers are higher priority.'
+    ),
+  reasoning: z
+    .string()
+    .describe(
+      'Brief explanation for the decision (e.g., "New critical story", "Archiving - superseded by update", "Archiving - old and lower relevance", "Adjusting priority for theme").'
+    ),
+});
+
+const feedCurationSchema = z.object({
+  curatedFeed: z
+    .array(curatedArticleSchema)
+    .describe(
+      'An array representing the entire processed set of articles (drafts and previously published), each with its proposed new status and priority.'
+    ),
+});
+
+const model = new ChatGoogleGenerativeAI({
+  model: GEMINI_MODEL,
+  temperature: 0.4, // Slightly higher temp for more nuanced editorial judgment
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
+const structuredLlm = model.withStructuredOutput(feedCurationSchema);
+
+// --- Feed Curator Agent ---
+
+export const feedCurator = async () => {
+  console.log('[FeedCurator] Starting feed curation process...');
+
+  // 1. Fetch relevant articles
+  let draftArticles = [];
+  let publishedArticles = [];
+  try {
+    console.log('[FeedCurator] Fetching DRAFT and PUBLISHED articles...');
+    [draftArticles, publishedArticles] = await Promise.all([
+      mongoService.getArticlesByStatus(['DRAFT','PENDING']), // Fetch articles ready for potential publishing
+      mongoService.getArticlesByStatus(['PUBLISHED']),   // Fetch currently live articles
+    ]);
+    console.log(`[FeedCurator] Fetched ${draftArticles.length} drafts and ${publishedArticles.length} published articles.`);
+  } catch (error) {
+    console.error('[FeedCurator] Error fetching articles:', error);
+    throw new Error('Failed to fetch articles for curation.');
+  }
+
+  const allArticles = [...draftArticles, ...publishedArticles];
+
+  if (allArticles.length === 0) {
+      console.log('[FeedCurator] No articles found to curate. Exiting.');
+      return { curatedFeed: [] };
+  }
+
+  // 2. Prepare input for LLM
+  const formattedArticleList = allArticles
+    .map((article, index) => {
+        // Safely access nested properties
+        const updatedArticleId = article.storyId?.toString(); // Assuming storyId links updates
+        const updateIndicator = updatedArticleId ? ` (Update targeting Article ID: ${updatedArticleId})` : '';
+        const created = article.createdAt ? formatRelativeTime(article.createdAt) : 'N/A';
+        const published = article.publishedDate ? formatRelativeTime(article.publishedDate) : 'N/A';
+
+        return `
+--- Article ${index + 1} ---
+_id: ${article._id}
+Current Status: ${article.status}
+Current Priority: ${article.priority ?? 'N/A'}
+Title: ${article.title}
+Precis: ${article.precis}
+Relevance Score (from story): ${article.relevance || 'N/A'}
+Is Update?: ${!!updatedArticleId}${updateIndicator}
+Created: ${created}
+Published: ${published}
+Tags: [${(article.tags || []).join(', ')}]
+`;
+    })
+    .join('\n');
+
+  // 3. Define Prompts
+  const systemPrompt = `# Role: AI Newsfeed Curator for Lightcone.news
+
+# Context:
+You are the AI Chief Editor responsible for curating the main newsfeed of Lightcone.news. The platform focuses on **important global stories with deep context**, aiming for **signal over noise** and adhering to principles of **clarity, conciseness, intellectual honesty, and objectivity**. The target audience is intelligent and seeks substantive understanding of significant world events.
+
+# Goal:
+Your task is to process a list of **DRAFT** articles (potentially ready for publication) and currently **PUBLISHED** articles. You must decide the final state of the newsfeed by assigning a \`newStatus\` ('PUBLISHED' or 'ARCHIVED') and a \`newPriority\` (integer, 0=highest) to **every** article provided in the input. The output determines what readers see on the front page.
+
+# Core Curation Principles & Rules:
+
+1.  **Freshness & Relevance are Paramount:**
+    *   The feed must feel current and relevant. Prioritize newer, significant stories.
+    *   **Age Rule:** Articles older than ${MAX_AGE_HOURS} hours (based on \`Published\` or \`Created\` date if not published) are strong candidates for ARCHIVING unless they represent critical, ongoing situations with no significant updates. Use the relative time (\`Published\` / \`Created\`) provided.
+    *   **Relevance Score:** Use the \`Relevance Score (from story)\` as a strong indicator (\`critical\` > \`important\` > \`relevant\` > \`noteworthy\` > \`misc\`).
+
+2.  **Integrate New Drafts:**
+    *   Review DRAFT articles. If they are high quality (assume they passed previous checks) and meet relevance/freshness criteria, set their \`newStatus\` to 'PUBLISHED' and assign an appropriate \`newPriority\`.
+    *   **Always publish publishable drafts** unless they are clearly low quality, trivial, or immediately superseded by another article.
+
+3.  **Handle Updates:**
+    *   If a DRAFT article is marked as an **Update** (check \`Is Update?\` field and \`updatedArticleId\`), and you decide to PUBLISH it:
+        *   Find the corresponding **original** PUBLISHED article (using the \`updatedArticleId\`).
+        *   Set the \`newStatus\` of the **original** article to 'ARCHIVED'. Assign the update article a high priority, often taking the original's spot or higher.
+    * Even if a DRAFT article is not marked as an update, and there is another PUBLISHED article that reports on the same issue, you need to check whether the new DRAFT article is directly or indirectly and update to the original story. The key question is: is it a great reading experience for our audience to read both the original and the update? If there is some overlap between the two articles, you should probably archive the original and publish the update, unless there is a very good reason not to.
+
+4.  **Maintain Feed Cohesion & Size:**
+    *   **Thematic Grouping:** Where possible, group related articles together using \`newPriority\`. For example, place all articles about a specific geopolitical conflict consecutively. Assign priorities sequentially within a theme. Use \`Tags\` to help identify themes.
+    *   **Feed Size:** Aim for a feed size ideally around 15-20 articles, but be flexible. **Never exceed ${MAX_FEED_SIZE} PUBLISHED articles.** If too many articles qualify for 'PUBLISHED', be more critical about archiving older or less relevant ones. If few new stories are available, you can keep more older (but still relevant) articles published, but avoid a stale feed.
+    *   **Prioritization:** Priority determines the order (0 is top). Assign priorities logically:
+        *   Critical, breaking news: 0, 1, 2...
+        *   Significant updates: Often take the priority of the article they replace or higher.
+        *   Important ongoing stories: Follow critical news.
+        *   Lower relevance/older stories: Higher priority numbers (further down the feed).
+        *   Ensure priority numbers are sequential for the 'PUBLISHED' articles (e.g., 0, 1, 2, ..., N). Articles marked 'ARCHIVED' can have a non-sequential or default priority (e.g., 999).
+
+5.  **Decision Logic:**
+    *   **Keep vs. Archive:** Primarily based on age, relevance, significance, and whether it's been superseded by an update. Lower relevance (\`noteworthy\`, \`misc\`) and older articles are the first candidates for 'ARCHIVED'.
+    *   **Priority Assignment:** Based on relevance, freshness, thematic grouping, and update status. Critical/new stories get low numbers (top). Older/less relevant get higher numbers (bottom).
+    *   **Flexibility:** If news flow is high, be aggressive in archiving. If slow, be more conservative, but always prune clearly outdated/irrelevant content. The goal is an optimal, informative feed *for today*.
+
+6.  **Reasoning:** Provide a concise reason for each decision, especially for status changes or significant priority shifts.
+
+# Input Format:
+A list of articles, each with \`_id\`, \`Current Status\`, \`Current Priority\`, \`Title\`, \`Precis\`, \`Relevance Score\`, \`Is Update?\`, \`Created\`, \`Published\`, \`Tags\`.
+
+# Output Format: JSON Only
+You **MUST** provide your response **ONLY** as a single, valid JSON object conforming to the \`feedCurationSchema\`. This object must contain the \`curatedFeed\` array, where **every article** from the input list is represented with its \`_id\`, \`currentStatus\`, \`currentPriority\`, **proposed** \`newStatus\`, **proposed** \`newPriority\`, and \`reasoning\`.
+
+**Strict JSON Schema:**
+\`\`\`json
+${JSON.stringify(zodToJsonSchema(feedCurationSchema), null, 2)}
+\`\`\`
+
+Do not include explanations outside the JSON structure. Ensure every input article has an entry in the output array. Assign sequential priorities (0, 1, 2...) ONLY to articles with \`newStatus: 'PUBLISHED'\`.
+`;
+
+  const userPrompt = `# Articles to Curate:
+${formattedArticleList}
+
+# Task:
+Apply the curation principles. Decide the \`newStatus\` and \`newPriority\` for **every article** listed above. Provide the full list in the specified JSON format using the schema. Ensure sequential priorities for published articles and concise reasoning for each decision. Today's Date: ${new Date().toISOString()}`;
+
+  // 4. Invoke LLM
+  console.log('[FeedCurator] Invoking LLM for curation...');
+  try {
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+    ];
+    const response = await structuredLlm.invoke(messages);
+    console.log('[FeedCurator] LLM response received.');
+
+    // Basic validation
+    if (!response || !Array.isArray(response.curatedFeed)) {
+        console.error('[FeedCurator] Invalid response structure from LLM:', response);
+        throw new Error('Invalid response structure from LLM.');
+    }
+    if (response.curatedFeed.length !== allArticles.length) {
+        console.warn(`[FeedCurator] LLM output count (${response.curatedFeed.length}) doesn't match input count (${allArticles.length}).`);
+        // Potentially add logic here to handle mismatches if critical
+    }
+
+    // Sort the final PUBLISHED articles by their new priority for clarity
+    response.curatedFeed.sort((a, b) => {
+        if (a.newStatus === 'PUBLISHED' && b.newStatus === 'PUBLISHED') {
+            return a.newPriority - b.newPriority;
+        }
+        if (a.newStatus === 'PUBLISHED') return -1; // Published items come first
+        if (b.newStatus === 'PUBLISHED') return 1;
+        return 0; // Keep relative order of archived items
+    });
+
+
+    return response;
+  } catch (error) {
+    console.error('[FeedCurator] Error during LLM invocation:', error);
+    throw new Error('Failed to get curation decisions from LLM.');
+  }
+};
+
+// --- Test Function ---
+export const testFeedCurator = async () => {
+  console.log('\n--- [TEST] Running Feed Curator Simulation ---');
+  try {
+    // Connect to DB if mongoService requires it for fetching
+    await mongoService.connect();
+
+    const curationResult = await feedCurator();
+
+    console.log('\n--- [TEST] Proposed Curation Decisions ---');
+    if (curationResult && curationResult.curatedFeed.length > 0) {
+      const changes = { PUBLISHED: 0, ARCHIVED: 0, KEPT_PUBLISHED: 0, };
+      const publishedFeed = [];
+
+      curationResult.curatedFeed.forEach(item => {
+        const statusChange = item.currentStatus !== item.newStatus;
+        const priorityChange = item.currentPriority !== item.newPriority && item.newStatus === 'PUBLISHED'; // Only log priority changes for published
+
+        console.log(`
+Article ID: ${item._id}
+  Current Status: ${item.currentStatus} -> New Status: ${item.newStatus} ${statusChange ? '(*CHANGED*)' : ''}
+  Current Priority: ${item.currentPriority ?? 'N/A'} -> New Priority: ${item.newPriority} ${priorityChange ? '(*CHANGED*)' : ''}
+  Reasoning: ${item.reasoning}`);
+
+        if (item.newStatus === 'PUBLISHED') {
+          publishedFeed.push(item);
+          if (item.currentStatus !== 'PUBLISHED') {
+            changes.PUBLISHED++;
+          } else {
+            changes.KEPT_PUBLISHED++;
+          }
+        } else if (item.newStatus === 'ARCHIVED' && item.currentStatus !== 'ARCHIVED') {
+          changes.ARCHIVED++;
+        }
+      });
+
+      console.log('\n--- [TEST] Summary ---');
+      console.log(`Total articles processed: ${curationResult.curatedFeed.length}`);
+      console.log(`Proposed PUBLISHED count: ${publishedFeed.length} (New: ${changes.PUBLISHED}, Kept: ${changes.KEPT_PUBLISHED})`);
+      console.log(`Proposed ARCHIVED count (from non-archived): ${changes.ARCHIVED}`);
+      console.log('\nPublished Feed Order:');
+       publishedFeed
+         .sort((a, b) => a.newPriority - b.newPriority) // Ensure sorted for display
+         .forEach(item => console.log(`  Priority ${item.newPriority}: ${item.reasoning.substring(0,60)}...`));
+
+
+    } else {
+      console.log('No curation decisions were made or returned.');
+    }
+
+  } catch (error) {
+    console.error('\n--- [TEST] Feed Curator Simulation FAILED ---');
+    console.error(error);
+  } finally {
+      // Disconnect from DB if needed
+      await mongoService.disconnect();
+      console.log('\n--- [TEST] Feed Curator Simulation Finished ---');
+  }
+};
+
+// Uncomment to run the test directly
+// testFeedCurator();

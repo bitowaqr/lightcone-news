@@ -5,9 +5,14 @@ import { euronews } from './euronews.js';
 import { france24 } from './france24.js';
 import { heute } from './heute.js';
 import { tagesschau } from './tagesschau.js';
-import { scrapePolymarketData } from './polymarket.js';
-import { scrapeMetaculusData } from './metaculus.js';
+import { scrapePolymarketData } from '../scraper-scenarios/polymarket.js';
+import { scrapeMetaculusData } from '../scraper-scenarios/metaculus.js';
 import { semafor } from './semafor.js';
+import { welt } from './welt.js';
+import { cbc } from './cbc.js';
+import { npr } from './npr.js';
+import { indiatimes } from './indiatimes.js';
+import { nhk } from './nhk.js';
 import fs from 'fs';
 import Exa from 'exa-js';
 import dotenv from 'dotenv';
@@ -29,6 +34,11 @@ const feedScraperRegistry = {
     heute: heute.scrapeFeed,
     tagesschau: tagesschau.scrapeFeed,
     semafor: semafor.scrapeFeed,
+    welt: welt.scrapeFeed,
+    cbc: cbc.scrapeFeed,
+    npr: npr.scrapeFeed,
+    indiatimes: indiatimes.scrapeFeed,
+    nhk: nhk.scrapeFeed,
 };
 
 // Reusable Exa Scraper Function
@@ -37,8 +47,6 @@ const exaArticleScraper = async (source) => {
     let scrapedContent = null;
     let retryCount = 0;
     const url = source.url;
-
-    console.log(`[ExaScraper] Scraping ${url} with Exa...`);
 
     while (retryCount < EXA_MAX_RETRIES && !scrapedContent) {
         try {
@@ -51,10 +59,7 @@ const exaArticleScraper = async (source) => {
                     },
                 }
             );
-            scrapedContent = response.results?.[0]; // Get the first result
-            if (scrapedContent) {
-                 console.log(`[ExaScraper] Successfully scraped ${url.slice(0, 30)}... on attempt ${retryCount + 1}.`);
-            }
+            scrapedContent = response.results?.[0]; // first result
             break; // Success, exit loop
         } catch (error) {
             console.error(`[ExaScraper] Exa failed for ${url.slice(0, 30)}... (attempt ${retryCount + 1}/${EXA_MAX_RETRIES}):`, error.message);
@@ -108,6 +113,11 @@ const articleScraperRegistry = {
     heute: exaArticleScraper,
     tagesschau: exaArticleScraper,
     semafor: semafor.scrapeArticle, 
+    welt: exaArticleScraper,
+    cbc: exaArticleScraper,
+    npr: exaArticleScraper,
+    indiatimes: exaArticleScraper,
+    nhk: exaArticleScraper,
     theguardian: doNotScrapeArticle, // Explicitly handle Guardian
     // Add other specific scrapers or mappings here
 };
@@ -121,6 +131,11 @@ const publisherMap = {
     tagesschau: 'Tagesschau',
     heute: 'ZDFheute',
     semafor: 'Semafor',
+    welt: 'WELT',
+    cbc: 'CBC',
+    npr: 'NPR',
+    indiatimes: 'Times of India',
+    nhk: 'NHK',
     theguardian: 'The Guardian', // Add guardian here too
 };
 
@@ -139,6 +154,11 @@ const getSourceKeyFromUrl = (url) => {
         if (hostname.includes('tagesschau.de')) return 'tagesschau';
         if (hostname.includes('semafor.com')) return 'semafor';
         if (hostname.includes('theguardian.com')) return 'theguardian';
+        if (hostname.includes('welt.de')) return 'welt';
+        if (hostname.includes('cbc.ca')) return 'cbc';
+        if (hostname.includes('npr.org')) return 'npr';
+        if (hostname.includes('indiatimes.com')) return 'indiatimes';
+        if (hostname.includes('nhk.or.jp')) return 'nhk';
         // Add more mappings if needed
         console.warn(`[getSourceKeyFromUrl] No specific key found for URL: ${url}. Defaulting to Exa.`);
         return null; // Indicate no specific key found, will default to Exa
@@ -163,7 +183,6 @@ const scrapeFeeds = async (includeSources = [], shuffle = false) => {
         return true;
     });
 
-    console.log(`[ScrapeFeeds] Scraping feeds for sources: ${sourceKeysToScrape.join(', ')}`);
     const feedPromises = sourceKeysToScrape.map(key => 
         feedScraperRegistry[key]()
             .catch(error => {
@@ -209,7 +228,7 @@ const scrapeArticles = async (sources) => {
             scraperFunction = doNotScrapeArticle;
         }
 
-        console.log(`[ScrapeArticles] Using scraper "${scraperFunction.name || 'unknown'}" for source: ${source.url}`);
+        // console.log(`[ScrapeArticles] Using scraper "${scraperFunction.name || 'unknown'}" for source: ${source.url}`);
 
         try {
             // Call the scraper function with error catching
@@ -217,13 +236,13 @@ const scrapeArticles = async (sources) => {
             results.push(result);
         } catch (error) {
           try {
-            console.log(`[ScrapeArticles] Critical error during scraping ${source.url.slice(0, 50)}... with ${scraperFunction.name}:`, error);
+            console.log(`[ScrapeArticles] Error scraping ${source.url.slice(0, 50)}... with ${scraperFunction.name}:`, error);
             console.log("Retrying...");
             await new Promise(resolve => setTimeout(resolve, 1000));
             const result = await scraperFunction(source);
             results.push(result);
           } catch (error) {
-            console.error(`[ScrapeArticles] Critical error during scraping ${source.url} with ${scraperFunction.name}:`, error);
+            console.error(`[ScrapeArticles] 2nd Error scraping ${source.url} with ${scraperFunction.name}:`, error);
             const cleanedSource = { ...source };
             delete cleanedSource.text;
             results.push({ 
@@ -242,96 +261,6 @@ const scrapeArticles = async (sources) => {
     console.log(`[ScrapeArticles] Finished scraping ${results.length} articles.`);
     return results;
 };
-
-
-export const scrapedScenarioToMd = (scenario) => {
-    
-        let text = []
-        if(scenario?.question) {
-          text.push(`## Question\n${scenario.question}`);
-        }
-        if(scenario?.description) {
-          text.push(`## Description\n${scenario.description}`);
-        }
-        if(scenario?.tags) {
-          text.push(`## Tags\n${scenario.tags.join(', ')}`);
-        }
-        if(scenario?.resolutionCriteria) {
-          text.push(`## Resolution Criteria\n${scenario.resolutionCriteria}`);
-        }
-        if(scenario?.rationaleSummary) {
-          text.push(`## Rationale Summary\n${scenario.rationaleSummary}`);
-        }
-        if(scenario?.rationaleDetails) {
-          text.push(`## Rationale Details\n${scenario.rationaleDetails}`);
-        }
-  
-        return text.join('\n\n').trim();
-    }
-
-const scrapeScenarios = async () => {
-
-
-const EXCLUDE_TAGS = [
-  'Sports',
-  'nba',
-  'basketball',
-  'mlb',
-  'nhl',
-  'nfl',
-  'formula 1',
-  'soccer',
-  'epl',
-  'f1',
-  'baseball',
-  'nfl draft',
-  'gold',
-  'ufc',
-  'mma',
-];
-
-  const polyMarketOpts = {
-    maxItems: 10_000,
-    excludeTags: EXCLUDE_TAGS,
-    // startDateMin: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-    // end_date_max: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // in 2035
-    order: 'volume_num',
-    ascending: false,
-    active: true,
-    // closed: false,
-    volume_num_min: 1,
-  }
-
-  const metaculusOpts = {
-    maxItems: 10_000,
-    statuses: ['open','closed','resolved'],
-    order_by: '-published_at',
-    forecast_type: 'binary',
-    open_time__gt: '2025-01-01',
-    scheduled_resolve_time__lt: '2035-01-01'
-  }
-
-  let scenarios = [];
-  try {
-    const metaculusScenarios = await scrapeMetaculusData(metaculusOpts, false);
-    scenarios = [...scenarios, ...metaculusScenarios];
-  } catch (error) {
-    console.error(`[ScrapeScenarios] Error scraping metaculus:`, error);
-  }
-
-  try {
-    const polyMarketScenarios = await scrapePolymarketData(polyMarketOpts);
-    scenarios = [...scenarios, ...polyMarketScenarios];
-  } catch (error) {
-    console.error(`[ScrapeScenarios] Error scraping polymarket:`, error);
-  };
-  
-
-  scenarios.forEach(s => {
-    s.textForEmbedding = scrapedScenarioToMd(s);
-  });
-  return scenarios;
-}
 
 const scrapedSourceToMd = (source, index) => {
   return `--- Source ${index ? index + 1 : ''} ---
@@ -353,13 +282,12 @@ export {
   // Export registries if needed elsewhere, or keep internal
   // feedScraperRegistry,
   // articleScraperRegistry,
-  scrapeScenarios,
 };
 
     
 // // // test 1: scrapeFeeds
 // (async () => {
-//   const feeds = await scrapeFeeds(['aljazeera', 'bbc', 'dw', 'euronews', 'france24', 'tagesschau', 'heute', 'semafor', 'theguardian']);
+//   const feeds = await scrapeFeeds(['aljazeera', 'bbc', 'dw', 'euronews', 'france24', 'tagesschau', 'heute', 'semafor', 'theguardian', 'welt', 'cbc', 'npr', 'indiatimes', 'nhk']);
 //   console.log(feeds);
 //   // fs store to file
 //   fs.writeFileSync('feeds.json', JSON.stringify(feeds, null, 2));

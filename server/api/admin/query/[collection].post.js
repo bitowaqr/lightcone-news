@@ -23,7 +23,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Invalid or missing collection name' });
   }
 
-  const { filters = {}, sort = { updatedAt: -1 }, limit = 20, page = 1 } = await readBody(event);
+  // Read body and set defaults for sort
+  const { filters = {}, sort: sortInput = {}, limit = 20, page = 1 } = await readBody(event);
 
   // Basic sanitization/validation for limit and page
   const effectiveLimit = Math.min(Math.max(1, parseInt(limit) || 20), 100); // Limit between 1 and 100
@@ -52,13 +53,35 @@ export default defineEventHandler(async (event) => {
         }
     }
 
+    // --- Sort Sanitization ---
+    const allowedSortFields = ['createdAt', 'updatedAt', 'title', 'status', 'priority', 'relevance', 'publishedDate']; // Added 'priority' here implicitly, ensure it's present
+    const sanitizedSort = {};
+    // Expecting sortInput like { fieldName: 1 } or { fieldName: -1 }
+    // Or like { fieldName: 'asc' } or { fieldName: 'desc' } which the frontend now sends
+    const sortField = Object.keys(sortInput)[0];
+    const sortValue = sortInput[sortField];
+
+    if (sortField && allowedSortFields.includes(sortField)) {
+        if (sortValue === 1 || sortValue === -1) {
+            sanitizedSort[sortField] = sortValue; // Allow direct 1/-1
+        } else if (String(sortValue).toLowerCase() === 'asc') {
+             sanitizedSort[sortField] = 1;
+        } else {
+             sanitizedSort[sortField] = -1; // Default to desc if not 'asc'
+        }
+    } else {
+         // Default sort if input is invalid or not provided
+         sanitizedSort['updatedAt'] = -1;
+    }
+    console.log('Applying sort:', sanitizedSort);
+    // --- End Sort Sanitization ---
 
     const totalDocuments = await Model.countDocuments(sanitizedFilters);
     let documents;
     console.log('collectionName', collectionName);
     
       documents = await Model.find(sanitizedFilters)
-        .sort(sort)
+        .sort(sanitizedSort) // Use sanitized sort object
         .skip(skip)
         .limit(effectiveLimit)
         .lean(); // Use lean for performance if not modifying directly

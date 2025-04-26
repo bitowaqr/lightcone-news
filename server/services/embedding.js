@@ -62,18 +62,18 @@ class EmbeddingService {
     for (let i = 0; i < processedInputs.length; i++) {
       batch.push(processedInputs[i]);
         if (batch.length === MAX_INPUTS) {
-          console.log('Batch size = ', batch.length, ". Embedding...");
+          console.log('[Embedding] Batch size = ', batch.length, ". Embedding...");
             let out = await this.embeddingFunction(batch, useOpenAI);
-            console.log('Batch size = ', batch.length, ". Embedding done.");
+            console.log('[Embedding] -> Embedded.');
         results.push(...out);
         batch = [];
         await new Promise((resolve) => setTimeout(resolve, useOpenAI ? 500 : 60_000)); // AZURE has crazy rate limits...
       }
     }
     if (batch.length > 0) {
-      console.log('Batch size = ', batch.length, ". Embedding...");
+      console.log('[Embedding] Batch size = ', batch.length, ". Embedding...");
       let out = await this.embeddingFunction(batch, useOpenAI);
-      console.log('Batch size = ', batch.length, ". Embedding done.");
+      console.log('[Embedding] -> Embedded.');
       results.push(...out);
     }
     return results;

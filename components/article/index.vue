@@ -78,14 +78,10 @@
 </template>
 
 <script setup>
-// Import necessary composables
-import { ref, computed } from 'vue'; // Keep ref for precis/summary rendering
+import { ref, computed } from 'vue'; 
 import { useCookie } from '#app'; // Import useCookie
 import { renderMarkdown } from '~/composables/useMarkdown';
-import ArticleSources from './Sources.vue'; 
-import ArticleTimeline from './Timeline.vue'; 
-import ArticlePrompts from './Prompts.vue'; // Ensure Prompts is imported
-import ScenarioTeaser from '~/components/scenario/Teaser.vue'; // Ensure Teaser is imported
+
 
 const props = defineProps({
   articleSlug: {
@@ -99,7 +95,7 @@ const props = defineProps({
   },
 });
 
-// Use a cookie to store the preference. Default to true (bullet points)
+// Use a cookie to store the preference. Default to false (paragraphs)
 // useCookie handles SSR and client-side persistence automatically.
 const showAltSummary = useCookie('lightcone-summary-view', { 
   default: () => false, 

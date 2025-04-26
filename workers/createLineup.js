@@ -1,5 +1,5 @@
 import { scrapeFeeds } from '../server/scrapers/index.js';
-import { sourceScreenerBatch } from '../server/agents/sourceScreener.js';
+import { curateSourcesPerPublisher } from '../server/agents/publisherCurator.js';
 import { callLineupCreator } from '../server/agents/lineupCreator.js';
 import { mongoService } from '../server/services/mongo.js';
 import Article from '../server/models/Article.model.js';
@@ -18,10 +18,11 @@ export const createLineup = async () => {
   const allNewsItems = await scrapeFeeds([], true);
   console.log(`Feed items fetched: ${allNewsItems.length}`);
 
-  // 1.5 Screen Sources for Relevance
-  console.log('Screening sources for relevance...');
-  const screenedNewsItems = await sourceScreenerBatch(allNewsItems);
-  console.log(`Sources remaining after screening: ${screenedNewsItems.length}`);
+  // 1.5 Curate Sources Per Publisher
+  console.log('Curating sources per publisher...');
+  // The second argument is optional (maxItemsPerPublisher), defaults to 20 in the agent
+  const curatedNewsItems = await curateSourcesPerPublisher(allNewsItems); 
+  console.log(`Sources remaining after curation: ${curatedNewsItems.length}`);
 
   // 2. Fetch Existing Published Articles for Context
   console.log('Fetching existing published articles for context...');
@@ -35,11 +36,11 @@ export const createLineup = async () => {
   console.log('Calling lineupCreator with new items and existing context...');
   let lineup;
   try {
-    lineup = await callLineupCreator(screenedNewsItems, existingArticles);
+    lineup = await callLineupCreator(curatedNewsItems, existingArticles);
   } catch (error) {
     console.error('Error calling lineupCreator:', error);
     console.log('Retrying lineupCreator...');
-    lineup = await callLineupCreator(screenedNewsItems, existingArticles);
+    lineup = await callLineupCreator(curatedNewsItems, existingArticles);
   }
   if(!lineup) throw new Error('No lineup created');
   console.log('Lineup created with', lineup.stories?.length || 0, 'stories');

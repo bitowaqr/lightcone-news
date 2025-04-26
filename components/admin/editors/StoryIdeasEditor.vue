@@ -3,13 +3,14 @@
     <h3 class="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300 border-b pb-2 dark:border-gray-700">
       Editing Story Idea: <code class="text-sm bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded">{{ document._id }}</code>
     </h3>
-
     <div v-if="editableDoc" class="space-y-6">
-      <!-- Display Timestamps -->
-      <div class="text-xs text-gray-500 dark:text-gray-400">
+      <!-- Display Timestamps & Lineup ID -->
+      <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
         <p>Created: {{ formatDate(editableDoc.createdAt) }}</p>
         <p>Updated: {{ formatDate(editableDoc.updatedAt) }}</p>
-         <p v-if="editableDoc.lineupId">Original Lineup ID: {{ editableDoc.lineupId }}</p> <!-- Keep for reference if needed -->
+         <p v-if="editableDoc.lineupId" class="text-sm font-medium"> <!-- Increased font size -->
+           Lineup ID: <code class="bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded">{{ editableDoc.lineupId }}</code>
+         </p>
       </div>
 
       <!-- Story Idea Details Section -->
@@ -50,6 +51,21 @@
             ></textarea>
           </div>
 
+         <!-- Status -->
+         <div>
+            <label for="story-status" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Status</label>
+            <select
+              id="story-status"
+              v-model="editableDoc.status"
+              class="w-full md:w-1/3 px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="idea">Idea</option>
+              <option value="draftingArticle">Drafting Article</option>
+              <option value="articleWritten">Article Written</option>
+              <option value="archived">Archived</option>
+            </select>
+         </div>
+
           <!-- Notes -->
           <div>
             <label for="story-notes" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Notes</label>
@@ -62,6 +78,30 @@
             ></textarea>
           </div>
       </section>
+
+       <!-- Update Section -->
+       <section class="space-y-3">
+         <h4 class="text-md font-semibold mb-2 text-gray-800 dark:text-gray-200 border-b pb-1 dark:border-gray-600">Update Information</h4>
+         <div class="flex items-center space-x-2">
+           <input
+              id="story-update"
+              type="checkbox"
+              v-model="editableDoc.update"
+              class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label for="story-update" class="text-sm font-medium text-gray-700 dark:text-gray-300">Is this an update to an existing article?</label>
+         </div>
+         <div v-if="editableDoc.update">
+            <label for="story-updatedArticleId" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">ID of Article Being Updated</label>
+             <input
+               id="story-updatedArticleId"
+               v-model="editableDoc.updatedArticleId"
+               placeholder="Enter the ID of the original article"
+               class="w-full md:w-2/3 px-3 py-2 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+             />
+             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Required if 'Is update' is checked.</p>
+         </div>
+       </section>
 
 
       <!-- Sources Section -->
@@ -126,6 +166,17 @@
       >
         Cancel
       </button>
+
+      <!-- Navigate to Article Button -->
+      <button
+        v-if="editableDoc && (editableDoc.status === 'articleWritten' || editableDoc.status === 'draftingArticle')"
+        @click="navigateToArticle"
+        :disabled="isSaving"
+        class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+        title="Go to the article created from this story idea (if it exists)"
+      >
+        View Related Article
+      </button>
     </div>
      <div v-if="saveError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
         Save error: {{ saveError }}
@@ -135,6 +186,7 @@
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue';
+import { navigateTo } from '#app'; // Import navigateTo
 
 const props = defineProps({
   document: {
@@ -175,10 +227,13 @@ function formatDate(dateString) {
 watch(() => props.document, (newDoc) => {
   if (newDoc && props.collectionName === 'StoryIdeas') { // Ensure it's the correct type
     editableDoc.value = deepCopy(newDoc);
-    // Ensure sources array exists
+    // Ensure default values or existing values for new fields
     if (!editableDoc.value.sources) editableDoc.value.sources = [];
-     // Ensure priority is a number (or default)
-     editableDoc.value.priority = Number(editableDoc.value.priority) || 1;
+    editableDoc.value.priority = Number(editableDoc.value.priority) || 1;
+    editableDoc.value.status = editableDoc.value.status || 'idea'; // Default status
+    editableDoc.value.update = typeof editableDoc.value.update === 'boolean' ? editableDoc.value.update : false; // Default update
+    editableDoc.value.updatedArticleId = editableDoc.value.updatedArticleId || ''; // Default updatedArticleId
+
   } else {
     editableDoc.value = null;
   }
@@ -197,6 +252,14 @@ function validate() {
     validationErrors.title = 'Title is required.';
     isValid = false;
   }
+
+  // Validation for updatedArticleId if update is checked
+   if (editableDoc.value.update && !editableDoc.value.updatedArticleId?.trim()) {
+     validationErrors.updatedArticleId = 'Updated Article ID is required when "Is update" is checked.';
+     isValid = false;
+   } else {
+      delete validationErrors.updatedArticleId; // Clear error if condition is met or update is unchecked
+   }
 
    if (!editableDoc.value.sources || editableDoc.value.sources.length === 0) {
      validationErrors.sources = 'At least one source is required.';
@@ -279,6 +342,14 @@ async function saveChanges() {
 
 function cancel() {
   emit('cancel');
+}
+
+function navigateToArticle() {
+  if (editableDoc.value?._id) {
+    // Assuming the admin page can filter by storyId via query param
+    // If not, this will just navigate to /admin
+    navigateTo({ path: '/admin', query: { storyId: editableDoc.value._id } });
+  }
 }
 
 </script>

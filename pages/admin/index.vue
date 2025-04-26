@@ -39,6 +39,23 @@
            <label for="filterValue" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filter Value:</label>
            <input id="filterValue" type="text" v-model.trim="queryOptions.filterValue" placeholder="value" @keyup.enter="fetchDocuments(1)" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
          </div>
+         <!-- Sorting Controls -->
+         <div class="flex-grow">
+            <label for="sortField" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort By:</label>
+            <select id="sortField" v-model="queryOptions.sortField" @change="fetchDocuments(1)" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                <option value="updatedAt">Updated Date</option>
+                <option value="createdAt">Created Date</option>
+                <option value="title">Title</option>
+                <option value="priority">Priority</option>
+            </select>
+         </div>
+         <div class="flex-grow">
+             <label for="sortDirection" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Direction:</label>
+             <select id="sortDirection" v-model="queryOptions.sortDirection" @change="fetchDocuments(1)" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                 <option value="desc">Descending</option>
+                 <option value="asc">Ascending</option>
+             </select>
+         </div>
         <div class="flex-shrink-0">
            <button @click="fetchDocuments(1)" :disabled="!selectedCollection || loadingDocuments" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
              {{ loadingDocuments ? 'Querying...' : 'Query' }}
@@ -177,14 +194,13 @@
               :is="currentEditorComponent" 
               :document="selectedDocumentData" 
               :collection-name="selectedCollection"
+              :saving="savingDocument" 
+              :save-error="saveError"
               @save="handleEditorSave" 
               @cancel="clearSelection"
             />
             
             <!-- Error Messages -->
-            <div v-if="saveError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-              Save error: {{ saveError }}
-            </div>
             <div v-if="deleteError" class="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
               Delete error: {{ deleteError }}
             </div>
@@ -206,6 +222,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import ArticleEditor from '../../components/admin/editors/ArticleEditor.vue';
 import ScenarioEditor from '../../components/admin/editors/ScenarioEditor.vue';
 import SourceDocumentEditor from '../../components/admin/editors/SourceDocumentEditor.vue';
@@ -231,6 +248,8 @@ const errorDocuments = ref(null);
 const queryOptions = reactive({
   filterKey: '',
   filterValue: '',
+  sortField: 'updatedAt', // Default sort field
+  sortDirection: 'desc' // Default sort direction
 });
 
 const selectedDocumentId = ref(null);
@@ -251,6 +270,10 @@ const articleCreatorRef = ref(null);
 // --- New State for Multiple Deletion ---
 const deletingMultiple = ref(false);
 const deleteMultipleError = ref(null);
+
+// --- Route Handling ---
+const route = useRoute();
+const router = useRouter();
 
 // Determine which editor component to use based on selectedCollection
 const currentEditorComponent = computed(() => {
@@ -299,11 +322,15 @@ const fetchDocuments = async (page = 1) => {
   if (!selectedCollection.value) return;
   loadingDocuments.value = true;
   errorDocuments.value = null;
-  documents.value = []; // Clear previous results
+  // Clear documents before fetching, especially if it's page 1 or filter changes
+  if (page === 1) {
+      documents.value = [];
+  }
   // Don't clear editor selection here automatically unless intended
   // clearSelection();
 
   const filters = {};
+  let wasStoryIdFilter = false; // Flag to check if storyId was the filter
   if (queryOptions.filterKey && queryOptions.filterValue !== '') { // Check for non-empty value
       const key = queryOptions.filterKey;
       let value = queryOptions.filterValue;
@@ -312,6 +339,15 @@ const fetchDocuments = async (page = 1) => {
        else if (value.toLowerCase() === 'true') value = true;
        else if (value.toLowerCase() === 'false') value = false;
        filters[key] = value;
+       if (key === 'storyId') {
+           wasStoryIdFilter = true;
+       }
+  }
+
+  // Prepare sort object
+  const sort = {};
+  if (queryOptions.sortField) {
+      sort[queryOptions.sortField] = queryOptions.sortDirection === 'asc' ? 1 : -1;
   }
 
   try {
@@ -319,13 +355,20 @@ const fetchDocuments = async (page = 1) => {
       method: 'POST',
       body: {
         filters: filters,
-        sort: { createdAt: -1 }, // Example sort
+        sort: sort, // Use dynamic sort object
         limit: paginationInfo.value.limit,
         page: page,
       }
     });
     documents.value = response.documents;
     paginationInfo.value = response.pagination;
+
+    // If we filtered by storyId and got exactly one result, auto-select it.
+    if (wasStoryIdFilter && response.documents.length === 1) {
+        console.log("Auto-selecting document based on storyId filter:", response.documents[0]._id);
+        selectDocument(response.documents[0]._id);
+    }
+
   } catch (err) {
     console.error("Error fetching documents:", err);
     errorDocuments.value = err.data || { message: 'Failed to load documents.' };
@@ -368,10 +411,9 @@ const handleEditorSave = async (updatedDocument) => {
       method: 'PUT',
       body: updatedDocument
     });
-    alert('Document saved successfully!');
     selectedDocumentData.value = updatedDoc;
     
-    // Refresh the main list to reflect changes
+    // Refresh the main list to reflect potential changes (like status or title)
     await fetchDocuments(paginationInfo.value.currentPage);
   } catch (err) {
     console.error("Error saving document:", err);
@@ -522,9 +564,58 @@ const deleteListedDocuments = async () => {
   }
 };
 
+// Function to apply filters from route query
+const applyRouteFilters = () => {
+  console.log("Checking route query:", route.query);
+  if (route.query.storyId) {
+    console.log("Found storyId in query:", route.query.storyId);
+    selectedCollection.value = 'Article'; // Switch to Article collection
+    queryOptions.filterKey = 'storyId';
+    queryOptions.filterValue = route.query.storyId;
+    fetchDocuments(1); // Fetch immediately
+  } else if (route.query.collection) { // Optional: allow direct collection selection via query
+     if (collections.value.includes(route.query.collection)) {
+         selectedCollection.value = route.query.collection;
+         queryOptions.filterKey = route.query.filterKey || '';
+         queryOptions.filterValue = route.query.filterValue || '';
+         fetchDocuments(1);
+     } else {
+        console.warn(`Collection '${route.query.collection}' from query not found.`);
+     }
+  }
+};
+
 // Initial Load
 onMounted(() => {
   fetchCollections();
+
+  // Watch the route query for changes (e.g., back/forward navigation)
+  watch(() => route.query, (newQuery, oldQuery) => {
+     console.log('Route query changed:', newQuery);
+     // Avoid re-applying if only the query param *we set* is removed
+     if (newQuery.storyId !== oldQuery.storyId || 
+         newQuery.collection !== oldQuery.collection || 
+         newQuery.filterKey !== oldQuery.filterKey || 
+         newQuery.filterValue !== oldQuery.filterValue) {
+        // Re-apply filters if relevant query params change
+        // Need collections loaded before applying route filters that select a collection
+        if(collections.value.length > 0) {
+            applyRouteFilters();
+        } // else: applyRouteFilters will be called in fetchCollections's .then()
+     }
+  }, { deep: true }); // deep watch might be needed if query values are objects
+
+  // Initial check of route query after collections are loaded
+  watch(collections, (newCollections) => {
+      if (newCollections.length > 0) {
+          // Only apply if no collection is currently selected OR
+          // if the route specifies a different collection than the one selected.
+          // This prevents overwriting user selection if they navigate away and back without query params.
+          if (!selectedCollection.value || (route.query.collection && route.query.collection !== selectedCollection.value) || route.query.storyId) {
+              applyRouteFilters();
+          }
+      }
+  });
 });
 
 </script>
