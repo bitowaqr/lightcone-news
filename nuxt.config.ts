@@ -89,6 +89,9 @@ export default defineNuxtConfig({
     awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
     awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     awsRegion: process.env.AWS_REGION,
+
+    // Metaculus API Token (Server-side only)
+    metaculusApiToken: process.env.METACULUS_API_TOKEN,
   },
   fonts: {
     defaults: {

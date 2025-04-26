@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery, createError } from 'h3';
 import mongoose from 'mongoose';
 import Scenario from '../../models/Scenario.model.js'; // Adjust path as needed
 import { getPolymarketPriceHistory } from '../../scraper-scenarios/polymarket.js'; // Adjust path as needed
+import { useRuntimeConfig } from '#imports'; // Import useRuntimeConfig
 
 // Simple cache (optional, but recommended for performance)
 const cache = new Map();
@@ -119,6 +120,96 @@ async function fetchPolymarketHistory(scenario) {
   return historyData;
 }
 
+async function fetchMetaculusHistory(scenario) {
+    const runtimeConfig = useRuntimeConfig();
+    const headers = { 'Authorization': `Token ${runtimeConfig.metaculusApiToken}` };
+    // Metaculus uses question ID, which should be stored in platformQuestionId or platformScenarioId if they are the same
+    // Let's assume platformScenarioId holds the correct ID for the API endpoint.
+    const postId = scenario.platformScenarioId;
+    if (!postId) {
+        console.warn(`[Scenario History] Missing Metaculus post ID for scenario: ${scenario._id}`);
+        return null;
+    }
+    
+    // Correct endpoint for fetching a specific question's details including history
+    const apiUrl = `https://www.metaculus.com/api/posts/${encodeURIComponent(postId)}/`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    try {
+        const data = await $fetch(apiUrl, {
+            signal: controller.signal,
+            headers: headers,
+            parseResponse: JSON.parse
+        });
+        clearTimeout(timeoutId);
+
+        if (!data || typeof data !== 'object') {
+            console.error(`[Scenario History] Invalid data structure from Metaculus API for ${apiUrl}`);
+            throw new Error('Invalid data structure from API');
+        }
+
+        // CORRECTED: History is under aggregations.recency_weighted.history
+        const historySource = data.question?.aggregations?.recency_weighted?.history;
+
+        if (!historySource || !Array.isArray(historySource)) {
+            console.warn(`[Scenario History] No history data found in Metaculus response for ${apiUrl}`);
+            return { Yes: [] }; // Return empty history for "Yes" outcome
+        }
+
+        // Format history: { t: timestamp_ms, y: probability }
+        // Use 'x' for timestamp (seconds) and 'y1' for probability in community_prediction history
+        const formattedHistory = historySource
+            .map(item => {
+                // CORRECTED: Use structure from recency_weighted.history: { start_time: sec, centers: [prob] }
+                if (item.start_time !== undefined && item.centers && Array.isArray(item.centers) && item.centers.length > 0 && typeof item.centers[0] === 'number') {
+                     return {
+                         t: item.start_time * 1000, // Convert seconds to milliseconds
+                         y: item.centers[0]         // Probability is the first element in centers
+                     };
+                }
+                return null; // Skip items with unexpected structure
+            })
+            .filter(item => item !== null && !isNaN(item.t) && !isNaN(item.y)); // Filter out nulls and invalid data
+
+        // Sort by time just in case
+        formattedHistory.sort((a, b) => a.t - b.t);
+
+        // For binary, Metaculus provides the probability of 'Yes' directly
+        return { Yes: formattedHistory };
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error.name === 'AbortError') {
+            console.warn(`[Scenario History] Timeout fetching Metaculus history for ${apiUrl}`);
+            throw createError({
+                statusCode: 504,
+                statusMessage: `Timeout fetching Metaculus history after ${FETCH_TIMEOUT_MS / 1000}s`,
+            });
+        }
+        
+        if (error.response && error.response.status === 404) {
+            console.warn(`[Scenario History] 404 Not Found fetching Metaculus history for ${apiUrl}`);
+            // Throw 404 so the main handler catches it? Or return null? Let's throw.
+            throw createError({ statusCode: 404, statusMessage: `Metaculus post ${postId} not found.` });
+        }
+        
+         if (error.response && error.response.status === 401) {
+           console.error(`[Scenario History] 401 Unauthorized fetching Metaculus data for ${apiUrl}. Check API Token.`);
+           throw createError({
+             statusCode: 401,
+             statusMessage: `Unauthorized fetching Metaculus data. Check API Token.`,
+           });
+        }
+
+        console.error(`[Scenario History] Error fetching or parsing Metaculus history for ${apiUrl}:`, error);
+        throw createError({
+            statusCode: error.response?.status || 502,
+            statusMessage: `Failed to fetch or parse history data from Metaculus: ${error.message}`,
+        });
+    }
+}
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -155,10 +246,8 @@ export default defineEventHandler(async (event) => {
       case 'Polymarket':
         history = await fetchPolymarketHistory(scenario);
         break;
-      // Add cases for other platforms if they support history fetching
       case 'Metaculus':
-        // history = await fetchMetaculusHistory(scenario); // Placeholder
-        console.warn(`[Scenario History] History fetching not implemented for Metaculus yet.`);
+        history = await fetchMetaculusHistory(scenario);
         break;
       default:
         throw createError({

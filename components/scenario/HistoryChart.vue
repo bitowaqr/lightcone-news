@@ -70,8 +70,8 @@ const chartData = computed(() => {
   for (const outcome in props.historyData) {
     if (Array.isArray(props.historyData[outcome]) && props.historyData[outcome].length > 0) {
         const dataPoints = props.historyData[outcome].map(point => ({
-          x: new Date(point.t * 1000), // Convert Unix timestamp (seconds) to JS Date (milliseconds)
-          y: point.p * 100 // Convert probability (0-1) to percentage (0-100)
+          x: new Date(point.t), // API already provides timestamp in milliseconds
+          y: point.y * 100     // API provides probability as 'y' (0-1), convert to percentage
         }));
         
         // Sort data points by time just in case API doesn't guarantee order
