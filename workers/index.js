@@ -124,15 +124,13 @@ async function runAllTasks() {
 }
 
 // --- Schedule the Task ---
-// const cronExpression = '0 */6 * * *';
-// console.log(`[Scheduler] Initializing cron job with schedule: "${cronExpression}"`);
-
-// cron.schedule(cronExpression, runAllTasks, {
-  //     scheduled: true,
-  //     timezone: "Etc/UTC" // Or your preferred timezone
-  // });
-  
-  // console.log('[Scheduler] Service started. Waiting for scheduled tasks.');
+const cronExpression = '0 1/3 * * *'; // Run at 1:00, 4:00, 7:00, 10:00, 13:00, 16:00, 19:00, 22:00 Eastern Time
+console.log(`[Scheduler] Initializing cron job with schedule: "${cronExpression}"`);
+cron.schedule(cronExpression, runAllTasks, {
+      scheduled: true,
+      timezone: "America/New_York" 
+  });
+  console.log('[Scheduler] Service started. Waiting for scheduled tasks.');
   // Optional: Immediate run for testing
   console.log('[Scheduler] Performing initial run...');
   runAllTasks();

@@ -26,7 +26,7 @@ export const createLineup = async () => {
 
   // 2. Fetch Existing Published Articles for Context
   console.log('Fetching existing published articles for context...');
-  const existingArticles = await Article.find({ status: 'PUBLISHED' })
+  const existingArticles = await Article.find({ status: { $in: ['PUBLISHED', 'PENDING'] } })
     .sort({ publishedDate: -1 })
     .limit(50)
     .lean();
