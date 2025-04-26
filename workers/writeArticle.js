@@ -8,6 +8,7 @@ import { contextualiser } from '../server/agents/contextualiser.js';
 import { copyEditor } from '../server/agents/copyEditor.js';
 import { extractJsonFromString } from '../server/utils/extractJson.js';
 import fs from 'fs';
+import { scrapeArticles } from '../server/scrapers/index.js';
 import { withRetry } from './utils/withRetry.js';
 dotenv.config();
 

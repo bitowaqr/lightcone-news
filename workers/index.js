@@ -16,12 +16,12 @@ async function runAllTasks() {
 
   try {
         // --- Task 1: Update Scenarios ---
-        // await withRetry(
-        //     () => updateAndEmbedScenarios(),
-        //     'UpdateScenarios',
-        //     3, // maxRetries
-        //     60_000 // delayMs (1 minute)
-        // );
+        await withRetry(
+            () => updateAndEmbedScenarios(),
+            'UpdateScenarios',
+            3, // maxRetries
+            60_000 // delayMs (1 minute)
+        );
         console.log("[Scheduler] UpdateScenarios completed successfully.");
 
         // --- Task 2: Create Lineup ---
