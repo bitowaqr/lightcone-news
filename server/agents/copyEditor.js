@@ -1,11 +1,9 @@
-import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
-import { tool } from '@langchain/core/tools';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { z } from 'zod';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const OPENAI_MODEL = 'gpt-4.5-preview';
-const USE_AZURE = true;
+const GEMINI_MODEL = process.env.WORKER_MODEL || 'gemini-2.5-pro-preview-03-25';
 
 // 1. Define the Zod schema for the output tool
 const finalArticleSchema = z
@@ -21,7 +19,6 @@ const finalArticleSchema = z
           event: z.string().describe('Edited event description string (concise, neutral)'),
           sourceUrl: z
             .string()
-            .nullable()
             .describe('Original source URL of the timeline event (unchanged)'),
         })
       )
@@ -40,36 +37,16 @@ const finalArticleSchema = z
   })
   .describe('The finalized, publish-ready article package.');
 
-// 2. Create the LangChain tool
-const passOnFinalArticleTool = new tool(
-  async (finalArticlePackage) => finalArticlePackage,
-  {
-    name: 'pass_on_final_article_package',
-    description:
-      'Pass on the final, edited article package including article text, timeline, suggested prompts, approved scenarios ids, and tags.',
-    schema: finalArticleSchema,
-  }
-);
-
-// 3. Initialize the LangChain OpenAI chat model, binding the tool
+// 3. Initialize the LangChain Google Generative AI chat model
 const TEMPERATURE = 0.5;
-let model;
-if (USE_AZURE) {
-  model = new AzureChatOpenAI({
-    azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
-    temperature: TEMPERATURE,
-    azureOpenAIApiInstanceName: 'gpt-4.5-preview',
-    azureOpenAIApiDeploymentName: 'gpt-4.5-preview',
-    azureOpenAIApiVersion: '2024-04-01-preview',
-    model: OPENAI_MODEL,
-  }).bindTools([passOnFinalArticleTool], { tool_choice: 'required' });
-} else {
-  model = new ChatOpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    model: OPENAI_MODEL,
-    temperature: TEMPERATURE,
-  }).bindTools([passOnFinalArticleTool], { tool_choice: 'required' });
-}
+const model = new ChatGoogleGenerativeAI({
+  model: GEMINI_MODEL,
+  apiKey: process.env.GEMINI_API_KEY,
+  temperature: TEMPERATURE,
+});
+
+// Configure for structured output using the Zod schema
+const structuredLlm = model.withStructuredOutput(finalArticleSchema);
 
 // 4. Split the prompt into system and user prompt templates
 const systemPrompt = `# Role: AI Final Copy Editor & Quality Gatekeeper for Lightcone.news
@@ -124,16 +101,12 @@ You will receive a JSON object containing:
 # Explicit Exclusions (Do NOT Do):
 *   **NO Fact-Checking:** Assume input accuracy. Focus on style, presentation, coherence, guideline adherence.
 
-# Tool Usage & Final Output Format:
-You MUST use the 'pass_on_final_article_package' tool. Provide **only** the arguments for this tool, adhering strictly to its schema: a JSON object with:
-*   Final \`title\`, \`precis\`, \`summary\`, \`summaryAlt\`
-*   Final \`timeline\` (list of objects)
-*   Final \`suggestedPrompts\` (list of strings)
-*   Final \`relatedScenarioIds\` (list of scenario _id strings)
-*   Final \`tags\` (list of strings)
+# Output Format: JSON Object Only
+
+You **MUST** provide your response **ONLY** as a single, valid JSON object that strictly adheres to the schema defined previously (containing \`title\`, \`precis\`, \`summary\`, \`summaryAlt\`, \`timeline\`, \`suggestedPrompts\`, \`relatedScenarioIds\`, \`tags\`). Do not include any explanations, commentary, or text outside of this JSON object.
 
 # Final Instruction:
-Execute all tasks meticulously. Adhere strictly to the Style Guide and update logic. Generate the final package and return it using the tool.`;
+Execute all tasks meticulously. Adhere strictly to the Style Guide and update logic. Generate the final package as a JSON object adhering to the schema.`;
 
 // 5. Create the copyEditor async function
 export const copyEditor = async (opts = {}) => {
@@ -186,12 +159,12 @@ Now, please perform the editing and context finalization tasks based on whether 
 
   console.log('Invoking Copy Editor AI...');
   // console.log("Copy Editor Input:", JSON.stringify(messages, null, 2)); // Optional: Log the full prompt for debugging
-  const response = await model.invoke(messages);
+  const response = await structuredLlm.invoke(messages); // Use structuredLlm
   console.log('Copy Editor AI response received.');
   // console.log("Copy Editor Output:", JSON.stringify(response, null, 2)); // Optional: Log the full response
 
   // Extract args, handling potential variations in response structure
-  const toolArgs = response?.tool_calls?.[0]?.args;
+  const toolArgs = response; // Response is the structured object directly
   if (!toolArgs) {
     console.error("Copy Editor Error: No tool arguments found in the response.", response);
     throw new Error("Copy Editor failed to return tool arguments.");
@@ -206,3 +179,21 @@ Now, please perform the editing and context finalization tasks based on whether 
   
   return toolArgs;
 };
+
+// --- Test the copyEditor function ---
+// (async () => {
+//   const testInput = {
+//     draftArticle: {
+//       title: "Test Article",
+//       precis: "This is a test article",
+//       summary: "This is a test summary",
+//     },
+//     newTimeline: [{event:'test event 1', date:'2025-01-01', sourceUrl:'https://test.com/test-event-1'}, {event:'test event 2', date:'2025-01-02', sourceUrl:'https://test.com/test-event-2'}, {event:'test event 3: THROW AWAY FOR TESTING!', date:'2025-01-03', sourceUrl:'https://test.com/test-event-3'}],
+//     newScenarios: [{_id:'1', title:'test scenario 1', description:'test scenario 1 description', status:'active'}, {_id:'2', title:'test scenario 2', description:'test scenario 2 description', status:'active'}, {_id:'3', title:'test scenario 3: THROW AWAY FOR TESTING!', description:'test scenario 3 description', status:'active'}],
+//     newSuggestedPrompts: [],
+//     newTags: [],
+//   };
+
+//   const testOutput = await copyEditor(testInput);
+//   console.log("Test Output:", testOutput);
+// })();
