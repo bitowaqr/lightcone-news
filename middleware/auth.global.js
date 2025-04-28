@@ -12,8 +12,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     console.log('Global Auth Middleware (Server): fetchUser complete. Status:', authStore.status);
   }
 
-  const publicPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*'];
-  const guestPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*'];
+  const publicPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*','/welcome'];
+  const guestPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*','/welcome'];
   const isAuthenticated = authStore.isAuthenticated;
 
   const isApiPath = to.path.startsWith('/api/');

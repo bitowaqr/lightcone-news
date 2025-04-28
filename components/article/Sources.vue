@@ -16,7 +16,7 @@
           <div 
             v-for="(source, idx) in [...sourcesTop,...sourcesRest]" 
             :key="source.id || idx"  
-            class="w-8 h-8 overflow-hidden border border-gray-100 flex items-center justify-center"
+            class="w-8 h-8 overflow-hidden border border-gray-100 flex items-center justify-center bg-white"
             :style="{ marginLeft: idx > 10 ? '-28px' : idx > 2 ? '-22px' : idx > 0 ? '-16px' : '0', zIndex: 10 - idx }"
             :class="{ 'rounded-full': !showAllSources, 'rounded-lg': showAllSources }"
           >
@@ -89,16 +89,18 @@
             
           >
             <div class="rounded-full overflow-hidden flex items-center justify-center w-6 h-6 p-3 mr-2">
-              <img
-                :src="getSourceFavicon(source.url)"
-                :alt="getSourceDomain(source.url)"
-                class="w-6 h-6 max-w-6 max-h-6 object-cover"
-                @error="onFaviconError($event, source.id || index)"
-                v-if="!faviconErrors[source.id || index]"
-              />
+              <div class="w-6 h-6 flex items-center justify-center bg-white rounded-full overflow-hidden">
+                <img
+                  :src="getSourceFavicon(source.url)"
+                  :alt="getSourceDomain(source.url)"
+                  class="w-full h-full object-contain"
+                  @error="onFaviconError($event, source.id || index)"
+                  v-if="!faviconErrors[source.id || index]"
+                />
+              </div>
               <div
                 v-if="faviconErrors[source.id || index]"
-                class="w-6 h-6 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+                class="w-6 h-6 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-full"
               >
                 <span class="text-xs font-medium text-gray-600">
                   {{ getSourceInitial(source.url) }}

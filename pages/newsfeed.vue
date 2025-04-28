@@ -15,15 +15,15 @@
         <div v-if="!newsfeedData.teaserGroups || newsfeedData.teaserGroups.length === 0">
             <p>No content found.</p>
         </div>
-        <div v-else class="flex flex-col space-y-8 pb-4">
+        <div v-else class="flex flex-col space-y-4 pb-4">
           <div v-for="(group,i) in newsfeedData.teaserGroups" :key="i" >
             <div :class="{
               'border-b border-dotted border-fg-muted': i !== newsfeedData.teaserGroups.length-1,
-            'mt-4 md:mt-8 lg:mt-12': i === 0,}">
+            'mt-2 md:mt-4 lg:mt-8': i === 0,}">
 
             <ArticleTeaser :group="group"
             :layoutOption="i % 2 === 0 ? 'vertical' : 'horizontal'" 
-            class="px-2 md:px-4 lg:px-8"
+            class=""
             />
             </div>
           </div>

@@ -26,6 +26,46 @@
         <li><span class="font-medium text-primary-600 dark:text-primary-400">Future Scenarios:</span> Relevant probabilistic forecasts about the future.</li>
       </ul>
       
+      <!-- Added Section: Why Scenarios -->
+      <div class="border-t border-bg-muted pt-6 mt-8">
+        <h2 class="text-2xl font-semibold mb-4">Why We Show Future Scenarios</h2>
+        <p class="mb-4 text-lg">
+          Understanding the present requires considering the future. News events don't happen in isolation; they have consequences and ripple effects. By presenting plausible future scenarios alongside the news, we aim to:
+        </p>
+        <ul class="list-disc pl-6 space-y-2 text-lg">
+          <li>Highlight potential long-term impacts.</li>
+          <li>Provide a framework for thinking about what might happen next.</li>
+          <li>Offer quantified probabilities where available, grounding speculation in data.</li>
+        </ul>
+      </div>
+
+      <!-- Added Section: How Scenarios Generated -->
+      <div class="border-t border-bg-muted pt-6 mt-8">
+        <h2 class="text-2xl font-semibold mb-4">How Scenarios Are Generated</h2>
+        <p class="mb-4 text-lg">
+          The scenarios and their probabilities come from several sources:
+        </p>
+        <div class="space-y-5 text-lg">
+          <div>
+            <h3 class="font-semibold text-primary-600 dark:text-primary-400">1. Prediction Markets</h3>
+            <p class="text-sm ml-1">Platforms: Polymarket, Metaculus, Manifold Markets</p>
+            <p class="mt-1">
+              These platforms aggregate the collective forecasts of many individuals betting on the outcome of future events. The market price reflects the crowd's estimated probability. We fetch data directly from these markets via their APIs.
+            </p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-primary-600 dark:text-primary-400">2. AI Forecasts</h3>
+             <p class="text-sm ml-1">Method: Lightcone AI Agents</p>
+             <p class="mt-1">
+              We employ specialized AI agents (using models like Gemini and GPT) trained to analyze news context, identify key variables, and generate probabilistic forecasts for related future developments. These AI-generated forecasts are clearly labeled.
+            </p>
+          </div>
+        </div>
+         <p class="mt-6 text-sm text-fg-muted italic">
+            Important: Forecasts are probabilistic estimates, not certainties. They represent the best available information from each source at a given time and are subject to change. AI models can also make errors.
+          </p>
+      </div>
+
       <p class="mb-4  text-lg">Lightcone News is in a very early Prototype phase &ndash; it's a work in progress and might not work as expected.</p>
 
     <div class="mt-8">

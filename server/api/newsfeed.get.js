@@ -3,10 +3,8 @@ import Article from '../models/Article.model'; // Import Article model
 import Scenario from '../models/Scenario.model'; // Import Scenario model
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 
-// Determine how many articles/scenarios to fetch for the feed
 const ARTICLES_LIMIT = 20;
 const SCENARIOS_LIMIT = 5;
-const RELATED_SCENARIOS_LIMIT_PER_ARTICLE = 3;
 
 export default defineEventHandler(async (event) => { // Make handler async
   
@@ -46,11 +44,10 @@ export default defineEventHandler(async (event) => { // Make handler async
 
     // Prepare Teaser Groups using fetched articles
     const teaserGroupsPromises = articles.map(async (article) => {
-      // Fetch related scenarios specifically for this article
+      // Fetch ALL related scenarios specifically for this article
       const relatedScenarios = await Scenario.find({
           _id: { $in: article.relatedScenarioIds || [] }
         })
-        .limit(RELATED_SCENARIOS_LIMIT_PER_ARTICLE)
         .lean();
 
       const formattedScenarios = relatedScenarios.map(scenario => ({

@@ -1,9 +1,11 @@
 import CommonConsentBanner from '~/components/common/ConsentBanner.vue';
+import CommonWelcomeBanner from '~/components/common/WelcomeBanner.vue';
 
 <template>
   <div class="min-h-screen flex flex-col">
     <LayoutHeader />
-    <main class="container mx-auto bg-bg h-full flex flex-col items-center justify-stretch grow">
+    <CommonWelcomeBanner />
+    <main class="container mx-auto bg-bg h-full flex flex-col items-center justify-stretch grow w-full">
       <slot />
     </main>
     <LayoutFooter />
