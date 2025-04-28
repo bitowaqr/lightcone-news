@@ -1,7 +1,7 @@
 import CommonConsentBanner from '~/components/common/ConsentBanner.vue';
 
 <template>
-  <div class="min-h-screen flex flex-col overflow-y-scroll">
+  <div class="min-h-screen flex flex-col">
     <LayoutHeader />
     <main class="container mx-auto bg-bg h-full flex flex-col items-center justify-stretch grow">
       <slot />
