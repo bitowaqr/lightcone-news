@@ -19,15 +19,12 @@ onMounted(() => {
 });
 
 function grantConsent() {
-  console.log('ConsentBanner: User clicked Allow.');
-  // Update gtag consent state
   gtag('consent', 'update', {
     analytics_storage: 'granted',
     ad_storage: 'granted',
     ad_user_data: 'granted',
     ad_personalization: 'granted'
   });
-  console.log('ConsentBanner: gtag consent updated to granted.');
   // Persist decision
   if (process.client) {
     localStorage.setItem(consentKey, 'true');
@@ -36,12 +33,10 @@ function grantConsent() {
 }
 
 function declineConsent() {
-  console.log('ConsentBanner: User clicked Decline.');
   // Consent remains denied (default state), just persist the decision
   if (process.client) {
     localStorage.setItem(consentKey, 'false');
   }
-  console.log('ConsentBanner: gtag consent remains denied.');
   showBanner.value = false;
 }
 </script>
@@ -57,9 +52,9 @@ function declineConsent() {
   >
     <div
       v-if="showBanner"
-      class="fixed bottom-0 left-0 right-0 z-[100] p-2 sm:p-4"
+      class="fixed bottom-0 left-0 right-0 z-[100] p-0 sm:p-4"
     >
-      <div class="max-w-4xl mx-auto bg-secondary-bg backdrop-blur-sm rounded-lg shadow-xl p-3 sm:p-5 border border-gray-300 dark:border-gray-700">
+      <div class="max-w-4xl mx-auto bg-secondary-bg backdrop-blur-sm sm:rounded shadow p-3 pt-5 lg:p-5  border border-gray-300 dark:border-gray-700">
         <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <p class="text-sm text-fg text-center sm:text-left grow">
             🍪 We use cookies to understand how you use our site and to improve your experience. This includes essential cookies for site functionality and analytics cookies. By clicking "Allow", you consent to our use of cookies.
@@ -71,7 +66,7 @@ function declineConsent() {
               @click="grantConsent"
               class="w-full xs:w-auto px-5 py-2 bg-primary hover:bg-primary-600 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-secondary-bg sm:order-last"
             >
-              Allow
+              Accept
             </button>
             <button
               @click="declineConsent"
