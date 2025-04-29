@@ -4,8 +4,9 @@
 
     <div class="bg-article p-6 md:p-8 rounded-lg shadow-sm mb-8 space-y-8 text-lg leading-relaxed">
       
-      <p> Lightcone News provides a curated news feed with additional contextual information and probabilistic forecasts.
-      </p>
+      <blockquote class="text-xl font-medium leading-relaxed"> 
+        Lightcone News provides a curated news feed with additional contextual information and probabilistic forecasts.
+      </blockquote>
 
       <!-- Core Features Section -->
       <section class="border-t border-bg-muted pt-6">
@@ -18,7 +19,7 @@
             <strong class="font-bold text-primary-700 dark:text-primary-300">Historical Timelines</strong> show the development of key events.
           </li>
           <li>
-            Chat with a <strong class="font-bold text-primary-700 dark:text-primary-300">Grounded AI Chat</strong> to get additional context on demand.
+            Chat with a <strong class="font-bold text-primary-700 dark:text-primary-300">Grounded AI</strong> to get additional context on demand.
           </li>
           <li>
             Probabilistic forecasts for possible <strong class="font-bold text-primary-700 dark:text-primary-300 ">Future Scenarios</strong>.
