@@ -29,6 +29,7 @@ html {
   --foreground: hsl(240, 6%, 14%);
   --foreground-muted: #422d0b;
   --accent-bg: #e3d4bf;
+  --accent-bg-hover: #e3d4bfd7;
   --secondary-bg: #F2EDF7;
   --article-bg: #F7F3ED;
 

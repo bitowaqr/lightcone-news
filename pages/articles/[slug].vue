@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-3xl mx-auto grow bg-article h-full pt-4 md:pt-12 lg:pt-20 w-full shadow-md">
+  <div class="max-w-3xl lg:max-w-6xl mx-auto grow bg-article h-full pt-4 md:pt-8 lg:pt-12 w-full shadow-md">
     
     
 
@@ -52,10 +52,13 @@
 import { useAuthStore } from '~/stores/auth';
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useHead, useRequestURL } from '#app';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const articleSlug = computed(() => route.params.slug);
+const siteUrl = useRequestURL().origin;
+const pageUrl = useRequestURL().href;
 
 // Fetch article data using the slug
 const { data: articleData, pending, error, refresh } = await useFetch(() => {
@@ -101,6 +104,66 @@ watch(
 const requiresLogin = computed(() => !authStore.isAuthenticated && !pending.value && error.value?.statusCode === 401);
 const isNotFound = computed(() => error.value?.statusCode === 404);
 const fetchError = computed(() => !pending.value && error.value && ![401, 404].includes(error.value.statusCode));
+
+// --- Add useHead for Meta Tags ---
+const siteTagline = "Lightcone News provides a curated news feed with additional contextual information and probabilistic forecasts.";
+
+useHead(() => {
+  // Set default meta tags even while loading or if error
+  let meta = [
+    { property: 'og:url', content: pageUrl },
+    { property: 'og:type', content: 'article' },
+    { name: 'twitter:card', content: 'summary_large_image' }, // Use large image card for Twitter
+    // Add default title/description/image if needed
+     { property: 'og:title', content: 'Lightcone News' },
+     { name: 'description', content: siteTagline },
+     { property: 'og:description', content: siteTagline },
+     { property: 'og:image', content: `${siteUrl}/lightcone-og-default.png` }, // Default site OG image
+     { property: 'og:image:alt', content: 'Lightcone News Logo' }
+  ];
+
+  // If article data is loaded successfully, override with specific details
+  if (articleData.value) {
+    const title = articleData.value.title;
+    // Use precis as description, truncate if necessary, append tagline
+    let description = articleData.value.precis;
+    if (description.length > 150) { // Keep it concise
+        description = description.substring(0, 147) + '...';
+    }
+    description = `${description} ${siteTagline}`;
+
+    const imageUrl = articleData.value.imageUrl || `${siteUrl}/lightcone-og-default.png`;
+    const imageAlt = articleData.value.title || 'Article Image';
+
+    meta = [
+      { property: 'og:url', content: pageUrl },
+      { property: 'og:type', content: 'article' },
+      { property: 'og:title', content: title },
+      { name: 'description', content: description }, // Also set standard description
+      { property: 'og:description', content: description },
+      { property: 'og:image', content: imageUrl },
+      { property: 'og:image:alt', content: imageAlt },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: title },       // Specific Twitter title
+      { name: 'twitter:description', content: description }, // Specific Twitter description
+      { name: 'twitter:image', content: imageUrl },      // Specific Twitter image
+    ];
+
+    // Add published time if available
+    if (articleData.value.publishedDate) {
+       meta.push({ property: 'article:published_time', content: new Date(articleData.value.publishedDate).toISOString() });
+    }
+    // Add updated time if available (often same as published for simplicity here)
+    if (articleData.value.updatedDate || articleData.value.publishedDate) {
+       meta.push({ property: 'article:modified_time', content: new Date(articleData.value.updatedDate || articleData.value.publishedDate).toISOString() });
+    }
+  }
+
+  return {
+    title: articleData.value ? `${articleData.value.title} | Lightcone News` : (isNotFound.value ? 'Article Not Found | Lightcone News' : 'Lightcone News'),
+    meta: meta,
+  };
+});
 
 </script>
 

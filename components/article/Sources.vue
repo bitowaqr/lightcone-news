@@ -1,128 +1,122 @@
 <template>
-  <div id="article-meta" class="flex items-start py-2 flex-col justify-start">
-    <h4 class="text-xs font-medium text-fg-muted mb-1 ms-1">Sources:</h4>
-    <div
-      id="article-sources"
-      class="flex items-center text-fg-muted leading-none bg-bg-muted px-2 py-2 border border-accent-bg rounded-2xl shadow-sm max-w-[50%] min-w-[240px] transition-all duration-100 w-fit"
-      :class="{ 'max-w-full': showAllSources }"
-    >
-      <!-- Collapsed view with overlapping icons and source names -->
-      <div 
-        v-if="!showAllSources" 
-        class="flex items-center cursor-pointer"
-        @click="showAllSources = true"
+  <!-- Desktop: Expanded List -->
+  <div v-if="isDesktop" id="article-sources-desktop" class="desktop-sources">
+    <h4 v-if="sources?.length" class="text-xs font-medium text-fg-muted mb-2">Sources:</h4>
+    <div class="list-none space-y-1.5">
+      <a
+        v-for="(source, index) in sources"
+        :key="`desktop-source-${source.id || index}`"
+        class="text-sm flex items-center leading-tight group"
+        :href="sanitizeUrl(source.url)"
+        target="_blank"
+        rel="noopener noreferrer"
+        :title="source.url || source.publisher"
       >
-        <div class="flex items-center">
-          <div 
-            v-for="(source, idx) in [...sourcesTop,...sourcesRest]" 
-            :key="source.id || idx"  
-            class="w-7 h-7 overflow-hidden border border-gray-100 flex items-center justify-center bg-white"
-            :style="{ marginLeft: idx > 10 ? '-28px' : idx > 2 ? '-22px' : idx > 0 ? '-16px' : '0', zIndex: 10 - idx }"
-            :class="{ 'rounded-full': !showAllSources, 'rounded-lg': showAllSources }"
+        <div class="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center w-5 h-5 mr-2 border border-gray-200 bg-white">
+          <img
+            :src="getSourceFavicon(source.url)"
+            :alt="getSourceDomain(source.url)"
+            class="w-4 h-4 object-contain filter"
+            @error="onFaviconError($event, `desktop-${source.id || index}`)"
+            v-if="!faviconErrors[`desktop-${source.id || index}`]"
+          />
+          <div
+            v-if="faviconErrors[`desktop-${source.id || index}`]"
+            class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
           >
-            <img
-              :src="getSourceFavicon(source.url)"
-              :alt="getSourceDomain(source.url)"
-              class="w-full h-full object-cover filter"
-              @error="onFaviconError($event, source.id || idx)"
-              v-if="!faviconErrors[source.id || idx] && idx < 3"
-            />
-            <!-- Generic round icons for additional sources in sourcesRest -->
-            <div 
-              v-if="idx >= 3 && idx < 5" 
-              class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 "
-            >
-              <span class="text-xs font-medium text-gray-600">
-                {{ getSourceInitial(source.url) }}
-              </span>
-            </div>
-            <!-- More indicator if there are many sources -->
-            <div 
-              v-if="idx === 5 && sourcesRest.length > 3" 
-              class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-300 to-gray-400"
-            >
-            </div>
-            <div
-              v-if="faviconErrors[source.id || idx]"
-              class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
-            >
-              <span class="text-sm font-medium text-gray-600">
-                {{ getSourceInitial(source.url) }}
-              </span>
-            </div>
+            <span class="text-[10px] font-medium text-gray-600">{{ getSourceInitial(source.url) }}</span>
           </div>
         </div>
-        
-        <!-- Source names -->
-        <div class="ml-2 text-sm" v-if="sourcesTop?.length > 0">
-            <div class="flex items-center justify-center">
-              <div class="line-clamp-1 shrink-1 w-fit">
-              {{ sourcesTeaserString }}
-              </div>
-            </div>
+        <div
+          v-if="source.url || source.publisher"
+          class="text-fg-muted group-hover:text-primary group-hover:underline truncate"
+        >
+          {{ getSourceDomain(source.url) || source.publisher }}
         </div>
-      </div>
-      
-      <!-- Expanded view with all sources -->
-      <div 
-        v-if="showAllSources"
-        class="w-full transition-all duration-200"
-      >
-        <div class="flex items-center justify-between mb-2">
-           
-          <button 
-            @click="showAllSources = false"
-            class="text-xs text-fg-muted hover:underline transition-colors duration-200"
-          >
-            Hide
-          </button>
-        </div>
-        <div class="list-none space-y-2 transition-all duration-200 ps-2">
-          <a
-            v-for="(source, index) in sources"
-            :key="source.id || index"
-            class="text-sm flex items-center leading-none"
-              :href="sanitizeUrl(source.url)"
-              target="_blank"
-              rel="noopener noreferrer"
-              :title="getSourceDomain(source.url)"
-            
-          >
-            <div class="rounded-full overflow-hidden flex items-center justify-center w-6 h-6 mr-2">
-              <div class="w-6 h-6 flex items-center justify-center bg-white rounded-full overflow-hidden">
-                <img
-                  :src="getSourceFavicon(source.url)"
-                  :alt="getSourceDomain(source.url)"
-                  class="w-full h-full object-contain filter"
-                  @error="onFaviconError($event, source.id || index)"
-                  v-if="!faviconErrors[source.id || index]"
-                />
-              </div>
-              <div
-                v-if="faviconErrors[source.id || index]"
-                class="w-6 h-6 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-full"
-              >
-                <span class="text-xs font-medium text-gray-600">
-                  {{ getSourceInitial(source.url) }}
-                </span>
-              </div>
-            </div>
-            <div
-              v-if="source.url"
-              class="text-fg-muted hover:underline max-w-full line-clamp-1"
-            >
-              {{ source.url }}
-            </div>
-            <span v-else>{{ source.name }}</span>
-          </a>
-        </div>
-      </div>
+      </a>
     </div>
   </div>
+
+  <!-- Mobile: Collapsible Details/Summary -->
+  <details v-else id="article-sources-mobile" class="mobile-sources group">
+    <summary class="flex items-center justify-between cursor-pointer list-none py-1">
+      <div class="flex items-center">
+         <!-- Collapsed Icons -->
+         <div class="flex items-center -space-x-3 mr-2">
+           <div 
+             v-for="(source, idx) in collapsedSources" 
+             :key="`mobile-collapsed-${source.id || idx}`"  
+             class="w-5 h-5 rounded-full overflow-hidden border border-bg flex items-center justify-center bg-white shadow-sm"
+             :style="{ zIndex: 10 - idx }"
+           >
+             <img
+               :src="getSourceFavicon(source.url)"
+               :alt="getSourceDomain(source.url)"
+               class="w-full h-full object-contain filter"
+               @error="onFaviconError($event, `mobile-collapsed-${source.id || idx}`)"
+               v-if="!faviconErrors[`mobile-collapsed-${source.id || idx}`]"
+             />
+             <div
+               v-if="faviconErrors[`mobile-collapsed-${source.id || idx}`]"
+               class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+             >
+               <span class="text-[9px] font-medium text-gray-600">{{ getSourceInitial(source.url) }}</span>
+             </div>
+           </div>
+            <!-- More indicator -->
+             <div 
+               v-if="sources.length > 3" 
+               class="w-5 h-5 rounded-full border border-bg flex items-center justify-center bg-gray-200 text-gray-600 text-[10px] font-medium shadow-sm"
+               :style="{ zIndex: 10 - 3 }" 
+             >
+              +{{ sources.length - 3 }}
+             </div>
+         </div>
+         <!-- Collapsed Text Label -->
+         <span class="text-xs text-fg-muted">{{ collapsedSourcesLabel }}</span>
+      </div>
+      <Icon name="heroicons:chevron-down-20-solid" class="w-4 h-4 text-fg-muted transition-transform duration-200 group-open:rotate-180 flex-shrink-0 ml-2" />
+    </summary>
+
+    <!-- Expanded List (Mobile) -->
+    <div class="mt-2 pl-1 list-none space-y-1.5">
+       <a
+         v-for="(source, index) in sources"
+         :key="`mobile-expanded-${source.id || index}`"
+         class="text-sm flex items-center leading-tight group"
+         :href="sanitizeUrl(source.url)"
+         target="_blank"
+         rel="noopener noreferrer"
+         :title="source.url || source.publisher"
+       >
+         <div class="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center w-5 h-5 mr-2 border border-gray-200 bg-white">
+           <img
+             :src="getSourceFavicon(source.url)"
+             :alt="getSourceDomain(source.url)"
+             class="w-4 h-4 object-contain filter"
+             @error="onFaviconError($event, `mobile-expanded-${source.id || index}`)"
+             v-if="!faviconErrors[`mobile-expanded-${source.id || index}`]"
+           />
+           <div
+             v-if="faviconErrors[`mobile-expanded-${source.id || index}`]"
+             class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+           >
+             <span class="text-[10px] font-medium text-gray-600">{{ getSourceInitial(source.url) }}</span>
+           </div>
+         </div>
+         <div
+           v-if="source.url || source.publisher"
+           class="text-fg-muted group-hover:text-primary group-hover:underline truncate"
+         >
+           {{ getSourceDomain(source.url) || source.publisher }}
+         </div>
+       </a>
+    </div>
+  </details>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { getSourceFavicon, getSourceDomain, getSourceInitial, sanitizeUrl } from '~/utils/sourceUtils';
 
 const props = defineProps({
@@ -134,30 +128,55 @@ const props = defineProps({
 });
 
 const sourcesCount = computed(() => props.sources?.length || 0);
-const sourcesTop = computed(() => props.sources?.slice(0, 3) || []); // Show top 3 sources
-const sourcesRest = computed(() =>
-  sourcesCount.value > 3 ? props.sources?.slice(3) : []
-);
-const sourcesTeaserString = computed(() => {
-  let sc = sourcesCount.value;
-  if (sc === 0) return '';
-  if (sc === 1) return sourcesTop.value[0].publisher;
-  if (sc === 2) return sourcesTop.value[0].publisher + ' and ' + sourcesTop.value[1].publisher;
-  return sourcesTop.value[0].publisher + ' + ' + (sc - 1 + sourcesRest.value.length) + ' Sources';
-});
-const showAllSources = ref(false);
 const faviconErrors = ref({});
 
-const onFaviconError = (event, index) => {
-  // Hide the failed image immediately
-  event.target.style.display = 'none';
-  // Mark this favicon as errored
-  faviconErrors.value[index] = true;
+// Computed property for collapsed view icons (first 3 sources)
+const collapsedSources = computed(() => props.sources.slice(0, 3));
+
+// Computed property for mobile collapsed label text
+const collapsedSourcesLabel = computed(() => {
+  if (sourcesCount.value === 0) return 'No Sources';
+  const firstPublisher = props.sources[0]?.publisher || getSourceDomain(props.sources[0]?.url);
+  if (sourcesCount.value === 1) return firstPublisher || '1 Source';
+  const remainingCount = sourcesCount.value - 1;
+  return `${firstPublisher} + ${remainingCount} Sources`;
+});
+
+const onFaviconError = (event, key) => {
+  faviconErrors.value[key] = true;
 };
+
+// Track desktop state
+const isDesktop = ref(false);
+const checkScreenSize = () => {
+  isDesktop.value = window.innerWidth >= 1024; // lg breakpoint
+};
+
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener('resize', checkScreenSize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkScreenSize);
+});
+
+// No longer need showAllSources state for mobile as details handles it
+// watch(isDesktop, (newVal) => {
+//   if (!newVal) {
+//     showAllSources.value = false; // Collapse sources on mobile
+//   }
+// });
+
 </script>
 
 <style scoped>
 .filter {
-  filter: grayscale(100%) brightness(105%);
+  filter: grayscale(80%) brightness(110%) contrast(90%);
+  opacity: 0.9;
+}
+/* Hide default marker for details/summary */
+.mobile-sources summary::-webkit-details-marker {
+  display: none;
 }
 </style> 

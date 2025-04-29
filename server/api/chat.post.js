@@ -46,8 +46,6 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const { prompt, contextId, history } = body;
 
-  console.log('history', history);
-
   if (!prompt || !contextId) {
     // We need to end the response here since we already set headers
     event.node.res.statusCode = 400;
@@ -136,7 +134,7 @@ export default defineEventHandler(async (event) => {
   </instructions>`;
 
   const chatHistory = []
-  history.forEach(message => {
+  history?.forEach(message => {
     if(!message.text || message.text.trim() === '') return;
     chatHistory.push({
       role: message.sender === 'user' ? 'user' : 'assistant',
@@ -146,8 +144,22 @@ export default defineEventHandler(async (event) => {
 
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...chatHistory]
+    ...chatHistory
+  ];
   
+  console.log('Messages sent to LLM:', JSON.stringify(messages, null, 2));
+
+  // Check if messages array is valid (at least system + user/assistant message)
+  if (messages.length < 2) {
+      console.error('Error: Not enough messages to send to LLM. History might be missing the latest user prompt.');
+      event.node.res.statusCode = 400;
+      event.node.res.statusMessage = 'Bad Request: Invalid chat history provided.';
+      return event.node.res.end(JSON.stringify({
+          statusCode: 400,
+          statusMessage: 'Bad Request: Invalid chat history provided.'
+      }));
+  }
+
   try {
     const stream = await model.stream(messages);
 

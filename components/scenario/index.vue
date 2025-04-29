@@ -1,5 +1,16 @@
 <template>
-  <div class="p-4 sm:p-6">
+  <div class="p-4 sm:p-6 pt-0 sm:pt-0">
+    <!-- back arrow, go back where you came from -->
+    <div class="mb-2 sm:mb-4">
+      <a
+        href="#" 
+        @click.prevent="$router.go(-1)"
+        class="text-fg-muted hover:text-primary transition-colors duration-100 flex items-center gap-x-1 cursor-pointer">
+        <Icon name="heroicons:arrow-left-20-solid" class="w-5 h-5 inline-block align-text-bottom" />
+        <div class="text-sm">Back</div>
+      </a>
+    </div>
+  
     <div v-if="scenario">
       <!-- Header -->
       <div class="mb-4 pb-4">

@@ -8,14 +8,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 
-export const createLineup = async () => {
+export const createLineup = async (saveToMongo = true) => {
   
   console.log('Starting lineup creation...');
   await mongoService.connect();
 
   // 1. Scrape News Feeds 
   console.log('Scraping news feeds...');
-  const allNewsItems = await scrapeFeeds([], true);
+  const allNewsItems = await scrapeFeeds(["semafor","tagesschau"], true);
   console.log(`Feed items fetched: ${allNewsItems.length}`);
 
   // 1.5 Curate Sources Per Publisher
@@ -63,12 +63,15 @@ export const createLineup = async () => {
     story.lineupId = lineupId;
   });
   console.log('Saving lineup with Id: ', lineupId , " to mongo");
-  await mongoService.saveStoryIdeas(lineup.stories);
+  if(saveToMongo) await mongoService.saveStoryIdeas(lineup.stories);
   console.log('Lineup saved to MongoDB');
 
   return lineup.stories;
 };
 
+
+const test = await createLineup(false);
+fs.writeFileSync('lineup.json', JSON.stringify(test, null, 2));
 // Example usage (for testing):
 // const runTest = async () => {
 //   try {

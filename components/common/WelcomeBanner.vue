@@ -71,13 +71,13 @@ function dismissPermanently() {
         <!-- Close Button (Top Right) - Made Larger -->
         <button 
           @click="dismiss"
-          class="absolute top-1 right-1 p-1 text-fg-muted hover:text-fg hover:bg-bg-muted rounded-full focus:outline-none"
+          class="absolute top-1 right-1 p-1 text-fg-muted hover:text-primary  rounded-full focus:outline-none"
           aria-label="Close welcome banner"
         >
-          <Icon icon="heroicons:x-mark-20-solid" class="w-6 h-6" /> 
+          <Icon icon="heroicons:x-mark-20-solid" class="w-8 h-8" /> 
         </button>
 
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 max-w-4xl mx-auto my-2">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 max-w-4xl mx-auto p-4">
           <p class="text-base text-fg text-center sm:text-left grow">
             ✨ Welcome to Lightcone News! If this is your first time here, click 'Learn More' to see what lightcone news is all about and how the predictions work.
           </p>
@@ -86,10 +86,10 @@ function dismissPermanently() {
              <!-- Never Show Again - Changed Style -->
             <button
               @click="dismissPermanently"
-              class="text-xs text-fg-muted hover:text-primary hover:underline focus:outline-none focus:underline whitespace-nowrap my-auto"
+              class="text-xs text-fg-muted hover:text-primary hover:underline focus:outline-none focus:underline whitespace-nowrap my-auto mx-auto"
               title="Don't show this banner again"
             >
-              Never Show Again
+              Don't Show Again
             </button>
             <!-- Learn More - Now on Right -->
             <button

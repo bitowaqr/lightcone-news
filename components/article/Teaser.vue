@@ -84,8 +84,7 @@
           :key="scenario.scenarioId" 
           :class="{ 
             'hidden': !showAllScenarios && index >= initialScenarioCount, // Hide extra on mobile
-            'md:block': true, // Still needed to override hidden on md+
-            'bg-accent-bg py-1': true // Apply background on ALL sizes
+            'md:block': true // Still needed to override hidden on md+
           }"
         >
           <ScenarioTeaser :scenario="scenario" />
@@ -95,10 +94,10 @@
       <div v-if="group.nScenarios > initialScenarioCount" class="mt-2 ps-2 lg:ps-4 md:hidden">
         <button
           @click="toggleShowAllScenarios"
-          class="text-fg-muted mt-1 italic block text-xs hover:underline"
+          class="text-fg-muted font-medium mt-1 italic block text-sm hover:underline"
         >
           <span v-if="!showAllScenarios">
-            show {{ group.nScenarios - initialScenarioCount }} more
+            Show {{ group.nScenarios - initialScenarioCount }} more
             {{ group.nScenarios - initialScenarioCount > 1 ? 'Scenarios' : 'Scenario' }}
           </span>
           <span v-else>

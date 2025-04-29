@@ -45,6 +45,7 @@ export default {
         accent: {
           bg: 'var(--accent-bg)',
           fg: 'var(--accent-fg)',
+          bgHover: 'var(--accent-bg-hover)',
         },
       },
       fontFamily: {

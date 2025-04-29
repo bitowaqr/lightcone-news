@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 
 const props = defineProps({ contextId: String, suggestedPrompts: Array }); // e.g., article ID
@@ -8,8 +8,37 @@ const isLoading = ref(false);
 const chatError = ref(null);
 const authStore = useAuthStore();
 const messages = ref([]); // Store all messages (user and AI)
-const isInputVisible = ref(false); // Toggle input field visibility
 const messagesContainer = ref(null); // Ref for the messages container
+
+// Track desktop state
+const isDesktop = ref(false);
+
+// --- Mobile Visibility Logic --- 
+// Start hidden on mobile unless messages exist
+const showInputMobile = ref(messages.value.length > 0);
+// Input area is visible if on desktop OR mobile toggle is true
+const isInputVisible = computed(() => isDesktop.value || showInputMobile.value);
+// Show sparkle icon only on mobile when input is hidden AND no messages exist yet
+const showSparkleIcon = computed(() => !isDesktop.value && !showInputMobile.value && messages.value.length === 0);
+
+const checkScreenSize = () => {
+  isDesktop.value = window.innerWidth >= 1024; // lg breakpoint
+  // If resizing to mobile, ensure mobile input state is reset if needed
+  if (!isDesktop.value) {
+     // showInputMobile.value = false; // Optional: reset mobile state on resize
+  }
+};
+
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener('resize', checkScreenSize);
+  // Initial check if messages exist to show input on mobile
+  showInputMobile.value = messages.value.length > 0;
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkScreenSize);
+});
 
 // Function to scroll to bottom of messages
 const scrollToBottom = async () => {
@@ -25,12 +54,17 @@ watch(() => props.contextId, () => {
   messages.value = [];
   chatError.value = null;
   isLoading.value = false;
-  isInputVisible.value = false;
+  showInputMobile.value = false; // Reset mobile toggle
 });
 
 async function submitPrompt(promptText = userInput.value) {
   const textToSend = promptText.trim();
   if (!textToSend) return;
+
+  // Ensure mobile input is visible after sending first message
+  if (!isDesktop.value && messages.value.length === 0) {
+    showInputMobile.value = true;
+  }
 
   messages.value.push({
     sender: 'user',
@@ -41,6 +75,11 @@ async function submitPrompt(promptText = userInput.value) {
   isLoading.value = true;
   chatError.value = null;
   userInput.value = '';
+
+  // No need to hide mobile input after submit
+  // if (!isDesktop.value) {
+  //    showInputMobile.value = false;
+  // }
 
   // Add placeholder AI message with a flag
   const aiMessageIndex = messages.value.push({
@@ -138,68 +177,44 @@ async function submitPrompt(promptText = userInput.value) {
 }
 
 // Placeholder for fetching suggested prompts - could come from articleData
-const suggestedPrompts = ref(props.suggestedPrompts);
+const suggestedPromptsLocal = ref([...props.suggestedPrompts]); // Make a local copy to modify
 
 function useSuggestion(prompt) {
     userInput.value = prompt;
-    // Remove the used prompt from suggestions
-    suggestedPrompts.value = suggestedPrompts.value.filter(p => p !== prompt);
-    // Show input field and hide sparkle button
-    isInputVisible.value = true;
-    submitPrompt(prompt);
+    // Remove the used prompt from local suggestions
+    suggestedPromptsLocal.value = suggestedPromptsLocal.value.filter(p => p !== prompt);
+    // Show input field (primarily for mobile)
+    showInputMobile.value = true;
+    // Focus input after selecting suggestion (on desktop it's already visible)
+    nextTick(() => {
+      // Add ref="chatInputRef" to the textarea
+      // chatInputRef.value?.focus(); 
+    });
+    // Don't automatically submit, let user press send
+    // submitPrompt(prompt); 
 }
 
-function toggleInput() {
-  if (true) {
-    isInputVisible.value = !isInputVisible.value;
-    if (isInputVisible.value) {
-      // Focus the input field when it becomes visible
-      nextTick(() => {
-        // Assuming the textarea has a ref="chatInput"
-        // You might need to add ref="chatInput" to the <textarea> element
-        // const inputEl = document.querySelector('.chat-input-textarea'); // Or use a ref
-        // if (inputEl) inputEl.focus(); 
-        // ^-- Focusing requires a ref or more complex querySelector, 
-        //     leaving commented for now to avoid adding refs without confirmation.
-      });
-    }
-  }
+function toggleInputMobile() {
+  showInputMobile.value = true; // Just show it, don't toggle off
 }
+
+const chatInputRef = ref(null); // Ref for the textarea
 </script>
 
 <template>
-  <div class="chat-container text-sm my-1">
-    <!-- Login Prompt -->
-    <!-- <p v-if="!authStore.isAuthenticated" class="text-sm text-primary-600 dark:text-primary-400 mb-3 px-1">
-        Please <NuxtLink to="/login" class="underline font-medium">login</NuxtLink> to use the AI chat.
-    </p> -->
+  <div class="chat-container text-sm">
+    <!-- Sparkle Icon to initiate chat (Mobile Only, only if no messages) -->
+    <button 
+      v-if="showSparkleIcon"
+      @click="toggleInputMobile" 
+      class="text-sm bg-bg-muted hover:bg-accent-bg dark:hover:bg-accent-bg/50 text-fg-muted p-1.5 rounded-full border border-accent-bg disabled:opacity-50 transition flex items-center justify-center flex-shrink-0 mb-3"
+      :disabled="isLoading"
+      aria-label="Start AI chat"
+    >
+      <Icon name="mdi:sparkles" class="w-5 h-5" />
+    </button>
 
-    <!-- Edit Icon and Suggested Prompts in one scrollable line -->
-    <div class="flex items-center gap-2 mb-3 overflow-x-auto whitespace-nowrap scrollbar-hide py-2 ps-1">
-      <!-- Edit Icon -->
-        <!-- v-if="!isInputVisible && authStore.isAuthenticated"  -->
-      <button 
-      v-if="!isInputVisible"
-        @click="toggleInput" 
-        class="text-sm bg-bg-muted hover:bg-accent-bg dark:hover:bg-accent-bg/50 text-fg-muted p-1.5 rounded-full border border-accent-bg disabled:opacity-50 transition flex items-center justify-center flex-shrink-0"
-        :disabled="isLoading"
-        aria-label="Start AI chat"
-      >
-        <Icon name="mdi:sparkles" class="w-5 h-5" />
-      </button>
-
-      <!-- Suggested Prompts -->
-      <button
-        v-for="(prompt, index) in suggestedPrompts" :key="index"
-        @click="() => useSuggestion(prompt)"
-        :disabled="isLoading"
-        class="text-xs bg-bg-muted hover:bg-accent-bg dark:hover:bg-accent-bg/50 text-fg px-3 py-1.5 rounded-full border border-accent-bg disabled:opacity-50 transition flex-shrink-0"
-      >
-        {{ prompt }}
-      </button>
-    </div>
-
-    <!-- Messages Area -->
+    <!-- Messages Area (Always visible if messages exist) -->
     <div 
       v-if="messages.length > 0" 
       ref="messagesContainer"
@@ -209,8 +224,8 @@ function toggleInput() {
         v-for="(message, index) in messages"
         :key="index"
         :class="[
-          'message-bubble flex flex-col', 
-          message.sender === 'user' 
+          'message-bubble flex flex-col',
+          message.sender === 'user'
             ? 'items-end' // Align user messages to the right
             : 'items-start' // Align AI messages to the left
         ]"
@@ -255,26 +270,41 @@ function toggleInput() {
 
     <p v-if="chatError" class="text-red-600 text-sm mb-3 px-1">{{ chatError }}</p>
 
-    <!-- Chat Input Form - Only visible when edit is clicked -->
-    <div v-if="isInputVisible " class="relative mt-2">
-      <textarea
-        ref="chatInput"
-        v-model="userInput"
-        placeholder="Ask follow-up questions..."
-        :disabled="isLoading"
-        rows="2"
-        class="chat-input-textarea w-full px-3 py-2 border border-accent-bg rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm disabled:bg-bg-muted resize-none bg-bg pr-10"
-        @keydown.enter.exact.prevent="submitPrompt()"
-      >
-      </textarea>
-      <button
-        @click="submitPrompt()"
-        :disabled="isLoading || !userInput.trim()"
-        class="p-1 bg-primary hover:bg-primary-600 text-white rounded-full disabled:opacity-50 h-7 w-7 flex items-center justify-center absolute right-2.5 bottom-2.5 transition-colors"
-        aria-label="Send message"
-      >
-        <Icon name="mdi:arrow-up" class="w-5 h-5" />
-      </button>
+    <!-- Input Area Wrapper (Visible on Desktop OR when toggled on Mobile) -->
+    <div v-if="isInputVisible" class="input-area-wrapper mt-2">
+      <!-- Suggested Prompts (Moved below messages, above input) -->
+      <div v-if="suggestedPromptsLocal.length > 0" class="flex items-center gap-2 mb-3 overflow-x-auto whitespace-nowrap scrollbar-hide py-1">
+        <button
+          v-for="(prompt, index) in suggestedPromptsLocal" :key="`suggestion-${index}`"
+          @click="() => useSuggestion(prompt)"
+          :disabled="isLoading"
+          class="text-xs bg-bg-muted hover:bg-accent-bg dark:hover:bg-accent-bg/50 text-fg px-3 py-1.5 rounded-full border border-accent-bg disabled:opacity-50 transition flex-shrink-0"
+        >
+          {{ prompt }}
+        </button>
+      </div>
+
+      <!-- Chat Input Form -->
+      <div class="relative">
+        <textarea
+          ref="chatInputRef" 
+          v-model="userInput"
+          placeholder="Ask follow-up questions..."
+          :disabled="isLoading"
+          rows="2"
+          class="chat-input-textarea w-full px-3 py-2 border border-accent-bg rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm disabled:bg-bg-muted resize-none bg-bg pr-10"
+          @keydown.enter.exact.prevent="submitPrompt()"
+        >
+        </textarea>
+        <button
+          @click="submitPrompt()"
+          :disabled="isLoading || !userInput.trim()"
+          class="p-1 bg-primary hover:bg-primary-600 text-white rounded-full disabled:opacity-50 h-7 w-7 flex items-center justify-center absolute right-2.5 bottom-2.5 transition-colors"
+          aria-label="Send message"
+        >
+          <Icon name="mdi:arrow-up" class="w-5 h-5" />
+        </button>
+      </div>
     </div>    
   </div>
 </template>
@@ -337,8 +367,10 @@ function toggleInput() {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Ensure chat container doesn't have excessive top margin from parent changes */
 .chat-container {
-  margin-top: 1rem !important;
+  /* margin-top: 1rem !important; */ /* Removed specific margin override */
 }
 
 </style> 
