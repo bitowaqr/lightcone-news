@@ -92,10 +92,19 @@ async function handleLogout() {
   >
     <div class="bg-bg relative">
       <nav class="container mx-auto px-4 py-2 flex justify-between items-center">
-        <NuxtLink to="/" class="flex items-center gap-2">
-          <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-8 h-8 dark:invert" />
-          <span class="text-xl  text-fg hover:text-fg">Lightcone.news</span>
-        </NuxtLink>
+        <!-- Left Section: Logo + Main Nav Links -->
+        <div class="flex items-center space-x-4">
+          <NuxtLink to="/" class="flex items-center gap-2">
+            <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-8 h-8 dark:invert" />
+            <span class="text-xl text-fg hover:text-fg">Lightcone.news</span>
+          </NuxtLink>
+          <!-- Desktop Main Navigation Links -->
+          <div class="hidden md:flex space-x-4 items-center">
+            <NuxtLink to="/scenarios" class="text-fg hover:text-primary">Scenarios</NuxtLink>
+            <NuxtLink to="/about" class="text-fg hover:text-primary">About</NuxtLink>
+            <NuxtLink to="/contact" class="text-fg hover:text-primary">Contact</NuxtLink>
+          </div>
+        </div>
 
         <!-- Mobile Menu Button -->
         <button
@@ -110,15 +119,8 @@ async function handleLogout() {
           />
         </button>
 
-        <!-- Desktop Navigation -->
+        <!-- Right Section: Theme Toggle + Auth -->
         <div class="hidden md:flex space-x-4 items-center">
-          
-          <!-- <NuxtLink to="/" class="text-fg hover:text-primary">Newsfeed</NuxtLink> -->
-
-          <!-- Secondary Navigation Links -->
-          <NuxtLink to="/about" class="text-fg hover:text-primary">About</NuxtLink>
-          <NuxtLink to="/contact" class="text-fg hover:text-primary">Contact</NuxtLink>
-
           <!-- Dark Mode Toggle Button -->
           <button @click="toggleDarkMode" class="p-2 rounded-full text-fg hover:bg-bg-muted focus:outline-none">
             <Icon :icon="isDark ? 'heroicons:sun-20-solid' : 'heroicons:moon-20-solid'" class="w-5 h-5" />
@@ -146,8 +148,18 @@ async function handleLogout() {
 
             <!-- Unauthenticated State -->
             <template v-else>
-              <NuxtLink to="/login" class="text-fg hover:text-primary">Login</NuxtLink>
-              <NuxtLink to="/register" class="text-fg hover:text-primary">Register</NuxtLink>
+              <NuxtLink
+                to="/login"
+                class="text-primary border border-primary px-3 py-1 rounded text-sm hover:bg-primary hover:text-white transition-colors duration-200"
+              >
+                Login
+              </NuxtLink>
+              <NuxtLink
+                to="/register"
+                class="bg-primary text-white px-3 py-1 rounded text-sm hover:opacity-90 transition-opacity duration-200"
+              >
+                Register
+              </NuxtLink>
             </template>
 
             <!-- Fallback content if needed (optional) -->
@@ -171,6 +183,13 @@ async function handleLogout() {
               @click="mobileMenuOpen = false"
             >
               Newsfeed
+            </NuxtLink>
+             <NuxtLink
+              to="/scenarios"
+              class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
+              @click="mobileMenuOpen = false"
+            >
+              Scenarios
             </NuxtLink>
 
             <NuxtLink
@@ -240,14 +259,14 @@ async function handleLogout() {
                 <div v-else class="flex space-x-4">
                   <NuxtLink
                     to="/login"
-                    class="text-fg hover:text-primary"
+                    class="text-primary border border-primary px-3 py-1 rounded text-sm hover:bg-primary hover:text-white transition-colors duration-200"
                     @click="mobileMenuOpen = false"
                   >
                     Login
                   </NuxtLink>
                   <NuxtLink
                     to="/register"
-                    class="text-fg hover:text-primary"
+                    class="bg-primary text-white px-3 py-1 rounded text-sm hover:opacity-90 transition-opacity duration-200"
                     @click="mobileMenuOpen = false"
                   >
                     Sign up

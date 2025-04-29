@@ -1,9 +1,24 @@
 import { defineEventHandler, readBody, createError } from 'h3';
 import User from '../../models/User.model'; // Adjust path as needed
 
+// Store the activation code securely, e.g., in environment variables
+// For now, hardcoding for demonstration. Replace with process.env.ACTIVATION_CODE in production.
+const VALID_ACTIVATION_CODE = 'rosebud';
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
-  const { email, password } = body;
+  // Destructure activationCode along with email and password
+  const { email, password, activationCode } = body;
+
+  // --- Activation Code Check ---
+  if (!activationCode || activationCode !== VALID_ACTIVATION_CODE) {
+    console.warn(`Registration attempt failed: Invalid or missing activation code from ${email || 'unknown'}`);
+    throw createError({
+        statusCode: 403, // Forbidden
+        statusMessage: 'A valid activation code is required to register.',
+      });
+  }
+  // ---------------------------
 
   // Basic Input Validation
   if (!email || !password) {
@@ -33,14 +48,14 @@ export default defineEventHandler(async (event) => {
 
     // Create new user (password will be hashed by the pre-save hook in the model)
     const newUser = new User({
-      email: email,
+      email: email, // Consider normalizing: email.toLowerCase().trim()
       password: password, // Provide the plain password, the model will hash it
       // Add any other default fields if necessary
     });
 
     await newUser.save();
 
-    console.log(`User registered: ${newUser.email}`);
+    console.log(`User registered (with valid code): ${newUser.email}`);
 
     // Don't send back the user object or password hash
     return {
@@ -50,10 +65,10 @@ export default defineEventHandler(async (event) => {
 
   } catch (error) {
     // Handle Mongoose validation errors or other issues
-    if (error.statusCode) { // Re-throw H3 errors
+    if (error.statusCode) { // Re-throw H3 errors (like our 403, 400, 409)
       throw error;
     }
-    console.error("Registration Error:", error);
+    console.error("Registration Error (post-activation check):", error);
     // Check for Mongoose validation errors
     if (error.name === 'ValidationError') {
       // Extract meaningful messages from validation errors

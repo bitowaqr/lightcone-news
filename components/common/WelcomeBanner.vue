@@ -67,7 +67,7 @@ function dismissPermanently() {
       v-if="showBanner"
       class="fixed top-0 left-0 right-0 z-[90] p-2 sm:p-4 pointer-events-none max-w-4xl mx-auto" 
     >
-      <div class="w-full bg-gradient-to-b from-blue-50 dark:from-blue-950/60 to-bg sm:rounded shadow py-2 lg:py-4 px-4 lg:px-5 border border-blue-200 dark:border-blue-800/60 relative pointer-events-auto flex flex-col">
+      <div class="w-full bg-bg dark:bg-bg sm:rounded shadow-lg py-2 lg:py-4 px-4 lg:px-5 border border-blue-200 dark:border-primary relative pointer-events-auto flex flex-col ">
         <!-- Close Button (Top Right) - Made Larger -->
         <button 
           @click="dismiss"

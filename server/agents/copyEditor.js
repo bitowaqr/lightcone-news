@@ -1,8 +1,10 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const OPENAI_MODEL = 'gpt-4.1' || false;
 const GEMINI_MODEL = process.env.WORKER_MODEL || 'gemini-2.5-pro-preview-03-25';
 
 // 1. Define the Zod schema for the output tool
@@ -38,12 +40,22 @@ const finalArticleSchema = z
   .describe('The finalized, publish-ready article package.');
 
 // 3. Initialize the LangChain Google Generative AI chat model
-const TEMPERATURE = 0.5;
-const model = new ChatGoogleGenerativeAI({
-  model: GEMINI_MODEL,
-  apiKey: process.env.GEMINI_API_KEY,
-  temperature: TEMPERATURE,
-});
+const TEMPERATURE = 1;
+
+let model;
+if (OPENAI_MODEL) {
+  model = new ChatOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    model: OPENAI_MODEL,
+    temperature: TEMPERATURE,
+  })
+} else {
+  model = new ChatGoogleGenerativeAI({
+    model: GEMINI_MODEL,
+    apiKey: process.env.GEMINI_API_KEY,
+    temperature: TEMPERATURE,
+  });
+}
 
 // Configure for structured output using the Zod schema
 const structuredLlm = model.withStructuredOutput(finalArticleSchema);
@@ -78,14 +90,14 @@ You will receive a JSON object containing:
 1.  **Edit Article Text (\`draftArticle\` -> final \`title\`, \`precis\`, \`summary\`):**
     *   Thoroughly revise \`draftArticle.title\`, \`precis\`, \`summary\` for Style Guide adherence (clarity, conciseness, flow, grammar, neutrality). 
     *   Ensure language is precise and accessible.
-    *   **Refine \`title\`:** Must be clear, accurate, engaging (not clickbait).
-    *   **Refine \`precis\`:** Must be exceptionally clear, accurate, informative, concise (2-4 simple sentences). It's the mobile feed teaser.
-    *   **Generate \`summaryAlt\`:** Create a mobile-scannable version of the *edited* \`summary\` using bullets for key facts. *Constraint:* No new info vs. \`summary\`. Structure: Intro sentence -> Bullets -> Optional conclusion.
+    *   **Refine \`title\`: The title is the singoe most important part of the article in the feed, so you should think extra hard about it. The title must be clear, accurate, engaging (not clickbait). Only use abbreviations if the abbreviation is more common than the full term, eg. 'AI' vs 'artificial intelligence', WHO vs World Health Organization, or 'US' vs 'United States'). Try to avoid news cliché words like: 'amid', 'amidst', or 'following', or complicated sentence structures with multiple commas or semicolons. Also do not use the location/region at the start of the title followed by a colon. Do not combine two entities by simply adding a comma (e.g. NOT: "entity x, entity y meet over topic", but "entity x and entity y meet over topic"). If the title mentions a region, add ', country' (e.g. "Berlin, Germany"). If these instructions make the title 1-2 words longer, that is fine.
+    *   **Refine \`precis\`:** Must be exceptionally clear, accurate, informative, concise (2-3 simple sentences). It's the mobile feed teaser. No Abbreviations. When referring to people, add their position/title/institution, if relevant, to provide the necessary context for readers to understand the precis. Avoid abbreviations (only use them if the abbreviation is more common than the full term, eg. 'AI' vs 'artificial intelligence', CDU vs Christian Democratic Union, or 'US' vs 'United States').
+    *   **Generate \`summaryAlt\`:** Create a mobile-scannable version of the *edited* \`summary\` using bullets for key facts. *Constraint:* No new info vs. \`summary\`. Structure: Intro sentence -> Bullets -> Optional conclusion. 
 
 2.  **Determine Final Context (Timeline, Scenarios, Prompts, Tags):**
     *   **IF \`existingArticleContext\` IS PROVIDED (Update):**
         *   **Timeline:** Compare \`existingArticleContext.timeline\` with \`newTimeline\`. Decide whether the existing timeline is sufficient, needs merging with the new one, or should be replaced by the new one, based on relevance to the *updated* \`summary\`. Preserve unchanged \`date\` and \`sourceUrl\`. Edit \`event\` descriptions for clarity/conciseness/neutrality only.
-        *   **Scenarios:** Review \`existingArticleContext.scenarios\` (IDs) and \`newScenarios\` (full objects). Select the scenario IDs (\`_id\`) that are most relevant to the *updated* article content. Perform a sanity check: remove any scenarios that are obviously unrelated or clearly outdated. 
+        *   **Scenarios:** Review \`existingArticleContext.scenarios\` (IDs) and \`newScenarios\` (full objects). Perform a sanity check: remove any duplicates and scenarios that are obviously unrelated or clearly outdated and then combine the two lists and return the scenario IDs (\`_id\`) in the order they should appear in the final list (most relevant and recent resolutions first).
         *   **Prompts:** Review \`existingArticleContext.suggestedPrompts\` and \`newSuggestedPrompts\`. Select, merge, or generate 3-5 concise, relevant, and *answerable* prompts (keywords/short phrases) that complement the *updated* article.
         *   **Tags:** Review \`existingArticleContext.tags\` and \`newTags\`. Select, merge, or generate the most accurate, relevant tags (lowercase, hyphenated) for the *updated* article content, aligning with Lightcone categories.
     *   **IF \`existingArticleContext\` IS NOT PROVIDED (New Article):**
@@ -96,10 +108,7 @@ You will receive a JSON object containing:
         *   **Tags:** Refine \`newTags\` for accuracy and relevance.
     *   **Timeline Ordering:** Ensure the final \`timeline\` list is ordered descending by date (most recent first).
 
-3.  **Final Quality Check:** Ensure the entire package is coherent and meets all standards.
-
-# Explicit Exclusions (Do NOT Do):
-*   **NO Fact-Checking:** Assume input accuracy. Focus on style, presentation, coherence, guideline adherence.
+3.  **Final Quality Check:** Ensure the entire package is coherent and meets all standards. This should include comparing the summaryAlt with the prompts (prompts should not include questions about entities not mentioned in the summaryAlt).
 
 # Output Format: JSON Object Only
 

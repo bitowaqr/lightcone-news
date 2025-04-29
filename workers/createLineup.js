@@ -31,16 +31,23 @@ export const createLineup = async () => {
     .limit(50)
     .lean();
   console.log(`Fetched ${existingArticles.length} existing published articles.`);
+  // fetch the last 50 ARCHIVED articles, but only title and precis
+  const archivedArticles = await Article.find({ status: 'ARCHIVED' })
+    .sort({ publishedDate: -1 })
+    .limit(50)
+    .select('title precis updatedAt status')
+    .lean();
+  console.log(`Fetched ${archivedArticles.length} archived articles.`);
 
   // 3. Call lineupCreator with Screened Items and Existing Articles
   console.log('Calling lineupCreator with new items and existing context...');
   let lineup;
   try {
-    lineup = await callLineupCreator(curatedNewsItems, existingArticles);
+    lineup = await callLineupCreator(curatedNewsItems, existingArticles, archivedArticles);
   } catch (error) {
     console.error('Error calling lineupCreator:', error);
     console.log('Retrying lineupCreator...');
-    lineup = await callLineupCreator(curatedNewsItems, existingArticles);
+    lineup = await callLineupCreator(curatedNewsItems, existingArticles, archivedArticles);
   }
   if(!lineup) throw new Error('No lineup created');
   console.log('Lineup created with', lineup.stories?.length || 0, 'stories');

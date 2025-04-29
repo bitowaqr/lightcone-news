@@ -59,15 +59,20 @@
         v-if="articleData.scenarios?.length"
         class="mt-10 pt-6 border-t border-bg-muted"
       >
-        <h4 class="text-base font-semibold text-fg mb-4">Related Scenarios</h4>
-        <div class="grid grid-cols-1 gap-4"
-        :class="{ 'md:grid-cols-2': articleData.scenarios.length > 1 }"
-        >
-          <ScenarioTeaser
-            v-for="scenario in articleData.scenarios"
-            :key="scenario.scenarioId"
-            :scenario="scenario"
-          />
+        <!-- Changed Label to match Teaser.vue -->
+        <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">
+          How the story might continue:
+        </div>
+
+        <!-- Responsive Grid Layout matching Teaser.vue -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+          <div 
+            v-for="scenario in articleData.scenarios" 
+            :key="scenario.scenarioId" 
+            class="bg-accent-bg py-1"
+          >
+            <ScenarioTeaser :scenario="scenario" />
+          </div>
         </div>
       </div>
     </div>
