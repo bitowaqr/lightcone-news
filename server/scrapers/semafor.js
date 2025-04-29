@@ -9,7 +9,6 @@ const RSS_URL = "https://www.semafor.com/rss.xml";
  */
 const scrapeFeed = async () => {
     try {
-        console.log(`Fetching Semafor RSS feed for metadata: ${RSS_URL}`);
         const response = await fetch(RSS_URL);
         if (!response.ok) {
             throw new Error(`Failed to fetch Semafor RSS feed: ${response.status} ${response.statusText}`);
@@ -42,13 +41,11 @@ const scrapeFeed = async () => {
         }).filter(item => item.url && item.title);
 
         // Optional: Filter for recent items if needed for feed view, but maybe not necessary
-        console.log(`[Semafor] Successfully parsed ${rssItems.length} items from RSS feed for metadata.`);
         const now = new Date();
         const filteredItems = rssItems.filter(item => {
             const itemDate = new Date(item.meta.publishedDate);
             return itemDate && itemDate > new Date(now.getTime() - 48 * 60 * 60 * 1000); // Last 48 hours
         });
-        console.log(`[Semafor] Successfully filtered ${filteredItems.length} items from RSS feed for metadata.`);
         return filteredItems;
 
     } catch (error) {
@@ -71,7 +68,6 @@ const scrapeArticle = async (source) => {
     }
 
     try {
-        console.log(`[Semafor] Fetching RSS feed again to scrape article: ${urlToScrape}`);
         const response = await fetch(RSS_URL);
         if (!response.ok) {
             throw new Error(`Failed to fetch Semafor RSS feed for article scraping: ${response.status} ${response.statusText}`);
@@ -124,7 +120,6 @@ const scrapeArticle = async (source) => {
             // Add other fields if needed, mirroring Exa or source structure
         };
 
-        console.log(`[Semafor] Successfully scraped article content for: ${urlToScrape}`);
         return scrapedData;
 
     } catch (error) {
