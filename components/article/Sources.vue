@@ -16,14 +16,14 @@
           <div 
             v-for="(source, idx) in [...sourcesTop,...sourcesRest]" 
             :key="source.id || idx"  
-            class="w-8 h-8 overflow-hidden border border-gray-100 flex items-center justify-center bg-white"
+            class="w-7 h-7 overflow-hidden border border-gray-100 flex items-center justify-center bg-white"
             :style="{ marginLeft: idx > 10 ? '-28px' : idx > 2 ? '-22px' : idx > 0 ? '-16px' : '0', zIndex: 10 - idx }"
             :class="{ 'rounded-full': !showAllSources, 'rounded-lg': showAllSources }"
           >
             <img
               :src="getSourceFavicon(source.url)"
               :alt="getSourceDomain(source.url)"
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover filter"
               @error="onFaviconError($event, source.id || idx)"
               v-if="!faviconErrors[source.id || idx] && idx < 3"
             />
@@ -88,12 +88,12 @@
               :title="getSourceDomain(source.url)"
             
           >
-            <div class="rounded-full overflow-hidden flex items-center justify-center w-6 h-6 p-3 mr-2">
+            <div class="rounded-full overflow-hidden flex items-center justify-center w-6 h-6 mr-2">
               <div class="w-6 h-6 flex items-center justify-center bg-white rounded-full overflow-hidden">
                 <img
                   :src="getSourceFavicon(source.url)"
                   :alt="getSourceDomain(source.url)"
-                  class="w-full h-full object-contain"
+                  class="w-full h-full object-contain filter"
                   @error="onFaviconError($event, source.id || index)"
                   v-if="!faviconErrors[source.id || index]"
                 />
@@ -156,4 +156,8 @@ const onFaviconError = (event, index) => {
 };
 </script>
 
-<style scoped></style> 
+<style scoped>
+.filter {
+  filter: grayscale(100%) brightness(105%);
+}
+</style> 
