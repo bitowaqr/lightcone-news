@@ -70,8 +70,8 @@ export const createLineup = async (saveToMongo = true) => {
 };
 
 
-const test = await createLineup(false);
-fs.writeFileSync('lineup.json', JSON.stringify(test, null, 2));
+// const test = await createLineup(false);
+// fs.writeFileSync('lineup.json', JSON.stringify(test, null, 2));
 // Example usage (for testing):
 // const runTest = async () => {
 //   try {

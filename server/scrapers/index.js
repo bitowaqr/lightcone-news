@@ -5,8 +5,6 @@ import { euronews } from './euronews.js';
 import { france24 } from './france24.js';
 import { heute } from './heute.js';
 import { tagesschau } from './tagesschau.js';
-import { scrapePolymarketData } from '../scraper-scenarios/polymarket.js';
-import { scrapeMetaculusData } from '../scraper-scenarios/metaculus.js';
 import { semafor } from './semafor.js';
 import { welt } from './welt.js';
 import { cbc } from './cbc.js';
