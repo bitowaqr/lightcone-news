@@ -28,6 +28,22 @@
                 0 sources
               </div>
             </div>
+            <!-- ADDED: Share/Bookmark Icons -->
+            <div class="flex items-center space-x-1">
+                <!-- Bookmark Icon (Conditional) -->
+                <button v-if="authStore.isAuthenticated" @click.prevent="handleBookmark" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
+                    <Icon 
+                        :name="isBookmarked ? 'heroicons:bookmark-solid' : 'heroicons:bookmark'" 
+                        class="w-4 h-4 transition-colors" 
+                        :class="{ 'text-primary': isBookmarked }"
+                    />
+                </button>
+                <!-- Share Icon -->
+                <button @click.prevent="handleShare" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
+                    <Icon name="heroicons:share" class="w-4 h-4" />
+                </button>
+            </div>
+            <!-- END ADDED -->
           </div>
 
           <h2 
@@ -111,14 +127,34 @@
         No scenarios available yet.
     </div>
   </div>
+
+  <!-- ADDED: Share Dialog -->
+  <CommonShareDialog 
+    :show="showShareDialog" 
+    :article-url="articleToShare ? `${origin}/articles/${articleToShare.slug}` : null"
+    :article-title="articleToShare?.title"
+    :scenario-url="null" 
+    :scenario-title="null"
+    @close="showShareDialog = false" 
+  />
 </template>
 
 <script setup>
 // Import necessary functions and components
 import { ref, computed } from 'vue';
+// ADDED: Imports for Share Dialog
+import CommonShareDialog from '~/components/common/ShareDialog.vue';
+import { useRequestURL } from '#app';
 // Import NEW TeaserSources component
 import TeaserSources from '~/components/article/TeaserSources.vue'; 
 import ScenarioTeaser from '~/components/scenario/Teaser.vue'; // Ensure ScenarioTeaser is imported if not globally registered
+// ADDED: Import auth store
+import { useAuthStore } from '~/stores/auth'; 
+// ADDED: Import bookmark store
+import { useBookmarkStore } from '~/stores/bookmarks';
+
+const authStore = useAuthStore(); // ADDED: Initialize auth store
+const bookmarkStore = useBookmarkStore(); // ADDED: Initialize bookmark store
 
 const props = defineProps({
   group: {
@@ -144,6 +180,11 @@ const props = defineProps({
   },
 });
 
+// --- ADDED: State for Share Dialog ---
+const showShareDialog = ref(false);
+const articleToShare = ref(null);
+const origin = useRequestURL().origin;
+
 // State for scenario expansion
 const showAllScenarios = ref(false);
 const initialScenarioCount = 3; // Number of scenarios to show initially (Changed from 2 to 3)
@@ -151,6 +192,33 @@ const initialScenarioCount = 3; // Number of scenarios to show initially (Change
 // Method to toggle scenario visibility
 const toggleShowAllScenarios = () => {
   showAllScenarios.value = !showAllScenarios.value;
+};
+
+// Computed property for bookmark status
+const isBookmarked = computed(() => {
+    // Ensure group, story, and articleId exist before checking
+    const articleId = props.group?.story?.articleId;
+    return articleId ? bookmarkStore.isBookmarked(articleId, 'article') : false;
+});
+
+// Updated bookmark handler
+const handleBookmark = () => {
+  const articleId = props.group?.story?.articleId;
+  if (articleId) {
+      bookmarkStore.toggleBookmark(articleId, 'article');
+  } else {
+      console.warn('Cannot toggle bookmark: Article ID missing.');
+  }
+};
+
+const handleShare = () => {
+  const story = props.group?.story;
+  if (!story || !story.slug) {
+    console.warn('Cannot share article from teaser: missing story data or slug');
+    return;
+  }
+  articleToShare.value = story;
+  showShareDialog.value = true;
 };
 
 </script>

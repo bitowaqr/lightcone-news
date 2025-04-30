@@ -101,6 +101,7 @@ async function handleLogout() {
           <!-- Desktop Main Navigation Links -->
           <div class="hidden md:flex space-x-4 items-center text-base">
             <NuxtLink to="/scenarios" class="text-fg hover:text-primary transition-colors duration-100">Scenarios</NuxtLink>
+            <NuxtLink to="/bookmarks" class="text-fg hover:text-primary transition-colors duration-100">Bookmarks</NuxtLink>
             <NuxtLink to="/about" class="text-fg hover:text-primary transition-colors duration-100">About</NuxtLink>
             <NuxtLink to="/contact" class="text-fg hover:text-primary transition-colors duration-100">Contact</NuxtLink>
           </div>
@@ -190,6 +191,15 @@ async function handleLogout() {
               @click="mobileMenuOpen = false"
             >
               Scenarios
+            </NuxtLink>
+
+            <NuxtLink
+              v-if="authStore.isAuthenticated"
+              to="/bookmarks"
+              class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
+              @click="mobileMenuOpen = false"
+            >
+              Bookmarks
             </NuxtLink>
 
             <NuxtLink

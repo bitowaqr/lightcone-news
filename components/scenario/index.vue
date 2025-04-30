@@ -13,35 +13,48 @@
   
     <div v-if="scenario">
       <!-- Header -->
-      <div class="mb-4 pb-4">
+      <div class="mb-4 pb-4 relative">
         <h1 class="text-2xl md:text-3xl font-bold text-fg mb-2 leading-tight">{{ scenario.name }}</h1>
-        <div class="flex flex-wrap items-center text-sm text-fg-muted gap-x-4 gap-y-1 justify-start">
-          <!-- Status Badge -->
-          <span 
-            v-if="scenario.status"
-            :class="['px-1.5 py-0.5 rounded-full text-xs font-medium inline-block', statusClass]"
-          >
-            {{ scenario.status }}
-          </span>
-          <!-- Close Date -->
-          <span v-if="scenario.closeDate" class="inline-flex items-center">
-             <Icon name="mdi:calendar-clock" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />
-            Closes: <span class="ps-0.5 font-medium text-fg">{{ scenario.closeDate }}</span>
-          </span>
-          <span v-if="scenario.liquidity" class="inline-flex items-center">
-            <Icon name="mdi:waves" class="w-4 h-4 mr-1 inline-block align-text-bottom" />
-            Liquidity: <span class="ps-0.5 font-medium text-fg">{{ Math.round(scenario.liquidity).toLocaleString() }}</span>
-          </span>
-          <span v-if="volume || scenario.volume" class="inline-flex items-center">
-            <Icon name="mdi:swap-horizontal" class="w-4 h-4 mr-1 inline-block align-text-bottom" />
-            Volume: <span class="ps-0.5 font-medium text-fg">{{ Math.round(volume || scenario.volume).toLocaleString() }}</span>
-          </span>
-           <!-- Platform Link -->
-           <a :href="scenario.url" target="_blank" class="text-fg-muted hover:text-primary transition-colors items-center inline-flex group" v-if="scenario.url">
-            <Icon name="mdi:web" class="w-4 h-4 mr-1 inline-block align-text-bottom" />
-            <span class="group-hover:underline">{{ scenario.platform }}</span>
-            <Icon name="mdi:open-in-new" class="w-3.5 h-3.5 ml-0.5 opacity-70 group-hover:opacity-100" />
-          </a>
+        <!-- Main metadata container - full width, space between -->
+        <div class="flex flex-wrap items-center text-sm text-fg-muted w-full justify-between">
+          <!-- Group for left-aligned items -->
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-start">
+             <!-- MOVED BACK: Close Date -->
+             <span v-if="scenario.closeDate" class="inline-flex items-center">
+                <Icon name="mdi:calendar-clock" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />
+               <span class="ps-0.5 font-medium text-fg">{{ scenario.closeDate }}</span>
+             </span>
+             <!-- MOVED BACK: Platform Link -->
+              <a :href="scenario.url" target="_blank" class="text-fg-muted hover:text-primary transition-colors items-center inline-flex group" v-if="scenario.url">
+               <Icon name="mdi:web" class="w-4 h-4 mr-1 inline-block align-text-bottom" />
+               <span class="group-hover:underline">{{ scenario.platform }}</span>
+               <Icon name="mdi:open-in-new" class="w-3.5 h-3.5 ml-0.5 opacity-70 group-hover:opacity-100" />
+             </a>
+          </div>
+          <!-- Share/Bookmark Icons Group (Pushed Right) -->
+          <div class="flex space-x-1">
+            <!-- Bookmark Icon (Conditional) -->
+            <button 
+                v-if="authStore.isAuthenticated" 
+                @click.prevent="handleBookmark" 
+                class="p-1 rounded-full hover:bg-bg-subtle text-fg-muted transition-colors duration-150"
+                :class="{ 'text-primary': isBookmarked }"
+                aria-label="Toggle bookmark"
+            >
+                <Icon 
+                    :name="isBookmarked ? 'heroicons:bookmark-solid' : 'heroicons:bookmark'" 
+                    class="w-5 h-5" 
+                />
+            </button>
+            <!-- Share Icon -->
+            <button 
+                @click.prevent="handleShare" 
+                class="p-1 rounded-full hover:bg-bg-subtle text-fg-muted transition-colors duration-150"
+                aria-label="Share scenario"
+            >
+                <Icon name="heroicons:share" class="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -88,9 +101,53 @@
       </div>
       <!-- *************************** -->
 
-      <div v-if="scenario.description" class="mb-6">
-        <h2 class="text-lg font-semibold text-fg mb-2">Description</h2>
-        <p class="text-fg-muted leading-relaxed whitespace-pre-wrap">{{ scenario.description }}</p>
+      <!-- ADDED: Details (Collapsible) -->
+      <div class="mb-6">
+        <button 
+          @click="isDetailsVisible = !isDetailsVisible"
+          class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-start border-t border-bg-muted pt-3 mt-3"
+        >
+          <Icon :name="isDetailsVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+          <span class="text-base font-medium">Details</span>
+        </button>
+        <div v-if="isDetailsVisible" class="mt-3 space-y-2 text-sm text-fg-muted bg-bg-muted p-3 rounded border border-accent-bg">
+          <!-- Moved Metadata Items -->
+          <div v-if="scenario.status" class="flex items-center">
+             <span class="font-medium w-20 inline-block flex-shrink-0">Status:</span> 
+             <span :class="['px-1.5 py-0.5 rounded-full text-xs font-medium', statusClass]">{{ scenario.status }}</span>
+          </div>
+          <div v-if="scenario.liquidity" class="flex items-center">
+             <span class="font-medium w-20 inline-block flex-shrink-0">Liquidity:</span> 
+             <span class="font-medium text-fg">{{ Math.round(scenario.liquidity).toLocaleString() }}</span>
+          </div>
+           <div v-if="volume || scenario.volume" class="flex items-center">
+             <span class="font-medium w-20 inline-block flex-shrink-0">Volume:</span> 
+             <span class="font-medium text-fg">{{ Math.round(volume || scenario.volume).toLocaleString() }}</span>
+          </div>
+          <!-- Add other details like openDate if available/needed -->
+           <div v-if="scenario.openDate" class="flex items-center">
+             <span class="font-medium w-20 inline-block flex-shrink-0">Opened:</span> 
+             <span class="font-medium text-fg">{{ formatDate(scenario.openDate) }}</span>
+          </div>
+           <div v-if="scenario.resolutionDate" class="flex items-center">
+             <span class="font-medium w-20 inline-block flex-shrink-0">Resolved:</span> 
+             <span class="font-medium text-fg">{{ formatDate(scenario.resolutionDate) }}</span>
+          </div>
+        </div>
+      </div>
+      <!-- END ADDED -->
+
+      <!-- Resolution Toggle Button -->
+      <button 
+        @click="isResolutionVisible = !isResolutionVisible"
+        class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-start border-t border-bg-muted pt-3 mt-3"
+      >
+        <Icon :name="isResolutionVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+        <span class="text-base font-medium">Resolution</span>
+      </button>
+       <!-- Resolution Content (Collapsible) -->
+      <div v-if="isResolutionVisible" class="mt-3 text-sm text-fg-muted bg-bg-muted p-3 rounded border border-accent-bg">
+        <p class="leading-relaxed whitespace-pre-wrap">{{ scenario.description }}</p>
       </div>
 
       <!-- Resolution Criteria (Collapsible) -->
@@ -128,6 +185,15 @@
        <!-- Optional: Add a loading indicator here too if scenario itself might be loading -->
     </div>
 
+    <!-- Share Dialog -->
+    <CommonShareDialog 
+      :show="showShareDialog" 
+      :scenario-url="scenarioToShare ? `${origin}/scenarios/${scenarioToShare.id}` : null" 
+      :scenario-title="scenarioToShare?.name"
+      :article-url="null" 
+      :article-title="null"
+      @close="showShareDialog = false" 
+    />
   </div>
 </template>
 
@@ -135,8 +201,12 @@
 import { computed, ref, toRefs } from 'vue';
 import { useScenarioChance } from '~/composables/useScenarioChance';
 import { useScenarioHistory } from '~/composables/useScenarioHistory'; // Import history composable
+import CommonShareDialog from '~/components/common/ShareDialog.vue';
+import { useRequestURL } from '#app';
 import ScenarioTeaser from '~/components/scenario/Teaser.vue';
 import HistoryChart from '~/components/scenario/HistoryChart.vue'; // Import history chart component
+import { useAuthStore } from '~/stores/auth';
+import { useBookmarkStore } from '~/stores/bookmarks';
 
 const props = defineProps({
   scenario: {
@@ -162,6 +232,15 @@ const props = defineProps({
   }
 });
 
+// Initialize stores
+const authStore = useAuthStore();
+const bookmarkStore = useBookmarkStore();
+
+// ADDED: State for Share Dialog
+const showShareDialog = ref(false);
+const scenarioToShare = ref(null);
+const origin = useRequestURL().origin;
+
 // Fetch dynamic chance
 const { scenario: scenarioRef } = toRefs(props); // Use toRefs for reactivity
 const { chance, loading: loadingChance, error: errorChance, volume, status, liquidity } = useScenarioChance(scenarioRef);
@@ -171,6 +250,12 @@ const { historyData, loading: loadingHistory, error: errorHistory } = useScenari
 
 // State for collapsible criteria
 const isCriteriaVisible = ref(false);
+
+// State for details visibility
+const isDetailsVisible = ref(false);
+
+// ADDED: State for resolution visibility (default true)
+const isResolutionVisible = ref(true);
 
 // Formatting Functions
 const formatProbability = (prob) => {
@@ -209,6 +294,33 @@ const statusClass = computed(() => {
       return 'border border-gray-600 text-gray-600 dark:border-gray-500 dark:text-gray-500';
   }
 });
+
+// --- ADDED: Bookmark & Share Logic ---
+const isBookmarked = computed(() => {
+    // Note: The scenario object passed as prop might have scenarioId or _id depending on source
+    const scenarioId = props.scenario?.id;
+    return scenarioId ? bookmarkStore.isBookmarked(scenarioId, 'scenario') : false;
+});
+
+const handleBookmark = () => {
+    const scenarioId = props.scenario?.id;
+    if (scenarioId) {
+        bookmarkStore.toggleBookmark(scenarioId, 'scenario');
+    } else {
+        console.warn('[Scenario/index.vue] Cannot toggle bookmark: Scenario ID missing.');
+    }
+};
+
+const handleShare = () => {
+    // CORRECTED: Check for 'id' from the API response structure
+    if (!props.scenario || !props.scenario.id) {
+        console.warn('Cannot share scenario: missing data or id');
+        return;
+    }
+    scenarioToShare.value = props.scenario; 
+    showShareDialog.value = true;
+};
+// --- END ADDED ---
 
 </script>
 

@@ -7,6 +7,8 @@
         </div>
         
         <div class="flex flex-wrap justify-center gap-6 mb-4 md:mb-0">
+          <NuxtLink to="/scenarios" class="hover:text-fg">Scenarios</NuxtLink>
+          <NuxtLink to="/bookmarks" class="hover:text-fg">Bookmarks</NuxtLink>
           <NuxtLink to="/about" class="hover:text-fg">About</NuxtLink>
           <NuxtLink to="/terms" class="hover:text-fg">Terms</NuxtLink>
           <NuxtLink to="/privacy" class="hover:text-fg">Privacy</NuxtLink>

@@ -44,13 +44,53 @@
       
       <!-- Removed bottom chance display section -->
 
+      <!-- Share/Bookmark Icons -->
+      <div class="ms-auto flex space-x-1 z-10">
+        <!-- Bookmark Icon (Conditional) -->
+        <button 
+          v-if="authStore.isAuthenticated" 
+          @click.prevent="handleBookmark" 
+          class="p-1 rounded-full hover:bg-bg-subtle text-fg-muted transition-colors duration-150"
+          :class="{ 'text-primary': isBookmarked }"
+          aria-label="Toggle bookmark"
+        >
+          <Icon 
+            :name="isBookmarked ? 'heroicons:bookmark-solid' : 'heroicons:bookmark'" 
+            class="w-4 h-4" 
+          />
+        </button>
+        <!-- Share Icon -->
+        <button 
+          @click.prevent="handleShare" 
+          class="p-1 rounded-full hover:bg-bg-subtle text-fg-muted transition-colors duration-150"
+          aria-label="Share scenario"
+        >
+          <Icon name="heroicons:share" class="w-4 h-4" />
+        </button>
+      </div>
+
     </div>
   </NuxtLink>
+
+  <!-- Share Dialog -->
+  <CommonShareDialog 
+    :show="showShareDialog" 
+    :scenario-url="scenarioToShare ? `${origin}/scenarios/${scenarioToShare.scenarioId}` : null"
+    :scenario-title="scenarioToShare?.name"
+    :article-url="null" 
+    :article-title="null"
+    @close="showShareDialog = false" 
+  />
 </template>
 
 <script setup>
-import { computed, toRefs } from 'vue';
+import { computed, toRefs, ref } from 'vue';
 import { useScenarioChance } from '~/composables/useScenarioChance';
+import { formatRelativeTime } from '~/utils/formatRelativeTime';
+import CommonShareDialog from '~/components/common/ShareDialog.vue';
+import { useRequestURL } from '#app';
+import { useAuthStore } from '~/stores/auth';
+import { useBookmarkStore } from '~/stores/bookmarks';
 
 const props = defineProps({
   scenario: {
@@ -70,6 +110,38 @@ const props = defineProps({
 const { scenario } = toRefs(props);
 // Fetch dynamic chance - the composable uses platform and platformScenarioId from the scenario prop
 const { chance, loading, error } = useScenarioChance(scenario);
+
+const authStore = useAuthStore();
+const bookmarkStore = useBookmarkStore();
+
+// --- ADDED: State for Share Dialog ---
+const showShareDialog = ref(false);
+const scenarioToShare = ref(null);
+const origin = useRequestURL().origin;
+
+const isBookmarked = computed(() => {
+    const scenarioId = props.scenario?._id;
+    return scenarioId ? bookmarkStore.isBookmarked(scenarioId, 'scenario') : false;
+});
+
+const handleBookmark = () => {
+    const scenarioId = props.scenario?._id;
+    if (scenarioId) {
+        bookmarkStore.toggleBookmark(scenarioId, 'scenario');
+    } else {
+        console.warn('[ScenarioCard] Cannot toggle bookmark: Scenario ID missing.');
+    }
+};
+
+const handleShare = () => {
+    // Use Share Dialog
+    if (!props.scenario || !props.scenario.scenarioId) {
+        console.warn('Cannot share scenario: missing data or scenarioId');
+        return;
+    }
+    scenarioToShare.value = props.scenario; 
+    showShareDialog.value = true;
+};
 
 </script>
 

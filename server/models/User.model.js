@@ -34,6 +34,16 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Article' // Assuming you will have an 'Article' model
   }],
+  bookmarkedArticles: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Article',
+    index: true // Index for potentially faster lookup of users who bookmarked an article
+  }],
+  bookmarkedScenarios: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Scenario',
+    index: true // Index for potentially faster lookup of users who bookmarked a scenario
+  }],
   role: {
     type: String,
     enum: ['user', 'admin'],

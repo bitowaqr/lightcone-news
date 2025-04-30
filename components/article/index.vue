@@ -46,8 +46,13 @@
               </button>
               <!-- Bookmark and Share Icons Placeholder -->
               <div class="flex-grow"></div> <!-- Spacer -->
-              <button @click="handleBookmark" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
-                 <Icon name="heroicons:bookmark" class="w-4 h-4" />
+              <!-- Bookmark Icon (Conditional) -->
+              <button v-if="authStore.isAuthenticated" @click="handleBookmark" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
+                  <Icon 
+                      :name="isBookmarked ? 'heroicons:bookmark-solid' : 'heroicons:bookmark'" 
+                      class="w-4 h-4 transition-colors" 
+                      :class="{ 'text-primary': isBookmarked }"
+                  />
               </button>
               <button @click="handleShare" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
                  <Icon name="heroicons:share" class="w-4 h-4" />
@@ -204,7 +209,11 @@ import CommonShareDialog from '~/components/common/ShareDialog.vue';
 import ArticleSources from '~/components/article/Sources.vue';
 import ArticleTimeline from '~/components/article/Timeline.vue';
 import MobileInteraction from '~/components/article/MobileInteraction.vue';
+import { useAuthStore } from '~/stores/auth';
+import { useBookmarkStore } from '~/stores/bookmarks';
 
+const authStore = useAuthStore();
+const bookmarkStore = useBookmarkStore();
 
 const props = defineProps({
   articleSlug: {
@@ -252,6 +261,12 @@ const displayedScenarios = computed(() => {
   return props.articleData.scenarios?.slice(0, initialMobileScenarios) || [];
 });
 
+// Computed property for bookmark status
+const isBookmarked = computed(() => {
+    const articleId = props.articleData?._id;
+    return articleId ? bookmarkStore.isBookmarked(articleId, 'article') : false;
+});
+
 // Use the composable's render function
 const precis = computed(() => props.articleData ? renderMarkdown(props.articleData.precis) : '');
 const summary = computed(() => props.articleData ? renderMarkdown(props.articleData.summary) : '');
@@ -264,7 +279,12 @@ const formattedPublishedDate = computed(() => {
 
 // Placeholder functions for new icons
 const handleBookmark = () => {
-  console.log('Bookmark functionality not implemented yet.');
+  const articleId = props.articleData?._id;
+  if (articleId) {
+      bookmarkStore.toggleBookmark(articleId, 'article');
+  } else {
+      console.warn('Cannot toggle bookmark: Article ID missing from articleData prop.');
+  }
 };
 
 const handleShare = () => {
