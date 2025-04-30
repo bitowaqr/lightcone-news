@@ -14,7 +14,7 @@ const MANIFOLD_API_BASE_URL = 'https://api.manifold.markets/v0';
  * @returns {string} - The extracted plain text.
  */
 function extractTextFromTipTapJson(contentNode) {
-  let text = '';
+  let text = ' ';
   if (!contentNode || !contentNode.content) {
     return '';
   }
@@ -86,6 +86,7 @@ function formatManifoldScenario(market) {
              options = [];
         }
     } else {
+         // console.warn(`Skipping Manifold market ${market.id} due to unsupported type: ${market.outcomeType}`);
          return null; // Skip other types like FREE_RESPONSE, NUMERIC, PSEUDO_NUMERIC etc.
     }
 
@@ -475,6 +476,339 @@ async function getManifoldMarketProbability(marketId) {
   }
 }
 
+/**
+ * Fetches the probability history for a specific Manifold market using the /bets endpoint.
+ * @param {string} marketId - The ID of the market (contractId in Manifold API).
+ * @param {number} [afterTime] - Optional Unix timestamp (milliseconds) to fetch bets created after this time.
+ * @param {number} [beforeTime] - Optional Unix timestamp (milliseconds) to fetch bets created before this time.
+ * @returns {Promise<Object|null>} - A promise resolving to an object like { "Probability": [{t: time_ms, y: probability}, ...] } or null on error.
+ */
+async function getManifoldMarketProbHistory(marketId, afterTime = null, beforeTime = null) {
+  if (!marketId) {
+    console.error('[Manifold History] Market ID is required.');
+    return null;
+  }
+
+  const allHistoryPoints = [];
+  let lastBetId = null;
+  let keepFetching = true;
+  const limit = 1000; // Max limit
+
+  // console.log(`[Manifold History] Fetching probability history for market: ${marketId}`);
+
+  while (keepFetching) {
+    const queryParams = new URLSearchParams();
+    queryParams.set('contractId', marketId);
+    queryParams.set('limit', limit.toString());
+    queryParams.set('order', 'asc'); // Get oldest bets first
+
+    if (lastBetId) {
+      queryParams.set('after', lastBetId); // Fetch bets created *after* the last one we saw
+    } else if (afterTime) {
+        queryParams.set('afterTime', afterTime.toString()); // Use afterTime only for the first request if provided
+    }
+    // beforeTime filtering will be done after fetching all relevant bets
+
+    const url = `${MANIFOLD_API_BASE_URL}/bets?${queryParams.toString()}`;
+    // console.log(`[Manifold History] Fetching URL: ${url}`); // Debug logging
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        console.error(
+          `[Manifold History] Failed fetch for ${marketId}. Status: ${resp.status}, URL: ${url}`
+        );
+        return null; // Stop fetching on error
+      }
+
+      const bets = await resp.json();
+
+      if (!bets || !Array.isArray(bets) || bets.length === 0) {
+        keepFetching = false; // No more bets found
+        continue;
+      }
+
+      // Process bets in the current batch
+      for (const bet of bets) {
+        // Ensure the bet has the necessary fields and is not a redemption or cancellation without probAfter
+        // AND that the timestamp is a valid finite number
+        if (bet.createdTime && typeof bet.createdTime === 'number' && isFinite(bet.createdTime) && 
+            bet.probAfter !== undefined && bet.probAfter !== null && 
+            !bet.isRedemption && !bet.isCancelled) {
+             // Filter by beforeTime if provided
+             if (!beforeTime || bet.createdTime <= beforeTime) {
+                 // Ensure probability is also valid
+                 if (typeof bet.probAfter === 'number' && isFinite(bet.probAfter)) {
+                     allHistoryPoints.push({
+                         t: bet.createdTime,
+                         y: bet.probAfter,
+                     });
+                 }
+             }
+        }
+        // Handle edge cases like initial liquidity provisions (might lack probAfter)
+        // Or consider adding bet.probBefore as the first point if relevant? For now, stick to probAfter.
+      }
+
+
+      if (bets.length < limit) {
+        keepFetching = false; // Reached the end of available bets
+      } else {
+        // Prepare for the next page: get the ID of the last bet in this batch
+        lastBetId = bets[bets.length - 1].id;
+        // Add a small delay to be kind to the API
+        await new Promise(resolve => setTimeout(resolve, 150)); // 150ms delay (align with other fetches)
+      }
+
+    } catch (error) {
+      console.error(
+        `[Manifold History] Error fetching or processing bets for ${marketId}:`,
+        error
+      );
+      return null; // Stop fetching on error
+    }
+  }
+
+  // console.log(`[Manifold History] Fetched ${allHistoryPoints.length} data points for market ${marketId}.`);
+
+  // Ensure points are sorted by time (asc order should handle this, but double-check)
+  allHistoryPoints.sort((a, b) => a.t - b.t);
+  
+  // Add the initial market probability as the first point if it's earlier than the first bet
+  try {
+      const initialMarketData = await fetchAndFormatSingleManifoldMarket(marketId);
+      if (initialMarketData && initialMarketData.openDate && initialMarketData.currentProbability !== null) {
+          const initialTimestamp = initialMarketData.openDate.getTime();
+          const initialProb = initialMarketData.currentProbability;
+          
+          // Ensure initial timestamp and probability are valid finite numbers
+          if (typeof initialTimestamp === 'number' && isFinite(initialTimestamp) && 
+              typeof initialProb === 'number' && isFinite(initialProb)) {
+              
+              const initialPoint = { t: initialTimestamp, y: initialProb };
+              
+              // Only add if history is empty or the initial point is earlier than the first bet
+              if (allHistoryPoints.length === 0 || initialPoint.t < allHistoryPoints[0].t) {
+                  // Check for duplicates before adding
+                  if (allHistoryPoints.length === 0 || allHistoryPoints[0].t !== initialPoint.t) {
+                     allHistoryPoints.unshift(initialPoint);
+                     // console.log(`[Manifold History] Added initial market probability point for ${marketId}.`);
+                  }
+              }
+          } else {
+             // console.warn(`[Manifold History] Initial market data for ${marketId} had invalid time (${initialTimestamp}) or prob (${initialProb}). Skipping initial point.`);
+          }
+      } else {
+            // console.log(`[Manifold History] No valid initial market data found for ${marketId}.`);
+      }
+  } catch(err) {
+      // console.warn(`[Manifold History] Could not fetch initial market data to add starting point for ${marketId}: ${err.message}`);
+  }
+
+
+  // Return in the format expected by the chart component
+  return { "Probability": allHistoryPoints };
+}
+
+
+// test
+// const contractId = 'wxAw9u2C6JtNS3ZJnhYT';
+// const response = await getManifoldMarketProbHistory(contractId);
+// console.log(response);
+
+
+/**
+ * Generates a simple ASCII chart visualization of probability history data
+ * @param {Array} probHistory - Array of {x: timestamp (ms), y: probability} points
+ * @param {number} width - Width of the chart in characters
+ * @param {number} height - Height of the chart in characters
+ * @returns {string} - ASCII chart representation or error message
+ */
+function generateASCIIChart(probHistory, width = 80, height = 20) {
+  // 1. Input Validation
+  if (!probHistory || !Array.isArray(probHistory)) {
+    // Return empty string or similar for non-error case where chart can't be made
+    return "[ASCII Chart] Invalid input: probHistory is not an array."; 
+  }
+  
+  // 2. Filter Input for valid finite numbers
+  const validHistory = probHistory.filter(p => 
+      typeof p.x === 'number' && isFinite(p.x) && 
+      typeof p.y === 'number' && isFinite(p.y)
+  );
+
+  if (validHistory.length === 0) {
+    return "[ASCII Chart Error] No valid data points found after filtering.";
+  }
+
+  // Create the chart grid
+  const grid = Array(height).fill().map(() => Array(width).fill(' '));
+  
+  // 3. Min/Max Calculation & Validation (using filtered data)
+  const minTime = Math.min(...validHistory.map(p => p.x));
+  const maxTime = Math.max(...validHistory.map(p => p.x));
+  const minProb = 0; // Probability is always 0-1
+  const maxProb = 1;
+  
+  if (!isFinite(minTime) || !isFinite(maxTime)) {
+      return `[ASCII Chart Error] Invalid time range calculated: minTime=${minTime}, maxTime=${maxTime}`;
+  }
+
+  // Handle case where all timestamps are the same (after filtering)
+  const timeRange = maxTime - minTime;
+  if (timeRange === 0 && validHistory.length > 0) {
+    console.warn("[ASCII Chart] All valid data points have the same timestamp. Plotting at center.");
+  }
+
+  // 4. Scale the data points to fit the grid (using filtered data)
+  const scaledPoints = validHistory.map(point => {
+    let scaledX;
+    // Use timeRange check after ensuring min/maxTime are finite
+    if (timeRange === 0) {
+        scaledX = Math.floor((width -1) / 2); // Place in middle if time range is zero
+    } else {
+        scaledX = Math.floor(((point.x - minTime) / timeRange) * (width - 1));
+    }
+    let scaledY = Math.floor(height - 1 - ((point.y - minProb) / (maxProb - minProb)) * (height - 1));
+    
+    // Clamp values to grid boundaries
+    scaledX = Math.max(0, Math.min(width - 1, scaledX));
+    scaledY = Math.max(0, Math.min(height - 1, scaledY));
+
+    return {
+        x: scaledX,
+        y: scaledY
+    };
+  });
+  
+  // 5. Draw the points and connect them with lines
+  for (let i = 0; i < scaledPoints.length - 1; i++) {
+    const p1 = scaledPoints[i];
+    const p2 = scaledPoints[i + 1];
+    
+    // Draw the current point
+    grid[p1.y][p1.x] = '●';
+    
+    // Draw a line to the next point using Bresenham's line algorithm
+    const dx = Math.abs(p2.x - p1.x);
+    const dy = Math.abs(p2.y - p1.y);
+    const sx = p1.x < p2.x ? 1 : -1;
+    const sy = p1.y < p2.y ? 1 : -1;
+    let err = dx - dy;
+    
+    let x = p1.x;
+    let y = p1.y;
+    
+    let safetyCounter = 0;
+    const maxSteps = width + height; // A reasonable upper bound
+
+    while (x !== p2.x || y !== p2.y) {
+      if (safetyCounter++ > maxSteps) {
+             console.error(`[ASCII Chart] Safety break triggered in Bresenham loop for points (${p1.x},${p1.y}) to (${p2.x},${p2.y})`);
+             break; // Prevent infinite loop
+        }
+        const e2 = 2 * err;
+        if (e2 > -dy) {
+          err -= dy;
+          x += sx;
+        }
+        if (e2 < dx) {
+          err += dx;
+          y += sy;
+        }
+        
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          grid[y][x] = '·';
+        }
+    }
+  }
+  
+  // Draw the last point
+  if (scaledPoints.length > 0) {
+    const lastPoint = scaledPoints[scaledPoints.length - 1];
+    grid[lastPoint.y][lastPoint.x] = '●';
+  }
+  
+  // Add axes labels
+  const yAxisLabels = [
+    '1.0 ┤',
+    '0.8 ┤',
+    '0.6 ┤',
+    '0.4 ┤',
+    '0.2 ┤',
+    '0.0 ┤'
+  ];
+  
+  const labelPositions = [0, height * 0.2, height * 0.4, height * 0.6, height * 0.8, height - 1];
+  
+  // Add y-axis labels
+  for (let i = 0; i < yAxisLabels.length; i++) {
+    const pos = Math.floor(labelPositions[i]);
+    if (pos >= 0 && pos < height) {
+      const label = yAxisLabels[i];
+      for (let j = 0; j < label.length; j++) {
+        if (j < 5) { // Only add labels, not overwrite the chart
+          grid[pos][j] = label[j];
+        }
+      }
+    }
+  }
+  
+  // Convert grid to string
+  return grid.map(row => row.join('')).join('\n');
+}
+
+// Test the visualization
+const testMarketId = 'wxAw9u2C6JtNS3ZJnhYT';
+const testAfterTime = null; // start date
+const testBeforeTime = null; // end date
+
+async function visualizeTestData() {
+  /* // Comment out test code
+  const testProbHistoryData = await getManifoldMarketProbHistory(testMarketId, testAfterTime, testBeforeTime);
+
+  // Check if historyData is valid and contains the Probability array
+  if (testProbHistoryData && testProbHistoryData.Probability && Array.isArray(testProbHistoryData.Probability)) {
+    // Map to the {x, y} format expected by generateASCIIChart
+    const probHistoryArray = testProbHistoryData.Probability.map(p => ({ x: p.t, y: p.y }));
+    
+    if (probHistoryArray.length > 0) {
+      console.log("Probability History Data Points:", probHistoryArray.length);
+      console.log("First point (raw):", probHistoryArray[0]);
+      console.log("Last point (raw):", probHistoryArray[probHistoryArray.length - 1]);
+      
+      // Generate and display ASCII chart using the mapped array
+      const chart = generateASCIIChart(probHistoryArray, 100, 25);
+      console.log("\nProbability History Chart:");
+      console.log(chart);
+      
+      // Add time range information using actual data min/max
+      const actualMinTime = Math.min(...probHistoryArray.map(p => p.x));
+      const actualMaxTime = Math.max(...probHistoryArray.map(p => p.x));
+      
+      let startDate = 'N/A';
+      let endDate = 'N/A';
+      if(isFinite(actualMinTime)) {
+          startDate = new Date(actualMinTime).toISOString().split('T')[0];
+      }
+      if(isFinite(actualMaxTime)) {
+          endDate = new Date(actualMaxTime).toISOString().split('T')[0];
+      }
+      console.log(`\nTime Range (Actual Data): ${startDate} to ${endDate}`);
+    } else {
+        console.log("Fetched history data, but the Probability array was empty.");
+    }
+  } else {
+    console.log("No probability history data available");
+  }
+  */
+}
+
+// Run the visualization
+// await visualizeTestData();
+
+// console.log('done');
+// process.exit(0);
 
 
 // Export functions for external use
@@ -483,6 +817,7 @@ export {
   fetchAndFormatSingleManifoldMarket,
   formatManifoldScenario,
   getManifoldMarketProbability,
+  getManifoldMarketProbHistory
 };
 
 
@@ -499,3 +834,45 @@ export {
 // }
 // Example direct run:
 // runManifoldTests();
+
+// --- New Test for History ---
+async function testHistoryFetching() {
+    // Example Market ID (Replace with a relevant one if needed)
+    // const testMarketId = 'f88f4tezUPjNVab3eT4T'; // Ukraine peace deal
+     const testMarketId = 'D3l2N5I44EAZsbWh4D3i'; // Another example market
+
+    // Optional: Define time range (Unix timestamps in milliseconds)
+    // const afterTimestamp = new Date('2024-01-01T00:00:00Z').getTime();
+    // const beforeTimestamp = new Date('2024-07-01T00:00:00Z').getTime();
+    const afterTimestamp = null;
+    const beforeTimestamp = null;
+
+
+    console.log(`\n--- Testing getManifoldMarketProbHistory for Market ID: ${testMarketId} ---`);
+    const historyData = await getManifoldMarketProbHistory(testMarketId, afterTimestamp, beforeTimestamp);
+
+    if (historyData && historyData.Probability && historyData.Probability.length > 0) {
+        console.log(`Fetched ${historyData.Probability.length} history points.`);
+        console.log("First 5 points:", historyData.Probability.slice(0, 5));
+        console.log("Last 5 points:", historyData.Probability.slice(-5));
+
+        // Optional: Generate ASCII chart if needed (uncomment visualizeTestData call or integrate here)
+        const chart = generateASCIIChart(historyData.Probability, 100, 25);
+        console.log("\nProbability History Chart:");
+        console.log(chart);
+        
+        const startDate = afterTimestamp ? new Date(afterTimestamp).toISOString().split('T')[0] : 'Start';
+        const endDate = beforeTimestamp ? new Date(beforeTimestamp).toISOString().split('T')[0] : 'End';
+        console.log(`\nTime Range: ${startDate} to ${endDate}`);
+
+
+    } else if (historyData && historyData.Probability && historyData.Probability.length === 0) {
+        console.log("Successfully fetched, but no history points found within the criteria.");
+    } else {
+        console.log("Failed to fetch history data or an error occurred.");
+    }
+}
+
+// Run the history test
+testHistoryFetching();
+// --- End New Test ---

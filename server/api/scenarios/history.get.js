@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery, createError } from 'h3';
 import mongoose from 'mongoose';
 import Scenario from '../../models/Scenario.model.js'; // Adjust path as needed
 import { getPolymarketPriceHistory } from '../../scraper-scenarios/polymarket.js'; // Adjust path as needed
+import { getManifoldMarketProbHistory } from '../../scraper-scenarios/manifold.js'; // <-- Import Manifold history function
 import { useRuntimeConfig } from '#imports'; // Import useRuntimeConfig
 
 // Simple cache (optional, but recommended for performance)
@@ -10,13 +11,6 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
 const FETCH_TIMEOUT_MS = 15_000; // 15 seconds timeout
 
 async function fetchPolymarketHistory(scenario) {
-  console.log("scenario");
-  console.log("scenario");
-  console.log("scenario");
-  console.log("scenario");
-  console.log("scenario");
-  console.log(scenario);
-  
   if (!scenario || scenario.platform !== 'Polymarket' || !scenario.clobTokenIds || Object.keys(scenario.clobTokenIds).length === 0) {
     console.warn(`[Scenario History] Invalid scenario data for Polymarket history fetch: ID ${scenario?.platformScenarioId}`);
     return null; // Cannot fetch without required info
@@ -67,36 +61,33 @@ async function fetchPolymarketHistory(scenario) {
       // durationMinutes remains null, letting the scraper function use its default
   }
   
+  // Add a timeout mechanism around the scraper function call
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   // Fetch history for each token ID
   // Use Promise.allSettled to handle potential errors for individual tokens
   const results = await Promise.allSettled(
-    tokenIdsToFetch.map(async ({ outcome, id }) => {
-        // Add a timeout mechanism around the scraper function call
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-        try {
-            // Pass the calculated duration (or null) to the updated function
+    tokenIdsToFetch.map(async ({ outcome, id }) => {      
+      try {
+          // Pass the calculated duration (or null) to the updated function
           const history = await getPolymarketPriceHistory(id, durationMinutes);
           
-            clearTimeout(timeoutId);
-            if (history && Array.isArray(history.history)) {
-                return { outcome, history: history.history };
-            } else {
-                 console.warn(`[Scenario History] Invalid history structure received for token ${id}`);
-                 return { outcome, history: [] }; // Return empty if format is bad
-            }
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            // Handle AbortError specifically if the scraper is enhanced later
-            if (fetchError.name === 'AbortError') {
-                 console.warn(`[Scenario History] Timeout fetching history for token ${id}`);
-                 throw createError({statusCode: 504, statusMessage: `Timeout fetching history for token ${id}`})
-            }
-            console.error(`[Scenario History] Error fetching history for token ${id}:`, fetchError);
-            throw createError({statusCode: 502, statusMessage: `Failed to fetch history for token ${id}`}) // Propagate as a server error for this token
-        }
+          if (history && Array.isArray(history.history)) {
+              return { outcome, history: history.history };
+          } else {
+               console.warn(`[Scenario History] Invalid history structure received for token ${id}`);
+               return { outcome, history: [] }; // Return empty if format is bad
+          }
+      } catch (fetchError) {
+          console.error(`[Scenario History] Error fetching history for token ${id}:`, fetchError);
+          throw fetchError; // Re-throw error to be caught by timeout wrapper
+      }
     })
   );
+
+  // Clear timeout if all fetches complete before timeout
+  clearTimeout(timeoutId);
   
   // Process results
   let hasError = false;
@@ -211,6 +202,54 @@ async function fetchMetaculusHistory(scenario) {
     }
 }
 
+// --- Manifold History Fetcher ---
+async function fetchManifoldHistory(scenario) {
+    const marketId = scenario.platformScenarioId;
+    if (!marketId) {
+        console.warn(`[Scenario History] Missing Manifold market ID (platformScenarioId) for scenario: ${scenario._id}`);
+        return null;
+    }
+
+    // Add a timeout mechanism around the scraper function call
+    const controller = new AbortController(); // Note: AbortController might not be directly usable with the current Manifold fetch loop
+    const timeoutId = setTimeout(() => {
+      // Manually throwing an error on timeout as AbortSignal isn't easily integrated into the fetch loop
+      // Need to ensure this error is caught appropriately
+      throw new Error('Manifold history fetch timed out'); 
+    }, FETCH_TIMEOUT_MS);
+
+    try {
+        const historyResult = await getManifoldMarketProbHistory(marketId);
+        clearTimeout(timeoutId);
+
+        if (historyResult && historyResult.Probability) {
+             // Manifold function already returns { Probability: [...] }, 
+             // which aligns with { Yes: [...] } for binary Metaculus.
+             // For consistency, we could rename "Probability" to "Yes" if it's BINARY?
+             if(scenario.scenarioType === 'BINARY'){
+                return { Yes: historyResult.Probability };
+             } else {
+                 // How to handle non-binary Manifold history if needed? 
+                 // For now, just return the structure as is if non-binary.
+                 console.warn(`[Scenario History] Returning raw history structure for non-binary Manifold market ${marketId}`);
+                 return historyResult; // e.g., { Probability: [...] }
+             }
+        } else {
+             console.warn(`[Scenario History] No history data found or invalid structure from getManifoldMarketProbHistory for ${marketId}`);
+             return { Yes: [] }; // Return empty for binary case on failure
+        }
+    } catch (error) {
+        clearTimeout(timeoutId);
+        // Check if it's our manual timeout error
+        if (error.message === 'Manifold history fetch timed out') {
+             console.warn(`[Scenario History] Timeout fetching Manifold history for ${marketId}`);
+             throw createError({statusCode: 504, statusMessage: `Timeout fetching Manifold history after ${FETCH_TIMEOUT_MS / 1000}s`});
+        }
+        console.error(`[Scenario History] Error fetching Manifold history for ${marketId}:`, error);
+        throw createError({statusCode: 502, statusMessage: `Failed to fetch history data from Manifold: ${error.message}`});
+    }
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const { platform, id: platformScenarioId } = query; // Use 'id' from query as platformScenarioId
@@ -248,6 +287,9 @@ export default defineEventHandler(async (event) => {
         break;
       case 'Metaculus':
         history = await fetchMetaculusHistory(scenario);
+        break;
+      case 'Manifold':
+        history = await fetchManifoldHistory(scenario);
         break;
       default:
         throw createError({

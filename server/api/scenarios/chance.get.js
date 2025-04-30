@@ -1,10 +1,12 @@
 import { defineEventHandler, getQuery, createError } from 'h3';
 import { useRuntimeConfig } from '#imports'; // Import useRuntimeConfig
+import { fetchAndFormatSingleManifoldMarket } from '../../scraper-scenarios/manifold.js'; // <-- Import Manifold fetcher
 
 // Base URLs for different platforms (consider moving to config if grows)
 const PLATFORM_API_URLS = {
   Polymarket: 'https://gamma-api.polymarket.com/markets/',
   Metaculus: 'https://www.metaculus.com/api/posts/', // Example
+  // Manifold doesn't need a base URL here as its function constructs the full URL
 };
 
 // Simple cache object (in-memory, basic)
@@ -182,6 +184,53 @@ async function fetchMetaculusChance(apiUrl) {
     }
 }
 
+// --- Manifold Chance Fetcher ---
+async function fetchManifoldChance(platformScenarioId) {
+    if (!platformScenarioId) {
+        console.warn(`[Scenario Chance Proxy] Missing Manifold platformScenarioId.`);
+        return null;
+    }
+
+    // Add a timeout mechanism around the scraper function call
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        throw new Error('Manifold chance fetch timed out');
+    }, FETCH_TIMEOUT_MS);
+
+    try {
+        // Use the existing function that fetches and formats the full market data
+        const scenarioData = await fetchAndFormatSingleManifoldMarket(platformScenarioId);
+        clearTimeout(timeoutId);
+
+        if (!scenarioData) {
+            // This could be due to 404, formatting error, or other issues handled inside the function
+            console.warn(`[Scenario Chance Proxy] fetchAndFormatSingleManifoldMarket returned null for Manifold ID ${platformScenarioId}.`);
+            return null; // Treat as not found or invalid
+        }
+
+        // Extract the required fields
+        return {
+            chance: scenarioData.currentProbability, // Will be null if not BINARY
+            volume: scenarioData.volume ?? null,
+            status: scenarioData.status ?? 'UNKNOWN',
+            liquidity: scenarioData.liquidity ?? null,
+            // Add other fields if needed, like options for CATEGORICAL?
+        };
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.message === 'Manifold chance fetch timed out') {
+            console.warn(`[Scenario Chance Proxy] Timeout fetching Manifold chance for ${platformScenarioId}`);
+            throw createError({ statusCode: 504, statusMessage: `Timeout fetching Manifold chance after ${FETCH_TIMEOUT_MS / 1000}s` });
+        }
+        // Log other errors from the fetch/format function
+        console.error(`[Scenario Chance Proxy] Error in fetchAndFormatSingleManifoldMarket for ${platformScenarioId}:`, error);
+        // Determine if it was a 404 implicitly handled by the function returning null, or a different error
+        // Re-throwing a generic error for now, could refine based on error types if needed
+        throw createError({ statusCode: 502, statusMessage: `Failed to fetch or process Manifold chance data: ${error.message}` });
+    }
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   // Expect 'platform' and 'id' (platformScenarioId)
@@ -233,6 +282,11 @@ export default defineEventHandler(async (event) => {
          result = await fetchMetaculusChance(apiUrl);
          break;
         
+      case 'Manifold':
+        // Manifold function takes the ID directly
+        result = await fetchManifoldChance(id);
+        break;
+
       default:
         throw createError({
           statusCode: 400,
