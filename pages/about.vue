@@ -5,7 +5,7 @@
     <div class="bg-article p-6 md:p-8 rounded-lg shadow-sm mb-8 space-y-8 text-lg leading-relaxed">
       
       <blockquote class="text-xl font-medium leading-relaxed"> 
-        Lightcone News provides a curated news feed with additional contextual information and probabilistic forecasts.
+        Lightcone News provides a curated news feed with contextual information and probabilistic forecasts.
       </blockquote>
 
       <!-- Core Features Section -->

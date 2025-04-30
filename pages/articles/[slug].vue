@@ -106,7 +106,7 @@ const isNotFound = computed(() => error.value?.statusCode === 404);
 const fetchError = computed(() => !pending.value && error.value && ![401, 404].includes(error.value.statusCode));
 
 // --- Add useHead for Meta Tags ---
-const siteTagline = "Lightcone News provides a curated news feed with additional contextual information and probabilistic forecasts.";
+const siteTagline = "Lightcone News provides a curated news feed with contextual information and probabilistic forecasts.";
 
 useHead(() => {
   // Set default meta tags even while loading or if error
