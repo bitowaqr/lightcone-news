@@ -5,7 +5,9 @@
   >
     <div class="flex justify-between items-center space-x-2 leading-tight grow">
       <div class="flex items-center flex-1 min-w-0">
-         <div class="text-sm sm:text-base font-semibold text-fg w-full leading-tight sm:leading-tight line-clamp-3 group-hover:">{{ scenario.name }}</div>
+         <div class="font-semibold text-fg w-full text-sm leading-tight sm:leading-tight line-clamp-3 group-hover:" 
+              
+         >{{ scenario.name }}</div>
       </div>
       <div class="flex justify-end items-center shrink-0 min-w-12 space-x-1 text-right">
         <!-- Chance Display -->
@@ -46,6 +48,7 @@ const props = defineProps({
     required: true,
     default: () => ({ scenarioId: '', name: 'Loading...', platform: null, platformScenarioId: null }),
   },
+  forceSmallText: { type: Boolean, default: false }
 });
 
 const { scenario } = toRefs(props);

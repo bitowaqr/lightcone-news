@@ -94,15 +94,15 @@ async function handleLogout() {
       <nav class="container mx-auto px-4 py-2 flex justify-between items-center">
         <!-- Left Section: Logo + Main Nav Links -->
         <div class="flex items-center space-x-4">
-          <NuxtLink to="/" class="flex items-center gap-2">
+          <NuxtLink to="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity duration-100">
             <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-8 h-8 dark:invert" />
-            <span class="text-xl text-fg hover:text-fg">Lightcone.news</span>
+            <span class="text-lg text-fg hover:text-fg">Lightcone.news</span>
           </NuxtLink>
           <!-- Desktop Main Navigation Links -->
-          <div class="hidden md:flex space-x-4 items-center">
-            <NuxtLink to="/scenarios" class="text-fg hover:text-primary">Scenarios</NuxtLink>
-            <NuxtLink to="/about" class="text-fg hover:text-primary">About</NuxtLink>
-            <NuxtLink to="/contact" class="text-fg hover:text-primary">Contact</NuxtLink>
+          <div class="hidden md:flex space-x-4 items-center text-base">
+            <NuxtLink to="/scenarios" class="text-fg hover:text-primary transition-colors duration-100">Scenarios</NuxtLink>
+            <NuxtLink to="/about" class="text-fg hover:text-primary transition-colors duration-100">About</NuxtLink>
+            <NuxtLink to="/contact" class="text-fg hover:text-primary transition-colors duration-100">Contact</NuxtLink>
           </div>
         </div>
 
