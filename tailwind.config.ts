@@ -39,7 +39,7 @@ export default {
           '800': 'var(--primary-800)',
           '900': 'var(--primary-900)',
           '950': 'var(--primary-950)',
-          DEFAULT: 'var(--primary)'
+          DEFAULT: 'hsl(22 56% 52%)'
         },
         secondary: 'var(--secondary)',
         accent: {
