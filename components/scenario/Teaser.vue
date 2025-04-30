@@ -1,13 +1,20 @@
 <template>
   <NuxtLink :to="`/scenarios/${scenario.scenarioId}`"
     v-if="scenario"
-    class="bg-accent-bg px-2 md:px-4 py-3 relative overflow-hidden hover:bg-accent-bgHover transition-colors duration-100 group h-full flex items-center"
+    class="bg-accent-bg px-2 md:px-4 pt-3 pb-2.5 relative overflow-hidden hover:bg-accent-bgHover transition-colors duration-100 group h-full flex items-center"
   >
+
+
+  
+
     <div class="flex justify-between items-center space-x-2 leading-tight grow">
-      <div class="flex items-center flex-1 min-w-0">
+      <div class="flex flex-col flex-1 min-w-0">
          <div class="font-semibold text-fg w-full text-sm leading-tight sm:leading-tight line-clamp-3 group-hover:" 
               
          >{{ scenario.name }}</div>
+         <div v-if="scenario.platform" class="text-[11px] text-primary-600 opacity-75 mt-0.5 truncate font-medium">
+           {{ scenario.platform }}
+         </div>
       </div>
       <div class="flex justify-end items-center shrink-0 min-w-12 space-x-1 text-right">
         <!-- Chance Display -->
