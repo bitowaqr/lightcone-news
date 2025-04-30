@@ -1,11 +1,11 @@
 <template>
-  <article class="p-6 pb-20">
+  <article class="pt-4 sm:px-4 pb-20">
     <div v-if="articleData">
       <!-- Top Section: Main Content + Sidebar (Desktop) -->
       <div class="grid grid-cols-1 lg:grid-cols-5 lg:gap-x-8">
 
         <!-- Main Content Column (Desktop: 2 cols, Mobile: 1 col) -->
-        <div class="lg:col-span-3 space-y-6">
+        <div class="lg:col-span-3 space-y-6 px-2">
           <!-- Title + Meta -->
           <div> 
              <h2 class="text-3xl lg:text-4xl font-bold mb-2">{{ articleData.title }}</h2>
@@ -70,7 +70,7 @@
           <ArticleSources :sources="articleData.sources" />
       </div>
           
-          <div v-if="isDesktop" class="interaction-area-desktop mt-6 pt-6 border-t border-bg-muted space-y-1"> 
+          <div v-if="isDesktop" class="interaction-area-desktop mt-6 pt-6 border-t border-bg-muted space-y-0"> 
              <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
              <!-- Timeline Instance -->
              <MobileInteraction 
@@ -156,8 +156,8 @@
       </div>
 
       <!-- Mobile Interaction Area (Timeline/Prompts/Response Window) - ADDED BACK for Mobile -->
-      <div v-if="!isDesktop" class="interaction-area-mobile mt-6 pt-6 border-t border-bg-muted space-y-1"> 
-         <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
+      <div v-if="!isDesktop" class="interaction-area-mobile mt-6 pt-6 border-t border-bg-muted space-y-0"> 
+         <div class="mb-1 text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
          <!-- Timeline Instance -->
          <MobileInteraction 
            v-if="articleData.timeline?.length"

@@ -4,48 +4,56 @@
     <button 
       @click="handleItemClick"
       :class="[
-        'interaction-row', 
+        'interaction-row group',
         { 'active': showResponseWindow },
+      { 'border-b-0': !isResponseHidden && showResponseWindow },
+        { 'border-b border-bg-muted': !showResponseWindow || isResponseHidden },
         /* Custom styling for custom type */
         props.type === 'custom' ? 'bg-bg font-semibold' : 'bg-bg',
       ]"
       :disabled="isLoading && !showResponseWindow"
     >
-      <!-- Label and Sparkle -->
+      <!-- Chevron Icon (Left) -->
+      <Icon 
+        name="heroicons:chevron-right-20-solid" 
+        class="w-4 h-4 text-fg-muted transition-transform duration-200 flex-shrink-0 mr-2" 
+        :class="{ 'rotate-90': showResponseWindow && !isResponseHidden }"
+      />
+
+      <!-- Label and Sparkle (Middle) -->
       <div class="flex items-center flex-grow mr-2">
-            <Icon 
-              v-if="props.type === 'custom'"
-              name="mdi:sparkles" class="w-4 h-4 mr-1 text-primary dark:text-primary-400" 
-              :class="isLoading ? 'animate-sparkle' : ''"/>
-            <span class="">{{ buttonLabel }}</span>
+            
+            <span class="font-semibold">{{ buttonLabel }}</span>
       </div>
 
-      <!-- Loaded Checkmark (Visible when loaded) -->
+      <!-- Right Icons: Loading, Loaded Checkmark, Not Loaded Sparkle -->
+      <!-- Loading State (Initial Prompt Load Only) -->
+      <div v-if="isLoading && (props.type === 'prompt' || props.type === 'custom')" class="flex items-center space-x-1 text-xs text-fg-muted flex-shrink-0">
+         <span>AI thinking</span>
+         <Icon name="mdi:sparkles" class="w-4 h-4 text-primary animate-spin" />
+      </div>
+      <!-- Loaded Checkmark (Not Initial Prompt Loading) -->
       <Icon 
-         v-if="isLoaded" 
+         v-else-if="isLoaded" 
          name="heroicons:check-circle" 
-         class="w-4 h-4 text-primary dark:text-primary-400 opacity-70 mr-1.5 flex-shrink-0"
+         class="w-4 h-4 text-primary dark:text-primary-400 opacity-70 flex-shrink-0"
       /> 
-
-      <!-- Expand/Collapse/Hide Icon -->
+      <!-- Not Loaded Sparkle (Not Initial Prompt Loading & Not Loaded) -->
       <Icon 
-        :name="!showResponseWindow || isResponseHidden 
-                  ? 'heroicons:plus-circle-20-solid' 
-                  : 'heroicons:minus-circle-20-solid'"
-        class="row-icon flex-shrink-0" 
+         v-else-if="!(isLoading && (props.type === 'prompt' || props.type === 'custom'))"
+         name="mdi:sparkles" 
+         class="w-4 h-4 text-fg-muted opacity-50 flex-shrink-0 transition-colors duration-150 group-hover:text-primary group-hover:opacity-100"
       />
     </button>
 
     <!-- Single Response Window (Attached directly below button) -->
-    <div v-if="showResponseWindow" 
-         class="response-window -mt-px border-x border-b"
-         :class="{
-           'bg-bg border-primary': true, 
-           'border-primary': true /* Keep border always primary when open */
-         }"
+    <div v-if="showResponseWindow && !isResponseHidden" 
+         class="response-window -mt-px border-b border-bg-muted bg-bg border-t-0"
+         
          >
        <!-- Inner container for content hiding -->
-       <div v-show="!isResponseHidden" class="response-content-wrapper px-4 py-2 space-y-4">
+       <div v-show="!isResponseHidden"
+            class="response-content-wrapper px-4 pt-2 pb-8 space-y-4">
          <!-- Content Area -->
          <div>
             <!-- Error State -->
@@ -65,24 +73,29 @@
                     </div>
                  </div>
               </div>
-
               <!-- AI Response Display -->
               <div v-else-if="props.type === 'prompt' || props.type === 'custom'" class="space-y-4">
                 <!-- Display Past Interactions -->
                 <div v-for="(interaction, index) in interactionHistory" :key="`hist-${index}`">
                   <!-- Style User History Item as Header -->
                   <div v-if="interaction.type === 'user'" 
-                       class="user-question-header text-sm font-semibold text-fg mb-1">
+                       :class="[
+                         'user-question-header text-sm font-semibold',
+                         // Custom styling only for 'custom' type interactions
+                         props.type === 'custom' 
+                           ? 'ml-auto w-fit max-w-[85%] py-2 px-4 rounded-lg bg-primary/10 dark:bg-primary/20'
+                           : 'text-primary dark:text-primary-400' // Default primary color for non-custom prompts
+                       ]"
+                      >
                     {{ interaction.text }}
                   </div>
-                  <!-- Style AI History Item as Plain Text -->
-                  <div v-else-if="interaction.type === 'ai'" 
-                       class="ai-response-text text-sm text-fg whitespace-pre-wrap break-words">
-                     {{ interaction.text }}
-                  </div>
+                  <!-- Style AI History Item as Rendered Markdown -->
+                  <div v-else-if="interaction.type === 'ai'"
+                       class="ai-response-text text-sm text-fg whitespace-pre-wrap break-words response-content"
+                       v-html="renderMd(interaction.text)">  </div>
                 </div>
 
-                <!-- Display Current/Streaming AI Response (as plain text) -->
+                <!-- Display Current/Streaming AI Response (as rendered Markdown with citations) -->
                 <div v-if="currentAiResponse">
                   <!-- Placeholder -->
                   <div v-if="currentAiResponse.isPlaceholder" class="flex items-center p-2 text-fg-muted text-sm">
@@ -93,10 +106,22 @@
                       />
                       <span>AI thinking...</span>
                   </div>
-                  <!-- Streaming/Final Text -->
-                  <div v-else-if="currentAiResponse.text" 
-                       class="ai-response-text text-sm text-fg whitespace-pre-wrap break-words response-content">
-                     {{ currentAiResponse.text }}
+                  <!-- Streaming/Final Text (Direct Markdown Rendering) -->
+                  <div v-else-if="currentAiResponse.text"
+                       class="ai-response-text text-sm text-fg whitespace-pre-wrap break-words response-content"
+                       v-html="renderMd(currentAiResponse.text)"> </div>
+
+                  <!-- Appended Sources List -->
+                  <div v-if="currentAiSources.length > 0" class="sources-list pt-1">
+                    <h4 class="text-xs font-semibold text-fg-muted mb-1.5 border-t border-accent-bg pt-1 w-fit -mt-2">Sources:</h4>
+                    <div class="list-none p-0 m-0 space-y-1">
+                      <div v-for="(source, index) in currentAiSources" :key="`source-${index}`" class="text-xs text-fg-muted leading-tight break-all">
+                        <span class="inline-block w-5 text-right mr-1">[{{ index + 1 }}]</span>
+                        <a :href="source.url" target="_blank" rel="noopener noreferrer" class="text-primary dark:text-primary-400 hover:underline" :title="source.title || source.url">
+                          {{ source.title || source.url }}
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -105,7 +130,7 @@
             <!-- Input/Follow-up Buttons moved AFTER content display -->
 
             <!-- Custom Input Area -->
-            <div v-if="showCustomInput && (props.type === 'custom' || (props.type === 'prompt' && currentAiResponse && !currentAiResponse.isPlaceholder))" 
+            <div v-if="showCustomInput" 
                  class="custom-input-area"
                  :class="[ 
                    // Apply border/padding only if there is history OR it's a prompt follow-up
@@ -150,7 +175,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 // Optional: Keep useMarkdown if rendering later
-// import { useMarkdown } from '~/composables/useMarkdown';
+import { useMarkdown } from '~/composables/useMarkdown';
 // const { render: renderMd } = useMarkdown();
 
 const props = defineProps({
@@ -168,17 +193,22 @@ const props = defineProps({
 const responseData = ref(null); // Holds timeline data if applicable
 const isLoading = ref(false);
 const error = ref(null);
-const showResponseWindow = ref(false); // Tracks if the response container DIV is attached
+// Expand custom type by default
+const showResponseWindow = ref(props.type === 'custom'); 
 const isResponseHidden = ref(false); // Tracks if content *within* the container is hidden
-const showCustomInput = ref(false); // Controls visibility of the text input
+// Show input for custom type by default
+const showCustomInput = ref(props.type === 'custom'); 
 const customUserInput = ref(''); 
 const inputError = ref(''); // Specific error for input validation
 // Store completed interactions (user questions, final AI answers)
 const interactionHistory = ref([]); // Array of { type: 'user' | 'ai', text: string }
-// Store the prompt text that *led* to the currentAiResponse or the initial prompt
-const currentPromptText = ref(''); 
 // Stores the AI response currently being streamed or just completed
-const currentAiResponse = ref(null); // { text: '', isPlaceholder: boolean }
+const currentAiResponse = ref(null); // { text: '' } // Removed isPlaceholder
+// Stores the sources associated with the current AI response
+const currentAiSources = ref([]); // Array of { url: string, title?: string, snippet?: string }
+
+// --- useMarkdown Integration ---
+const { render: renderMd } = useMarkdown();
 
 // --- Constants ---
 const MAX_INPUT_LENGTH = 2000; // Character limit for input
@@ -195,19 +225,18 @@ const buttonLabel = computed(() => {
 
 // Check if content has been successfully loaded for this item
 const isLoaded = computed(() => {
-  // Not loaded if currently loading or has an error when window is closed
-  // (If window is open, error is displayed inside)
-  if (!showResponseWindow.value && (isLoading.value || error.value)) return false;
-  
-  // Timeline is loaded if it has data (check prop as could be closed)
+  // Timeline is loaded if the prop has data
   if (props.type === 'timeline') {
     return props.timelineData?.length > 0;
   }
 
-  // Prompt/Custom is loaded if there's interaction history OR a valid *completed* current response
+  // Prompt/Custom is loaded if it's NOT currently loading, has no error, AND
+  // (EITHER there's history OR there's a current response with text)
   if (props.type === 'prompt' || props.type === 'custom') {
-    return interactionHistory.value.length > 0 || 
-           (currentAiResponse.value && !currentAiResponse.value.isPlaceholder && !!currentAiResponse.value.text);
+    const hasContent = interactionHistory.value.length > 0 || 
+                       (currentAiResponse.value && !!currentAiResponse.value.text);
+    // Loaded means not currently loading, no error, and has content from a previous/current successful fetch.
+    return !isLoading.value && !error.value && hasContent; 
   }
 
   return false; // Default
@@ -224,12 +253,12 @@ const closeResponseWindow = () => {
   responseData.value = null;
   currentAiResponse.value = null;
   interactionHistory.value = []; // Clear history
-  currentPromptText.value = '';  // Clear prompt text
   showCustomInput.value = false; 
   customUserInput.value = '';   
   error.value = null;
   inputError.value = ''; // Clear input error
   isLoading.value = false;
+  currentAiSources.value = [];   // Clear sources for the new response
 };
 
 // Toggle visibility and fetch data if needed
@@ -237,10 +266,10 @@ const handleItemClick = async () => {
   if (showResponseWindow.value) {
     // Window is currently open
     const hasInteractionStarted = 
-        props.type === 'timeline' || 
-        isLoading.value || 
-        interactionHistory.value.length > 0 || 
-        currentAiResponse.value;
+        props.type === 'timeline' || // Timeline always counts as started if open
+        isLoading.value || // If loading, interaction has started
+        interactionHistory.value.length > 0 || // If history exists, it started
+        (currentAiResponse.value && currentAiResponse.value.text); // If current response has text
         
     if (hasInteractionStarted) {
       // If interaction started, just toggle hidden state
@@ -258,7 +287,6 @@ const handleItemClick = async () => {
   inputError.value = ''; 
   currentAiResponse.value = null;
   interactionHistory.value = []; 
-  currentPromptText.value = ''; 
   responseData.value = null;
   customUserInput.value = ''; 
   showCustomInput.value = false; 
@@ -288,13 +316,9 @@ const handleCustomSubmit = async () => {
    // ------------------------
    
    // Commit previous interaction to history if it exists
-   if (currentAiResponse.value && !currentAiResponse.value.isPlaceholder && currentAiResponse.value.text) {
+   if (currentAiResponse.value && currentAiResponse.value.text) {
       // Push only the completed AI response
       interactionHistory.value.push({ type: 'ai', text: currentAiResponse.value.text });
-      currentPromptText.value = ''; // Clear the prompt associated with the now-historical response
-   } else if (props.type === 'custom' && !interactionHistory.value.length && currentPromptText.value) {
-      // Handle edge case: First submission in custom type might have a leftover prompt text
-      currentPromptText.value = '';
    }
 
    // Add new user query (the one just submitted) to history
@@ -302,8 +326,8 @@ const handleCustomSubmit = async () => {
 
    const promptForAI = textToSend;
    customUserInput.value = ''; // Clear the input field
-   showCustomInput.value = false; // Hide input field while loading
    currentAiResponse.value = null; // Clear the display area for the new response
+   currentAiSources.value = [];   // Clear sources for the new response
 
    // Fetch the AI response (will stream into currentAiResponse)
    await fetchAiResponse(promptForAI);
@@ -318,8 +342,9 @@ async function fetchAiResponse(promptTextForAPI) {
   isLoading.value = true;
   error.value = null;
   inputError.value = ''; // Clear input error on new fetch
-  // Set placeholder in the *current* AI response slot
-  currentAiResponse.value = { text: '', isPlaceholder: true };
+  // Initialize the current AI response object (no placeholder needed)
+  currentAiResponse.value = { text: '' };
+  currentAiSources.value = []; // Clear sources when starting a new fetch
 
   // Build history for API: ONLY completed interactions
   const historyForAPI = interactionHistory.value.map(item => ({
@@ -343,69 +368,78 @@ async function fetchAiResponse(promptTextForAPI) {
 
     if (!response.ok) {
       currentAiResponse.value = null; 
+      currentAiSources.value = []; // Clear sources on error
       let errorData; try { errorData = await response.json(); } catch (e) { /* ignore */ }
       throw new Error(errorData?.message || `HTTP error! Status: ${response.status}`);
     }
     if (!response.body) { 
         currentAiResponse.value = null;
+        currentAiSources.value = []; // Clear sources on error
         throw new Error('Response body missing.');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+    // --- NDJSON Stream Processing --- 
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = '';
     let isFirstChunk = true; 
-    let streamedText = ''; // Accumulate text locally before final assignment if needed
+    let streamedText = ''; // Accumulate raw text
+    let accumulatedSources = []; // Accumulate sources
 
     while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      
-      // Update this instance's *current* AI response
-      if (currentAiResponse.value) { 
-          if (isFirstChunk && currentAiResponse.value.isPlaceholder) {
-             currentAiResponse.value.isPlaceholder = false;
-             isFirstChunk = false;
-          }
-          currentAiResponse.value.text += chunk; 
-          streamedText += chunk; // Keep track locally too
-      } else { 
-          console.warn(`[MobileInteraction:${props.type}] AI response ref became null during stream.`);
-          break; 
-      }
-    }
-    
-    // Final cleanup & store the prompt that led to this response
-    if (currentAiResponse.value) {
-        currentPromptText.value = promptTextForAPI; // Store the successful prompt
-        if (isFirstChunk && currentAiResponse.value.isPlaceholder) {
-            currentAiResponse.value.isPlaceholder = false; 
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += value;
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep the last potentially incomplete line in the buffer
+
+        for (const line of lines) {
+            if (line.trim() === '') continue;
+            try {
+                const parsedLine = JSON.parse(line);
+                
+                if (parsedLine.type === 'content') {
+                    if (currentAiResponse.value) {
+                        currentAiResponse.value.text += parsedLine.data;
+                        streamedText += parsedLine.data; // Keep track locally too
+                    } else {
+                        console.warn(`[MobileInteraction:${props.type}] AI response ref became null during content stream.`);
+                        // Optionally break or handle differently
+                    }
+                } else if (parsedLine.type === 'sources') {
+                    if (parsedLine.data && Array.isArray(parsedLine.data)) {
+                        // Append new sources, assuming backend sends unique sets or handles deduplication
+                        accumulatedSources.push(...parsedLine.data);
+                        // Update the reactive ref (make a copy to ensure reactivity)
+                        currentAiSources.value = [...accumulatedSources]; 
+                        console.log('Client received sources chunk:', parsedLine.data); // DEBUG
+                        // console.log('Updated sources:', currentAiSources.value); // DEBUG
+                    }
+                }
+            } catch (e) {
+                console.error(`[MobileInteraction:${props.type}] Error parsing JSON line:`, line, e);
+            }
         }
+    }
+    // --- End NDJSON Stream Processing ---
+
+    // Final cleanup & store the prompt that led to this response
+    if (currentAiResponse.value) { 
         if (typeof currentAiResponse.value.text !== 'string') {
             currentAiResponse.value.text = String(streamedText || '');
         }
-        // --- Automatically show input after successful response --- 
-        if (!currentAiResponse.value.isPlaceholder && currentAiResponse.value.text) {
-            showCustomInput.value = true;
-        }
         // ----------------------------------------------------------
     } else {
-        currentPromptText.value = ''; // Clear prompt if response failed
+        // Handle case where currentAiResponse might be null after stream error
+        console.warn("[MobileInteraction] currentAiResponse was null after stream completion/error.");
     }
 
   } catch (err) {
     console.error(`[MobileInteraction:${props.type}] AI Stream Error:`, err);
     error.value = err.message || 'Failed to get AI response.';
     currentAiResponse.value = null; // Clear response on error
-    currentPromptText.value = ''; // Clear prompt on error
   } finally {
-    isLoading.value = false;
-    // Ensure placeholder is always false after loading finishes
-    if(currentAiResponse.value) currentAiResponse.value.isPlaceholder = false; 
-    // Re-show input if loading finished and there's content (might be redundant due to above check)
-    if (!isLoading.value && currentAiResponse.value?.text) {
-        showCustomInput.value = true;
-    }
+    isLoading.value = false; 
   }
 }
 
@@ -414,12 +448,12 @@ async function fetchAiResponse(promptTextForAPI) {
 <style scoped>
 /* Styles largely remain, but some might be simplified */
 .interaction-row {
-  @apply w-full flex justify-between items-center text-left p-3 border border-accent-bg text-sm text-fg disabled:opacity-60 transition-colors;
+  @apply w-full flex justify-between items-center text-left p-3 text-sm text-fg disabled:opacity-60 transition-colors;
   /* Apply rounding directly based on state now */
 }
 /* Default hover */
 .interaction-row:not([class*='bg-bg-muted']):hover {
-   @apply bg-bg-muted;
+   @apply text-primary;
 }
 /* Custom button hover */
 .interaction-row[class*='bg-bg-muted']:hover {
@@ -428,7 +462,7 @@ async function fetchAiResponse(promptTextForAPI) {
 
 /* Active state just changes border */
 .interaction-row.active {
-   @apply border-primary z-10 relative;
+   @apply z-10 relative;
    /* Remove border-bottom manipulation, handled by adjacent div */
 }
 .row-icon {
@@ -449,13 +483,17 @@ async function fetchAiResponse(promptTextForAPI) {
 }
 
 .response-content {
-  @apply text-sm text-fg leading-snug;
+  @apply text-sm text-fg py-1 sm:py-2 -mb-2;
 }
 
 /* If using markdown rendering later: */
-/* .response-content.prose :deep(p) {
-  @apply mb-2;
-} */
+:deep(li) {
+  @apply -mb-2;
+}
+:deep(ul) {
+  margin-top: -20px !important;
+  margin-bottom: -10px !important;
+}
 
 /* Copied from ArticlePrompts.vue for placeholder animation */
 @keyframes sparkle-rotate {
@@ -499,5 +537,15 @@ async function fetchAiResponse(promptTextForAPI) {
 .animate-sparkle {
   animation: sparkle-rotate 2s infinite linear, sparkle-bounce 1.5s infinite ease-in-out;
   transform-origin: center;
+}
+
+/* Styling for Citation Markers */
+:deep(.citation-marker) {
+  @apply inline-block align-baseline mx-px;
+}
+:deep(.citation-marker a) {
+  @apply text-primary dark:text-primary-400 font-medium no-underline hover:underline text-xs;
+  line-height: 1; /* Adjust line height for superscript */
+  vertical-align: super; /* Use superscript alignment */
 }
 </style> 

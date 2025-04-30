@@ -30,8 +30,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Set the Content-Type header for streaming text
-  event.node.res.setHeader('Content-Type', 'text/plain');
+  // Set the Content-Type header for ndjson streaming
+  event.node.res.setHeader('Content-Type', 'application/x-ndjson');
   event.node.res.setHeader('Transfer-Encoding', 'chunked');
 
   const MODEL = 'gemini-2.0-flash';
@@ -102,8 +102,6 @@ export default defineEventHandler(async (event) => {
   * Be Objective and Factual: Stick to the information provided here about the platform's purpose and features.
   * Be Clear and Concise: Avoid overly technical jargon unless necessary.
   * Be Engaging: Encourage users to explore the platform's features.
-  * Use your search tool to verify any factual information you provide, but do not provide links in your response, unless specifically asked for.
-
   </tone-and-style>
 
   <article>
@@ -117,14 +115,15 @@ export default defineEventHandler(async (event) => {
   </article>
 
   <user-interaction>
-  The user is engaging with you through a chat interface directly on the article page.
+  The user is engaging with you through a chat interface directly on the article page. Your response will be displayed in a 'Response' container on the page. Underneath the 'Response' container, there is a 'Sources' container that displays the sources used to generate the response. Users can ask follow-up questions.
   </user-interaction>
 
   </context>
   
   <instructions>
-  * Be extremely concise and to the point: 1-3 sentence responses are optimal, unless the user specifically asks for more extended information or the query clearly demands a more comprehensive response.
-  * Make use of your search tool to verify any factual information you provide, but do not provide links in your response, unless specifically asked for.
+  * Be concise and to the point: 1-3 short paragraphs responses are optimal, unless the user specifically asks for more extended information or the query clearly demands a more comprehensive response.
+  * Use your search tool to verify any factual information you provide, but NEVER cite the source in your response.
+  * Only use extremely trustworthy, high quality, and reputable sources.
   <limitations>
   * Do no engage with the user about anything else than the article, or topics related to the article, geopolitical news, lightcone.news, or anything related to the user's reading experience on lightcone.news.
   * If the user asks you to do anything else, you must politely decline to avoid violating the terms of service. 
@@ -147,7 +146,6 @@ export default defineEventHandler(async (event) => {
     ...chatHistory
   ];
   
-  console.log('Messages sent to LLM:', JSON.stringify(messages, null, 2));
 
   // Check if messages array is valid (at least system + user/assistant message)
   if (messages.length < 2) {
@@ -163,11 +161,73 @@ export default defineEventHandler(async (event) => {
   try {
     const stream = await model.stream(messages);
 
+    // Helper function to safely write JSON lines
+    const writeJsonLine = (data) => {
+        try {
+            event.node.res.write(JSON.stringify(data) + '\n');
+        } catch (e) {
+            console.error('Error writing JSON line to stream:', e);
+            // Handle potential write errors (e.g., client disconnected)
+            // You might want to break the loop or handle cleanup here
+        }
+    };
+
     // Stream the response chunks
     for await (const chunk of stream) {
-      if (chunk?.content) {
-        event.node.res.write(chunk.content);
+      // console.log('Raw Chunk:', JSON.stringify(chunk, null, 2)); // DEBUG: Log the raw chunk structure
+
+      // Send content chunk
+      // console.log('Chunk:', chunk); // Keep or remove based on preference
+      if (chunk?.content && typeof chunk.content === 'string' && chunk.content.trim() !== '') {
+        writeJsonLine({ type: 'content', data: chunk.content });
       }
+
+      // --- Extract and send sources from Grounding Metadata --- 
+      let sources = [];
+      const groundingChunks = chunk.response_metadata?.groundingMetadata?.groundingChunks;
+
+      if (groundingChunks && Array.isArray(groundingChunks)) {
+          // console.log('Found Grounding Chunks:', JSON.stringify(groundingChunks, null, 2)); // DEBUG: Log structure if needed
+          for (const groundingChunk of groundingChunks) {
+              // *** Corrected Structure: { web: { uri, title } } ***
+              const result = groundingChunk?.web; // Access the 'web' property
+              if (result?.uri) { // Check for 'uri' instead of 'link'
+                  sources.push({
+                      url: result.uri, // Use uri
+                      title: result.title || '' // Keep title
+                      // snippet: result.snippet || '' // Snippet doesn't seem available here
+                  });
+              } else {
+                  // Fallback or alternative structure check if needed
+                  console.log('Could not find web.uri in:', groundingChunk); // Updated debug log
+              }
+          }
+      }
+
+      // Send sources if any were found in this chunk
+      if (sources.length > 0) {
+          // Deduplicate sources based on URL before sending
+          const uniqueSources = Array.from(new Map(sources.map(s => [s.url, s])).values());
+           // Only send if there are actually sources to send
+           if (uniqueSources.length > 0) {
+              // console.log('Sending sources chunk:', JSON.stringify({ type: 'sources', data: uniqueSources })); // DEBUG: Log sources being sent
+              writeJsonLine({ type: 'sources', data: uniqueSources });
+           }
+      }
+      // --- End source extraction --- 
+
+      // --- REMOVE OLD Tool Call Logic --- 
+      /* 
+      let sources_old = [];
+      // Check standard tool_calls format (might appear in final chunk)
+      if (chunk?.additional_kwargs?.tool_calls) { ... }
+      // Check tool_call_chunks format (might appear incrementally)
+      if (chunk?.tool_call_chunks) { ... }
+      // Send sources if any were found in this chunk
+      if (sources_old.length > 0) { ... }
+      */
+      // --- End REMOVE OLD Tool Call Logic --- 
+
     }
   } catch (error) {
       console.error('LLM stream error:', error);
