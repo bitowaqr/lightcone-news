@@ -15,7 +15,7 @@ export const createLineup = async (saveToMongo = true) => {
 
   // 1. Scrape News Feeds 
   console.log('Scraping news feeds...');
-  const allNewsItems = await scrapeFeeds(["semafor","tagesschau"], true);
+  const allNewsItems = await scrapeFeeds([], true);
   console.log(`Feed items fetched: ${allNewsItems.length}`);
 
   // 1.5 Curate Sources Per Publisher
