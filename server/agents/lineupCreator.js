@@ -38,7 +38,7 @@ const structuredLlm = model.withStructuredOutput(lineupSchema);
 
 // --- Main Agent Function ---
 
-const callLineupCreator = async (newsItems, existingArticles = [], archivedArticles = []) => {
+const callLineupCreator = async (newsItems, existingArticles = [], archivedArticles = [], maxStories = 10) => {
 
   const formattedNewsList = newsItems
     .map(
@@ -119,7 +119,7 @@ g) While Lightcone news is updated multiple times per day, and it's important to
 
 3. Then, scratch all the topics in the 'Topics to be Removed from Newsfeed' from the 'Tentative New Items List'.
 
-4. Now, compare the 'Tentative New Items List' with the 'Existing Articles List'. If there is a topic in the 'Tentative New Items List' that is already in the 'Existing Articles List', evaluate if it's a significant update (check sources and developments). If it is, add it to the 'Tentative New Items List'. If it's not, remove it from the 'Tentative New Items List'. Note: it is rarely worth updating an existing article only because 1-2 new sources have been published. Instead, review if the sources hint at a significant development or new information. Never include more than *10* new story ideas for the final lineup - if you have more than 10, focus on the most important ones.
+4. Now, compare the 'Tentative New Items List' with the 'Existing Articles List'. If there is a topic in the 'Tentative New Items List' that is already in the 'Existing Articles List', evaluate if it's a significant update (check sources and developments). If it is, add it to the 'Tentative New Items List'. If it's not, remove it from the 'Tentative New Items List'. Note: it is rarely worth updating an existing article only because 1-2 new sources have been published. Instead, review if the sources hint at a significant development or new information. Never include more than *${maxStories}* new story ideas for the final lineup - if you have more than ${maxStories}, focus on the most important ones.
 
 5. Now, you have a list of new items that you should consider for the lineup. This list is your 'Final New Items List'.
 

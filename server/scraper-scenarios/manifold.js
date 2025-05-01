@@ -874,5 +874,5 @@ async function testHistoryFetching() {
 }
 
 // Run the history test
-testHistoryFetching();
+// testHistoryFetching();
 // --- End New Test ---

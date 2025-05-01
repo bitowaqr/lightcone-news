@@ -54,7 +54,6 @@ export default defineEventHandler(async (event) => {
         }
     });
 
-    console.log('Available models determined:', availableModelNames);
     return availableModelNames; // Return the names of the models whose collections exist
 
   } catch (error) {

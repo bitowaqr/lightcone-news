@@ -1,36 +1,34 @@
-// workers/scheduler.js
-// import cron from 'node-cron';
 import { withRetry } from './utils/withRetry.js'; 
 import { updateAndEmbedScenarios } from '../server/scraper-scenarios/index.js';
 import { createLineup } from './createLineup.js'; 
 import { writeArticle } from './writeArticle.js';
 import { feedCurator } from '../server/agents/feedCurator.js';
 import { mongoService } from '../server/services/mongo.js'; 
-import cron from 'node-cron';
 
 
-// --- Define the main execution sequence ---
-async function runAllTasks() {
+const createNewsfeed = async (updateScenarios = true, maxNewStories = 10) => {
   console.log(`[Scheduler] Starting workflow at ${new Date().toISOString()}...`);
   
   await mongoService.connect();
 
   try {
-        // --- Task 1: Update Scenarios ---
-        await withRetry(
-            () => updateAndEmbedScenarios(),
-            'UpdateScenarios',
-            3, // maxRetries
-            60_000 // delayMs (1 minute)
-        );
-        console.log("[Scheduler] UpdateScenarios completed successfully.");
+        if (updateScenarios) {
+            // --- Task 1: Update Scenarios ---
+            await withRetry(
+                () => updateAndEmbedScenarios(),
+                'UpdateScenarios',
+                3, // maxRetries
+                60_000 // delayMs (1 minute)
+            );
+            console.log("[Scheduler] UpdateScenarios completed successfully.");
+        }
 
         // --- Task 2: Create Lineup ---
         // Call the createLineup function from editorialMeeting.js
         // This function handles its own data fetching (scraping, screening)
         let createdStories; // Store the result if needed later (e.g., to pass to writeArticle)
         createdStories = await withRetry(
-            () => createLineup(), 
+            () => createLineup(true, maxNewStories), 
             'editorialMeeting',
             3,
             60_000
@@ -124,17 +122,4 @@ async function runAllTasks() {
     }
 }
 
-// --- Schedule the Task ---
-const cronExpression = '0 1-23/3 * * *'; // Run at 1:00, 4:00, 7:00, 10:00, 13:00, 16:00, 19:00, 22:00 Eastern Time
-console.log(`[Scheduler] Initializing cron job with schedule: "${cronExpression}"`);
-cron.schedule(cronExpression, runAllTasks, {
-      scheduled: true,
-      timezone: "America/New_York" 
-  });
-  console.log('[Scheduler] Service started. Waiting for scheduled tasks.');
-  // Optional: Immediate run for testing
-  console.log('[Scheduler] Performing initial run...');
-  runAllTasks();
-  
-
-  
+export { createNewsfeed };

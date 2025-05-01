@@ -138,7 +138,7 @@ onMounted(async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    // Call the fetchBookmarks action (currently a placeholder)
+      // Call the fetchBookmarks action (currently a placeholder)
     await bookmarkStore.fetchBookmarks();
     // In Phase 3, this fetch should populate the store, 
     // and the computed properties above will reflect the real data.

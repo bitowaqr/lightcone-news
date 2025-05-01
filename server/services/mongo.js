@@ -233,8 +233,6 @@ class MongoService {
             priority: decision.newPriority,
             // Set publishedDate only when transitioning to PUBLISHED *from* a non-published state
             ...(decision.newStatus === 'PUBLISHED' && decision.currentStatus !== 'PUBLISHED' && { publishedDate: new Date() }),
-            // Optionally, set updatedDate whenever status/priority changes
-            updatedDate: new Date(),
           }
         }
       }

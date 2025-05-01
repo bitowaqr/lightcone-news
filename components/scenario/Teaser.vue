@@ -13,6 +13,7 @@
               
          >{{ scenario.name }}</div>
          <div v-if="scenario.platform" class="text-[11px] text-primary-600 opacity-75 mt-0.5 truncate font-medium">
+           <span class="opacity-50">by</span>
            {{ scenario.platform }}
          </div>
       </div>

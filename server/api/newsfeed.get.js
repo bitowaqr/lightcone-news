@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => { // Make handler async
       }
     });
 
-    console.log('articles', articles.map(a => a.title.slice(0, 15) + '... ' + a.publishedDate));
+    console.log('articles', articles.map(a => a.title.slice(0, 15) + '... ' + a.publishedDate.toISOString().slice(0, 10)));
 
     // Fetch recent open scenarios (adjust criteria as needed)
     // Potential alternative: Fetch scenarios explicitly linked to the articles above

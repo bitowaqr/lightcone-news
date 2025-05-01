@@ -2,8 +2,11 @@
   <div class="p-4 md:p-6 max-w-7xl mx-auto dark:text-gray-200">
     <h1 class="text-3xl font-bold mb-6 border-b pb-2 dark:border-gray-700">Admin Dashboard</h1>
 
-    <!-- Link to Lineup Curation -->
-    <div class="mb-4 text-right">
+    <!-- Links to Other Admin Pages -->
+    <div class="mb-4 text-right space-x-4">
+      <NuxtLink to="/admin/update-newsfeed" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+        Go to Update Newsfeed &raquo;
+      </NuxtLink>
       <NuxtLink to="/admin/lineup-curation" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
         Go to Lineup Curation &raquo;
       </NuxtLink>

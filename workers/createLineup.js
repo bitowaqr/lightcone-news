@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 
-export const createLineup = async (saveToMongo = true) => {
+export const createLineup = async (saveToMongo = true, maxStories = 10) => {
   
   console.log('Starting lineup creation...');
   await mongoService.connect();
@@ -47,7 +47,7 @@ export const createLineup = async (saveToMongo = true) => {
   } catch (error) {
     console.error('Error calling lineupCreator:', error);
     console.log('Retrying lineupCreator...');
-    lineup = await callLineupCreator(curatedNewsItems, existingArticles, archivedArticles);
+    lineup = await callLineupCreator(curatedNewsItems, existingArticles, archivedArticles, maxStories);
   }
   if(!lineup) throw new Error('No lineup created');
   console.log('Lineup created with', lineup.stories?.length || 0, 'stories');

@@ -35,6 +35,7 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
 
   // Fetches bookmarks from dummy API
   async function fetchBookmarks() {    
+    console.log('Fetching bookmarks...');
     isLoading.value = true;
     try {
       const data = await $fetch('/api/bookmarks'); // Calls the dummy GET endpoint
@@ -61,7 +62,8 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
      }
  
      // Call dummy API endpoint
-     try {
+    try {
+       console.log('Adding bookmark...');
        const response = await $fetch('/api/bookmarks', { 
          method: 'POST', 
          body: { itemId, itemType, action: 'add' } 
@@ -116,7 +118,8 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
      listRef.value.splice(originalIndex, 1);
 
      // Call dummy API endpoint
-     try {
+    try {
+       console.log('Removing bookmark...');
          const response = await $fetch('/api/bookmarks', { 
            method: 'POST', 
            body: { itemId, itemType, action: 'remove' } 
@@ -140,7 +143,7 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
       if (isBookmarked.value(itemId, itemType)) {
           await removeBookmark(itemId, itemType);
       } else {
-          // Note: Adding might feel slightly delayed as it waits for fetchBookmarks
+        // Note: Adding might feel slightly delayed as it waits for fetchBookmarks
           await addBookmark(itemId, itemType);
       }
    }
