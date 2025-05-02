@@ -4,110 +4,95 @@ import { ref, computed } from 'vue';
 // Define the store
 export const useBookmarkStore = defineStore('bookmarks', () => {
   // --- State ---
-  // Store full objects fetched from API
-  const bookmarkedArticles = ref([]); 
+  // Only store scenario bookmarks
+  // REMOVED bookmarkedArticles ref
   const bookmarkedScenarios = ref([]);
   const isLoading = ref(false); // To track async operations later
 
   // --- Getters ---
   const isBookmarked = computed(() => {
     return (itemId, itemType) => {
-      if (!itemId || !itemType) return false;
+      if (!itemId || !itemType || itemType !== 'scenario') return false;
       
-      // Check against the stored objects
-      if (itemType === 'article') {
-        return bookmarkedArticles.value.some(article => article._id === itemId);
-      } else if (itemType === 'scenario') {
-        return bookmarkedScenarios.value.some(scenario => scenario._id === itemId);
-      }
-      return false;
+      // Check only against scenarios
+      return bookmarkedScenarios.value.some(scenario => scenario._id === itemId);
     };
   });
 
   const allBookmarks = computed(() => {
+      // Only return scenarios
       return {
-          articles: bookmarkedArticles.value,
           scenarios: bookmarkedScenarios.value
       }
   })
 
   // --- Actions ---
 
-  // Fetches bookmarks from dummy API
+  // Fetches bookmarks from API
   async function fetchBookmarks() {    
-    console.log('Fetching bookmarks...');
+    console.log('Fetching bookmarks (scenarios only)...');
     isLoading.value = true;
     try {
-      const data = await $fetch('/api/bookmarks'); // Calls the dummy GET endpoint
+      const data = await $fetch('/api/bookmarks'); // Calls the GET endpoint
 
-      // Update state with full objects
-      bookmarkedArticles.value = data.articles || [];
+      // Update state with only scenarios
+      // REMOVED article handling
       bookmarkedScenarios.value = data.scenarios || [];
     } catch (error) {
       console.error('[BookmarkStore] Error fetching bookmarks:', error);
-      bookmarkedArticles.value = []; // Clear on error
-      bookmarkedScenarios.value = [];
+      bookmarkedScenarios.value = []; // Clear on error
     } finally {
       isLoading.value = false;
     }
   }
 
-  // Adds a bookmark via dummy API
+  // Adds a scenario bookmark via API
   async function addBookmark(itemId, itemType) {
-     if (!itemId || !itemType) return;
+     // Only allow adding scenarios
+     if (!itemId || itemType !== 'scenario') {
+         console.warn('[BookmarkStore] Attempted to add bookmark for invalid item type or missing ID:', itemType, itemId);
+         return;
+     } 
 
      // Prevent adding if already bookmarked
      if (isBookmarked.value(itemId, itemType)) {
          return; 
      }
  
-     // Call dummy API endpoint
+     // Call API endpoint
     try {
-       console.log('Adding bookmark...');
+       console.log('Adding scenario bookmark...');
        const response = await $fetch('/api/bookmarks', { 
          method: 'POST', 
-         body: { itemId, itemType, action: 'add' } 
+         body: { itemId, itemType: 'scenario', action: 'add' } // Ensure itemType is scenario
        });
        if (!response.success) throw new Error('API indicated failure adding bookmark');
        
-       // Optimistically add the item (basic version - just ID for icon state)
-       // Add a minimal placeholder object to the local state array so that 
-       // the isBookmarked getter will return true immediately.
-       // The full object data will appear on the next fetch.
-       if (itemType === 'article') {
-           if (!bookmarkedArticles.value.some(a => a._id === itemId)) {
-               // Add placeholder with just the ID
-               bookmarkedArticles.value.push({ _id: itemId }); 
-           }
-       } else if (itemType === 'scenario') {
-           if (!bookmarkedScenarios.value.some(s => s._id === itemId)) {
-                // Add placeholder with just the ID
-                bookmarkedScenarios.value.push({ _id: itemId });
-           }
+       // Optimistically add the scenario placeholder
+       if (!bookmarkedScenarios.value.some(s => s._id === itemId)) {
+            // Add placeholder with just the ID
+            bookmarkedScenarios.value.push({ _id: itemId });
        }
 
      } catch (error) {
        console.error('[BookmarkStore] Error adding bookmark via API:', error);
-       // Error handled, no state revert needed as we didn't optimistically update the list
        // Might want to show a user notification here
      }
   }
 
-  // Removes a bookmark via dummy API
+  // Removes a scenario bookmark via API
   async function removeBookmark(itemId, itemType) {
-     if (!itemId || !itemType) return;
+     // Only allow removing scenarios
+     if (!itemId || itemType !== 'scenario') {
+        console.warn('[BookmarkStore] Attempted to remove bookmark for invalid item type or missing ID:', itemType, itemId);
+        return;
+     } 
  
      // Find the index and item for potential revert
      let originalIndex = -1;
      let originalItem = null;
-     let listRef = null;
-     if (itemType === 'article') {
-         listRef = bookmarkedArticles;
-         originalIndex = listRef.value.findIndex(a => a._id === itemId);
-     } else if (itemType === 'scenario') {
-         listRef = bookmarkedScenarios;
-         originalIndex = listRef.value.findIndex(s => s._id === itemId);
-     }
+     let listRef = bookmarkedScenarios; // Directly use scenario list
+     originalIndex = listRef.value.findIndex(s => s._id === itemId);
 
      if (originalIndex === -1) {
         return; // Item not found locally, nothing to remove
@@ -117,12 +102,12 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
      // Optimistic UI update - Remove item from the local array
      listRef.value.splice(originalIndex, 1);
 
-     // Call dummy API endpoint
+     // Call API endpoint
     try {
-       console.log('Removing bookmark...');
+       console.log('Removing scenario bookmark...');
          const response = await $fetch('/api/bookmarks', { 
            method: 'POST', 
-           body: { itemId, itemType, action: 'remove' } 
+           body: { itemId, itemType: 'scenario', action: 'remove' } // Ensure itemType is scenario
          });
          if (!response.success) throw new Error('API indicated failure removing bookmark');
          // No need to refetch on successful remove with optimistic update
@@ -137,13 +122,16 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
        }
    }
    
-   // Toggles bookmark status
+   // Toggles scenario bookmark status
    async function toggleBookmark(itemId, itemType) {
-      if (!itemId || !itemType) return;
+      // Only allow toggling scenarios
+      if (!itemId || itemType !== 'scenario') {
+        console.warn('[BookmarkStore] Attempted to toggle bookmark for invalid item type or missing ID:', itemType, itemId);
+        return;
+      }
       if (isBookmarked.value(itemId, itemType)) {
           await removeBookmark(itemId, itemType);
       } else {
-        // Note: Adding might feel slightly delayed as it waits for fetchBookmarks
           await addBookmark(itemId, itemType);
       }
    }
@@ -151,7 +139,7 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
   // --- Return ---
   return {
     // State
-    bookmarkedArticles,
+    // REMOVED bookmarkedArticles
     bookmarkedScenarios,
     isLoading,
     // Getters

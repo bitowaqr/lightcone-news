@@ -32,12 +32,7 @@ const UserSchema = new Schema({
   },
   savedArticles: [{
     type: Schema.Types.ObjectId,
-    ref: 'Article' // Assuming you will have an 'Article' model
-  }],
-  bookmarkedArticles: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Article',
-    index: true // Index for potentially faster lookup of users who bookmarked an article
+    ref: 'Article'
   }],
   bookmarkedScenarios: [{
     type: Schema.Types.ObjectId,

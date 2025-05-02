@@ -14,7 +14,10 @@ export default defineEventHandler(async (event) => {
   const skip = (page - 1) * limit;
 
   // --- Filtering --- 
-  const filter = { status: 'OPEN' }; // Default to showing only OPEN scenarios
+  const filter = { 
+      status: 'OPEN', // Default to showing only OPEN scenarios
+      relatedArticleIds: { $exists: true, $not: { $size: 0 } } // ADDED: Ensure linked to at least one article
+  }; 
 
   if (query.status) {
     const validStatuses = ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED', 'UPCOMING', 'UNKNOWN'];
@@ -24,7 +27,12 @@ export default defineEventHandler(async (event) => {
     if (validRequested.length > 0) {
       // If 'ALL' is specified, remove the default OPEN filter
       if (validRequested.includes('ALL')) {
-         delete filter.status;
+          // Still keep the relatedArticleIds filter
+          // delete filter.status; // Don't delete the whole status filter, just potentially modify it
+          filter.status = { $in: validRequested.filter(s => s !== 'ALL') }; // Apply other valid statuses
+          if (!filter.status.$in || filter.status.$in.length === 0) {
+              delete filter.status; // If only 'ALL' was requested, remove status filter entirely
+          }
       } else {
          filter.status = { $in: validRequested };
       }
@@ -95,7 +103,7 @@ export default defineEventHandler(async (event) => {
     // Format data for the frontend (similar to ScenarioTeaser needs)
     const formattedScenarios = scenarios.map(scenario => ({
       scenarioId: scenario._id.toString(),
-      name: scenario.question, // Use 'question' as 'name' for consistency with Teaser
+      name: scenario.questionNew || scenario.question, // Use 'question' as 'name' for consistency with Teaser
       platform: scenario.platform,
       platformScenarioId: scenario.platformScenarioId,
       description: scenario.description, // Added description

@@ -1,14 +1,14 @@
 <template>
-  <NuxtLink 
-    :to="`/scenarios/${scenario.scenarioId}`"
+  <div 
     v-if="scenario"
-    class="block p-4 border border-dotted border-bg-muted bg-bg-muted/20 hover:bg-bg-muted/50 transition-colors duration-150 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+    @click="selectScenario"
+    class="cursor-pointer block p-4 border border-dotted border-primary bg-bg-muted/20 hover:bg-bg-muted/50 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
   >
     <div class="flex flex-col h-full">
       <!-- Top section: Title and Chance -->
       <div class="flex justify-between items-start mb-2">
-        <!-- Title -->
-        <h3 class="text-base sm:text-lg font-semibold text-fg leading-tight line-clamp-3 mr-4 flex-1">{{ scenario.name }}</h3>
+        <!-- Title - Adjusted font size for lg -->
+        <h3 class="text-base leading-tight sm:text-lg lg:text-base font-semibold text-fg line-clamp-3 mr-4 flex-1">{{ scenario.name }}</h3>
         
         <!-- Chance Display (Top Right) -->
         <div class="flex-shrink-0 text-right">
@@ -70,7 +70,7 @@
       </div>
 
     </div>
-  </NuxtLink>
+  </div>
 
   <!-- Share Dialog -->
   <CommonShareDialog 
@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { computed, toRefs, ref } from 'vue';
+import { computed, toRefs, ref, defineEmits } from 'vue';
 import { useScenarioChance } from '~/composables/useScenarioChance';
 import { formatRelativeTime } from '~/utils/formatRelativeTime';
 import CommonShareDialog from '~/components/common/ShareDialog.vue';
@@ -92,13 +92,16 @@ import { useRequestURL } from '#app';
 import { useAuthStore } from '~/stores/auth';
 import { useBookmarkStore } from '~/stores/bookmarks';
 
+// Define the emits
+const emit = defineEmits(['scenario-selected']);
+
 const props = defineProps({
   scenario: {
     type: Object,
     required: true,
-    // Default provides structure expected by template & composable
     default: () => ({
-       scenarioId: '', 
+       scenarioId: '', // Expect scenarioId from parent list
+       _id: '', // Expect _id if coming from bookmarks
        name: 'Loading...', 
        platform: null, 
        platformScenarioId: null, 
@@ -119,13 +122,25 @@ const showShareDialog = ref(false);
 const scenarioToShare = ref(null);
 const origin = useRequestURL().origin;
 
+// Function to emit the selected event
+const selectScenario = () => {
+    // Use scenarioId if available (consistent with list API), fallback to _id if needed
+    const idToEmit = props.scenario?.scenarioId || props.scenario?._id;
+    if (idToEmit) {
+        emit('scenario-selected', idToEmit);
+    } else {
+        console.warn('[ScenarioCard] Cannot emit selection: Scenario ID missing.');
+    }
+};
+
 const isBookmarked = computed(() => {
-    const scenarioId = props.scenario?._id;
+    // Use scenarioId or _id for checking bookmark status
+    const scenarioId = props.scenario?.scenarioId || props.scenario?._id;
     return scenarioId ? bookmarkStore.isBookmarked(scenarioId, 'scenario') : false;
 });
 
 const handleBookmark = () => {
-    const scenarioId = props.scenario?._id;
+    const scenarioId = props.scenario?.scenarioId || props.scenario?._id;
     if (scenarioId) {
         bookmarkStore.toggleBookmark(scenarioId, 'scenario');
     } else {
@@ -134,12 +149,14 @@ const handleBookmark = () => {
 };
 
 const handleShare = () => {
-    // Use Share Dialog
-    if (!props.scenario || !props.scenario.scenarioId) {
+    // Use scenarioId or _id for sharing
+    const scenarioId = props.scenario?.scenarioId || props.scenario?._id;
+    if (!props.scenario || !scenarioId) {
         console.warn('Cannot share scenario: missing data or scenarioId');
         return;
     }
-    scenarioToShare.value = props.scenario; 
+    // Pass the whole scenario object to ensure dialog has title etc.
+    scenarioToShare.value = { ...props.scenario, scenarioId: scenarioId }; 
     showShareDialog.value = true;
 };
 

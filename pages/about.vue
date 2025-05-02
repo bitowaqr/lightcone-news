@@ -3,14 +3,14 @@
     <h1 class="text-3xl font-bold mb-8 text-primary-700 dark:text-primary-300">About Lightcone News</h1>
 
     <div class="bg-article p-6 md:p-8 rounded-lg shadow-sm mb-8 space-y-8 text-lg leading-relaxed">
-      
-      <blockquote class="text-xl font-medium leading-relaxed"> 
-        Lightcone News provides a curated news feed with contextual information and probabilistic forecasts.
+
+      <blockquote class="text-xl font-semibold leading-relaxed mt-1">
+        Lightcone News is a curated news feed with additional context and probabilistic forecasts to help you make sense of the world.
       </blockquote>
 
       <!-- Core Features Section -->
-      <section class="border-t border-bg-muted pt-6">
-        <h2 class="text-xl font-semibold mb-4">Core Features</h2> 
+      <section class="border-t border-bg-muted pt-3">
+        <h2 class="text-xl font-semibold mb-4">Core Features</h2>
         <ol class="list-decimal space-y-2 pl-5">
           <li>
             A <strong class="font-bold text-primary-700 dark:text-primary-300">Curated Feed</strong> focusing on important global developments.
@@ -27,9 +27,12 @@
         </ol>
       </section>
 
+
+
+
       <!-- Understanding Scenarios Section -->
       <section class="border-t border-bg-muted pt-6">
-        <h2 class="text-xl font-semibold mb-4">Understanding Future Scenarios</h2> 
+        <h2 class="text-xl font-semibold mb-4">Understanding Future Scenarios</h2>
         <p class="mb-6">
           Exploring potential futures helps put current events in perspective. Lightcone News integrates probabilistic forecasts from different sources:
         </p>
@@ -39,8 +42,8 @@
             <p class="mb-2">
               <strong class="font-medium">Prediction Markets:</strong> These are exchanges where people trade contracts based on the outcome of future events. The current price reflects the crowd's collective probability estimate for an event.
             <span class="whitespace-nowrap">
-              <em class="text-fg-muted">Sources:</em> 
-              <a href="https://www.polymarket.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline"> Polymarket</a>, 
+              <em class="text-fg-muted">Sources:</em>
+              <a href="https://www.polymarket.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline"> Polymarket</a>,
               <a href="https://manifold.markets/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Manifold </a>
             </span>
             </p>
@@ -50,7 +53,7 @@
              <p class="mb-2">
               <strong class="font-medium">Forecasting Platforms:</strong> These are places where people submit explicit probability forecasts, and the platform aggregates these into community estimates.
             <span class="whitespace-nowrap">
-              <em class="text-fg-muted">Source: </em> 
+              <em class="text-fg-muted">Source: </em>
               <a href="https://www.metaculus.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Metaculus</a>
             </span>
             </p>
@@ -58,7 +61,7 @@
           <!-- AI Agents -->
           <div>
             <p class="mb-2">
-              <strong class="font-medium">AI Agents:</strong> LLMs with access to web search tools analyse the news and generate forecasts. 
+              <strong class="font-medium">AI Agents:</strong> LLMs with access to web search tools analyse the news and generate forecasts.
              <span class="">
               <em class="text-fg-muted">Sources:</em> Internal AI forecasting agents (based on various large language models).
             </span>
@@ -70,48 +73,202 @@
 
       <!-- How to Read Scenarios Section -->
       <section class="border-t border-bg-muted pt-6">
-        <h2 class="text-xl font-semibold mb-4">How to Read Future Scenarios</h2> 
+        <h2 class="text-xl font-semibold mb-4">How to Read Future Scenarios</h2>
         <p class="mb-3">
           Future scenarios include a probabilistic forecast, shown as a percentage (0-100%). This number represents the estimated likelihood of a specific outcome occurring by a given time.
         </p>
         <p class="mb-3">
           Remember that these are probabilities, not certainties. A 60% chance means the outcome is considered more likely than not, but it's still possible it won't happen.
         </p>
-        <p>
+        <!-- <p>
           Different sources may give different probabilities for the same event due to varying data and methodologies.
-        </p>
+        </p> -->
       </section>
 
       <!-- Accuracy Section -->
       <section class="border-t border-bg-muted pt-6">
-        <h2 class="text-xl font-semibold mb-4">How Accurate Are the Forecasts?</h2> 
+        <h2 class="text-xl font-semibold mb-4">How Accurate Are the Forecasts?</h2>
         <p class="mb-3">
           Extensive evidence demonstrates that aggregating forecasts from many individuals tends to give more accurate and reliable predictions than relying on even highly qualified individual experts.
         </p>
         <p class="mb-3">
           <a href="https://calibration.city/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Calibration.city</a> tracks historical data from various platforms and shows that forecasts are extremely well-calibrated: Events predicted to have e.g. a 75% chance of occuring, do in fact occur about 75% of the time.
         </p>
-        <p>
+        <!-- <p>
           We are actively monitoring and will share calibration data for our internal AI forecasts as soon as we have a sufficient track record.
-        </p>
+        </p> -->
       </section>
 
-      <!-- Disclaimer Section -->
-      <section class="border-t border-bg-muted pt-6 mt-8">
+      <!-- Contact Us Section (Moved from contact.vue) -->
+      <section class="border-t border-bg-muted pt-6">
+        <h2 class="text-xl font-semibold mb-4">Contact</h2>
+
+
+        <p class="text-fg-muted text-sm">Lightcone News is a service provided by:</p>
+        <p class="mb-3 text-fg-muted">
+              <a href="https://priorb.com" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline">PRIORB UG</a>, Gewerkenstr 8, 44805 Bochum, Germany.
+            </p>
+
+
+        <!-- Show Form if not success -->
+        <div v-if="submissionStatus !== 'success'">
+
+
+            
+            
+
+          <p class="mb-6">
+            If you have questions or feedback, 
+            send an email to <a href="mailto:contact@priorb.com" class="text-primary-600 dark:text-primary-400 hover:underline">contact@priorb.com</a> or use the form below &ndash; we'd love to hear from you!
+          </p>
+
+          <form @submit.prevent="handleSubmit" class="space-y-4">
+            <div>
+              <label for="name" class="block text-sm font-medium mb-1">Name</label>
+              <input
+                v-model="name"
+                type="text"
+                id="name"
+                required
+                class="w-full px-4 py-2 rounded border border-bg-muted focus:outline-none focus:ring-2 focus:ring-primary-500 bg-bg"
+                placeholder="Your name"
+                :disabled="submissionStatus === 'sending'"
+              />
+            </div>
+
+            <div>
+              <label for="email" class="block text-sm font-medium mb-1">Email</label>
+              <input
+                v-model="email"
+                type="email"
+                id="email"
+                required
+                class="w-full px-4 py-2 rounded border border-bg-muted focus:outline-none focus:ring-2 focus:ring-primary-500 bg-bg"
+                placeholder="your.email@example.com"
+                :disabled="submissionStatus === 'sending'"
+              />
+            </div>
+
+            <div>
+              <label for="message" class="block text-sm font-medium mb-1">Message</label>
+              <textarea
+                v-model="message"
+                id="message"
+                rows="5"
+                required
+                class="w-full px-4 py-2 rounded border border-bg-muted focus:outline-none focus:ring-2 focus:ring-primary-500 bg-bg"
+                placeholder="Your message here..."
+                :disabled="submissionStatus === 'sending'"
+              ></textarea>
+            </div>
+
+            <div class="flex items-center space-x-4">
+              <button
+                type="submit"
+                class="px-5 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="submissionStatus === 'sending'"
+                >
+                {{ submissionStatus === 'sending' ? 'Sending...' : 'Send Message' }}
+              </button>
+              <!-- Error message shown below button if sending fails -->
+              <p v-if="submissionStatus === 'error'" class="text-red-600 dark:text-red-400">Error: {{ errorMessage }}</p>
+            </div>
+          </form>
+        </div>
+
+        <!-- Show Success Message instead of form -->
+        <div v-else class="text-center py-10">
+          <svg class="mx-auto h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 class="mt-2 text-lg font-medium text-green-700 dark:text-green-300">Message Sent Successfully!</h3>
+          <p class="mt-1 text-text-secondary">Thank you for contacting us. We'll get back to you if needed.</p>
+          <!-- Optional: Button to send another message -->
+          <!--
+          <button @click="resetForm" class="mt-4 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-800">
+            Send another message
+          </button>
+          -->
+        </div>
+      </section>
+
+
+
+
+    </div>
+
+
+
+
+    <!-- Disclaimer Section MOVED HERE -->
+    <section class="border-t border-bg-muted pt-6 mt-8">
+      
         <h3 class="text-lg font-semibold mb-2 text-fg-muted">Disclaimer</h3>
+        
         <p class="font-mono text-xs leading-relaxed text-fg-muted">
           LIGHTCONE NEWS UTILIZES ARTIFICIAL INTELLIGENCE WHICH MAY OCCASIONALLY HALLUCINATE, FABRICATE INFORMATION, OR MAKE FACTUAL ERRORS. ALWAYS VERIFY INFORMATION WITH TRUSTED SOURCES BEFORE MAKING DECISIONS, SHARING WITH OTHERS, OR FORMING STRONG OPINIONS. DO NOT OPERATE HEAVY MACHINERY WHILE CONSUMING AI-GENERATED CONTENT. LIGHTCONE NEWS AGGREGATES CONTENT FROM VARIOUS THIRD-PARTY SOURCES. ALL RIGHTS TO ORIGINAL CONTENT BELONG TO THEIR RESPECTIVE COPYRIGHT HOLDERS. LINKS TO EXTERNAL SOURCES ARE PROVIDED FOR ATTRIBUTION AND REFERENCE PURPOSES ONLY. LIGHTCONE NEWS DOES NOT CLAIM OWNERSHIP OF THIRD-PARTY CONTENT AND OPERATES UNDER FAIR USE PRINCIPLES FOR THE PURPOSE OF NEWS REPORTING, COMMENTARY, AND RESEARCH. IF YOU ARE A COPYRIGHT HOLDER AND BELIEVE YOUR CONTENT HAS BEEN USED INAPPROPRIATELY, PLEASE CONTACT US IMMEDIATELY.
         </p>
       </section>
 
-    </div>
+    <!-- Contact Info Section (From contact.vue - simplified) -->
+
+
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'; // Added ref import
+
+// Refs and logic for contact form (copied from contact.vue)
+const name = ref('');
+const email = ref('');
+const message = ref('');
+const submissionStatus = ref(''); // '', 'sending', 'success', 'error'
+const errorMessage = ref('');
+
+const handleSubmit = async () => {
+  submissionStatus.value = 'sending';
+  errorMessage.value = '';
+
+  try {
+    // Use $fetch directly as it's globally available in Nuxt 3
+    const response = await $fetch('/api/contact', {
+      method: 'POST',
+      body: {
+        name: name.value,
+        email: email.value,
+        message: message.value,
+      },
+    });
+
+    if (response.success) {
+      submissionStatus.value = 'success';
+      // Optionally clear the form
+      // name.value = '';
+      // email.value = '';
+      // message.value = '';
+    } else {
+      throw new Error(response.message || 'An unknown error occurred.');
+    }
+  } catch (error) {
+    console.error('Contact form submission error:', error);
+    submissionStatus.value = 'error';
+    errorMessage.value = error.message || 'Failed to send message. Please try again later.';
+  }
+};
+
+// Function to allow sending another message (optional) - Keep if needed, can be removed if not
+const resetForm = () => {
+  submissionStatus.value = '';
+  name.value = '';
+  email.value = '';
+  message.value = '';
+  errorMessage.value = '';
+};
+
 // No script logic needed for this static content page
 </script>
 
 <style scoped>
 /* Add any page-specific styles if needed */
-</style> 
+</style>

@@ -8,11 +8,10 @@
         
         <div class="flex flex-wrap justify-center gap-6 mb-4 md:mb-0">
           <NuxtLink to="/scenarios" class="hover:text-fg">Scenarios</NuxtLink>
-          <NuxtLink to="/bookmarks" class="hover:text-fg">Bookmarks</NuxtLink>
+          <NuxtLink to="/scenarios/request" class="hover:text-fg">Request Forecast</NuxtLink>
           <NuxtLink to="/about" class="hover:text-fg">About</NuxtLink>
           <NuxtLink to="/terms" class="hover:text-fg">Terms</NuxtLink>
           <NuxtLink to="/privacy" class="hover:text-fg">Privacy</NuxtLink>
-          <NuxtLink to="/contact" class="hover:text-fg">Contact</NuxtLink>
         </div>
         
         <div class="text-xs">

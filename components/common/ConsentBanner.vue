@@ -10,10 +10,7 @@ onMounted(() => {
   if (process.client) {
     const consentGiven = localStorage.getItem(consentKey);
     if (!consentGiven) {
-      console.log('ConsentBanner: No consent decision found, showing banner.');
       showBanner.value = true;
-    } else {
-      console.log(`ConsentBanner: Consent decision already made: ${consentGiven}`);
     }
   }
 });

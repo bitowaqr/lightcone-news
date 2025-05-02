@@ -1,6 +1,6 @@
 <template>
   <NuxtLink
-    to="/scenarios/request"
+    :to="requestLink"
     class="bg-accent-bg/50 px-2 md:px-4 py-3 relative overflow-hidden hover:bg-accent-bgHover/80 transition-colors duration-100 group h-full flex items-center border border-dotted border-accent-bg hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-bg"
   >
     <div class="flex justify-between items-center space-x-2 leading-tight grow">
@@ -31,7 +31,35 @@
 </template>
 
 <script setup>
-// No script logic needed for this static component yet
+import { computed } from 'vue';
+
+const props = defineProps({
+  articleId: {
+    type: String,
+    default: null,
+  },
+  articleTitle: {
+    type: String,
+    default: null,
+  },
+});
+
+// Generate the link with query parameters if article context exists
+const requestLink = computed(() => {
+  const base = '/scenarios/request';
+  if (props.articleId) {
+    const query = {
+      articleId: props.articleId,
+    };
+    // Optionally include title for display convenience, URL encode handled by NuxtLink
+    if (props.articleTitle) {
+      query.articleTitle = props.articleTitle;
+    }
+    return { path: base, query };
+  }
+  return base; // Return base path if no article context
+});
+
 </script>
 
 <style scoped>

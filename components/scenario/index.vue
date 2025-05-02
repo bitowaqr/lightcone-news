@@ -1,7 +1,7 @@
 <template>
   <div class="p-4 sm:p-6 pt-0 sm:pt-0">
-    <!-- back arrow, go back where you came from -->
-    <div class="mb-2 sm:mb-4">
+    <!-- Conditionally render back button -->
+    <div v-if="!isEmbedded" class="mb-2 sm:mb-4">
       <a
         href="#" 
         @click.prevent="$router.go(-1)"
@@ -229,6 +229,11 @@ const props = defineProps({
       openDate: null,
       scenarios: []
     })
+  },
+  // ADDED: Prop to control back button visibility
+  isEmbedded: {
+      type: Boolean,
+      default: false // Default to false, meaning show back button unless explicitly embedded
   }
 });
 

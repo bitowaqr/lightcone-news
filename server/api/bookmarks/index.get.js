@@ -1,6 +1,5 @@
 import { defineEventHandler, createError } from 'h3';
 import User from '../../models/User.model';
-import Article from '../../models/Article.model';
 import Scenario from '../../models/Scenario.model';
 
 export default defineEventHandler(async (event) => {
@@ -33,15 +32,6 @@ export default defineEventHandler(async (event) => {
   }
   
   try {
-      const articleIds = dbUser.bookmarkedArticles?.map(article => article?.toString());
-    const articles = await Article.find({ 
-        _id: { $in: articleIds }
-      })
-      .select('_id slug title precis publishedDate imageUrl sources') // Select needed fields
-        .lean();
-      
-      
-
     // Fetch scenarios using the IDs from the user document
     const scenariosRaw = await Scenario.find({ 
         _id: { $in: dbUser.bookmarkedScenarios || [] } 
@@ -56,7 +46,6 @@ export default defineEventHandler(async (event) => {
     }));
       
     return {
-      articles,
       scenarios
     };
   } catch (fetchError) {

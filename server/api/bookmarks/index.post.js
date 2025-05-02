@@ -18,8 +18,12 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, statusMessage: 'Invalid input: itemId, itemType, and action (add/remove) are required.' });
     }
 
+    if (itemType !== 'scenario') {
+        throw createError({ statusCode: 400, statusMessage: 'Invalid input: Only scenario bookmarks are supported.' });
+    }
+
     let updateOperation = {};
-    const fieldToUpdate = itemType === 'article' ? 'bookmarkedArticles' : 'bookmarkedScenarios';
+    const fieldToUpdate = 'bookmarkedScenarios';
 
     if (action === 'add') {
         updateOperation = { $addToSet: { [fieldToUpdate]: itemId } };
@@ -33,7 +37,7 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 404, statusMessage: 'User not found for bookmark update.' });
     }
     
-    return { success: true, action, itemType, itemId }; 
+    return { success: true, action, itemType: 'scenario', itemId };
 
   } catch (error) {
     if (error.statusCode) throw error;

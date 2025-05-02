@@ -32,14 +32,6 @@
               </div>
               <!-- ADDED: Share/Bookmark Icons -->
               <div class="flex items-center space-x-1">
-                  <!-- Bookmark Icon (Conditional) -->
-                  <button v-if="authStore.isAuthenticated" @click.prevent="handleBookmark" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
-                      <Icon 
-                          :name="isBookmarked ? 'heroicons:bookmark-solid' : 'heroicons:bookmark'" 
-                          class="w-4 h-4 transition-colors" 
-                          :class="{ 'text-primary': isBookmarked }"
-                      />
-                  </button>
                   <!-- Share Icon -->
                   <button @click.prevent="handleShare" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
                       <Icon name="heroicons:share" class="w-4 h-4" />
@@ -115,7 +107,10 @@
               'hidden': group.scenarios && !showAllScenarios && group.scenarios.length >= initialScenarioCount,
               'md:block': true
             }">
-             <ScenarioRequestButton />
+             <ScenarioRequestButton 
+                :article-id="group.story?.articleId" 
+                :article-title="group.story?.title"
+             />
           </div>
         </div>
   
@@ -209,23 +204,6 @@ const initialScenarioCount = 3; // Number of scenarios to show initially (Change
 // Method to toggle scenario visibility
 const toggleShowAllScenarios = () => {
   showAllScenarios.value = !showAllScenarios.value;
-};
-
-// Computed property for bookmark status
-const isBookmarked = computed(() => {
-    // Ensure group, story, and articleId exist before checking
-    const articleId = props.group?.story?.articleId;
-    return articleId ? bookmarkStore.isBookmarked(articleId, 'article') : false;
-});
-
-// Updated bookmark handler
-const handleBookmark = () => {
-  const articleId = props.group?.story?.articleId;
-  if (articleId) {
-      bookmarkStore.toggleBookmark(articleId, 'article');
-  } else {
-      console.warn('Cannot toggle bookmark: Article ID missing.');
-  }
 };
 
 const handleShare = () => {

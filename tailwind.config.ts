@@ -21,6 +21,7 @@ export default {
           DEFAULT: 'var(--background)',
           muted: 'var(--background-muted)',
           article: 'var(--article-bg)',
+          input: 'var(--input-bg)',
         },
         fg: {
           DEFAULT: 'var(--foreground)',

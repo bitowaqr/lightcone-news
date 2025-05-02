@@ -47,13 +47,7 @@
               <!-- Bookmark and Share Icons Placeholder -->
               <div class="flex-grow"></div> <!-- Spacer -->
               <!-- Bookmark Icon (Conditional) -->
-              <button v-if="authStore.isAuthenticated" @click="handleBookmark" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
-                  <Icon 
-                      :name="isBookmarked ? 'heroicons:bookmark-solid' : 'heroicons:bookmark'" 
-                      class="w-4 h-4 transition-colors" 
-                      :class="{ 'text-primary': isBookmarked }"
-                  />
-              </button>
+              <!-- REMOVED Bookmark Button -->
               <button @click="handleShare" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
                  <Icon name="heroicons:share" class="w-4 h-4" />
               </button>
@@ -261,12 +255,6 @@ const displayedScenarios = computed(() => {
   return props.articleData.scenarios?.slice(0, initialMobileScenarios) || [];
 });
 
-// Computed property for bookmark status
-const isBookmarked = computed(() => {
-    const articleId = props.articleData?._id;
-    return articleId ? bookmarkStore.isBookmarked(articleId, 'article') : false;
-});
-
 // Use the composable's render function
 const precis = computed(() => props.articleData ? renderMarkdown(props.articleData.precis) : '');
 const summary = computed(() => props.articleData ? renderMarkdown(props.articleData.summary) : '');
@@ -278,15 +266,6 @@ const formattedPublishedDate = computed(() => {
 });
 
 // Placeholder functions for new icons
-const handleBookmark = () => {
-  const articleId = props.articleData?._id;
-  if (articleId) {
-      bookmarkStore.toggleBookmark(articleId, 'article');
-  } else {
-      console.warn('Cannot toggle bookmark: Article ID missing from articleData prop.');
-  }
-};
-
 const handleShare = () => {
   // Open the share dialog
   showShareDialog.value = true;
