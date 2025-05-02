@@ -101,7 +101,6 @@ async function handleLogout() {
           <!-- Desktop Main Navigation Links -->
           <div class="hidden md:flex space-x-4 items-center text-base">
             <NuxtLink to="/scenarios" class="text-fg hover:text-primary transition-colors duration-100">Scenarios</NuxtLink>
-            <NuxtLink to="/scenarios/request" class="text-fg hover:text-primary transition-colors duration-100">Request Forecast</NuxtLink>
             <NuxtLink to="/about" class="text-fg hover:text-primary transition-colors duration-100">About</NuxtLink>
           </div>
         </div>
@@ -192,14 +191,6 @@ async function handleLogout() {
               Scenarios
             </NuxtLink>
             
-            <NuxtLink
-              to="/scenarios/request"
-              class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
-              @click="mobileMenuOpen = false"
-            >
-              Request Forecast
-            </NuxtLink>
-
             <NuxtLink
               to="/about"
               class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"

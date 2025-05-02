@@ -6,13 +6,23 @@
     <div 
       :class="{
           'lg:col-span-2 lg:flex lg:flex-col lg:h-[calc(100vh-130px)] px-4 lg:px-0 lg:border-r lg:border-bg-muted': true, // Use calc() for height
-          'hidden lg:flex': !isDesktop && selectedScenarioId, // Ensure it remains hidden/shown correctly
+          'hidden lg:flex': !isDesktop && (rightColumnMode === 'detail' || rightColumnMode === 'requestForm' || rightColumnMode === 'requestSuccess'), // Hide if showing detail OR form OR success on mobile
           'flex flex-col': isDesktop // Ensure flex direction on desktop
       }"
     >
       <!-- Left Column Header (Sticky Part) -->
       <div class="lg:px-4 pt-8 flex-shrink-0 bg-bg z-10 border-b border-bg-muted pb-2">
-          <h1 class="text-2xl font-bold mb-4 text-fg">Explore Scenarios</h1> 
+          <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold text-fg">Explore Scenarios</h1> 
+             <!-- Request Button -->
+             <button 
+                @click="showRequestForm"
+                class="flex items-center gap-1 text-sm bg-primary text-white px-3 py-1 rounded hover:opacity-90 transition-opacity duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+              >
+                 <Icon name="heroicons:plus-circle-20-solid" class="w-5 h-5"/>
+                 Request
+             </button>
+          </div>
           <!-- REMOVED Description Paragraph -->
           <!-- <p class="text-fg-muted mb-6">Browse prediction market scenarios linked to news stories.</p> -->
 
@@ -160,33 +170,70 @@
     <div 
       :class="{
           'lg:col-span-3 lg:overflow-y-auto lg:max-h-[calc(100vh-130px)]': true, // Use calc() for max-height
-          'fixed inset-0 bg-bg z-50 overflow-y-auto lg:static lg:z-auto lg:bg-transparent': !isDesktop && selectedScenarioId, 
-          'hidden': !selectedScenarioId && !isDesktop  
+          'fixed inset-0 bg-bg z-50 overflow-y-auto lg:static lg:z-auto lg:bg-transparent': !isDesktop && (rightColumnMode === 'detail' || rightColumnMode === 'requestForm' || rightColumnMode === 'requestSuccess'), 
+          'hidden': rightColumnMode === 'placeholder' && !isDesktop  
       }"
     >
        <!-- Mobile Header with Back Button -->
-      <div v-if="!isDesktop && selectedScenarioId" class="sticky top-0 z-10 bg-bg/80 backdrop-blur-sm p-2 border-b border-bg-muted">
-          <button @click="closeDetailView" class="flex items-center text-sm text-fg-muted hover:text-primary">
+      <div v-if="!isDesktop && (rightColumnMode === 'detail' || rightColumnMode === 'requestForm' || rightColumnMode === 'requestSuccess')" 
+           class="sticky top-0 z-10 bg-bg/80 backdrop-blur-sm p-2 border-b border-bg-muted flex justify-between items-center">
+          <!-- Back Button -->
+          <button @click="closeRightColumn" class="flex items-center text-sm text-fg-muted hover:text-primary">
               <Icon name="heroicons:arrow-left-20-solid" class="w-5 h-5 mr-1" />
-              Back to List
+              {{ rightColumnMode === 'requestSuccess' ? 'Close' : 'Back to List' }}
           </button>
+           <!-- Title reflecting current view -->
+           <span class="text-sm font-medium text-fg-muted">
+               {{ rightColumnMode === 'detail' ? 'Scenario Details' : (rightColumnMode === 'requestForm' ? 'Request Scenario' : 'Request Submitted') }}
+           </span>
+            <!-- Placeholder for potential actions -->
+           <div class="w-16"></div> 
       </div>
       
        <!-- Desktop Placeholder -->
-      <div v-if="isDesktop && !selectedScenarioId" class="hidden lg:flex h-full items-center justify-center text-center text-fg-muted px-6">
-        <p>Select a scenario from the list on the left to view its details.</p>
+      <div v-if="isDesktop && rightColumnMode === 'placeholder'" class="hidden lg:flex h-full items-center justify-center text-center text-fg-muted px-6">
+        <p>Select a scenario or request a new one.</p>
       </div>
 
       <!-- Detail Loading/Error/Content -->
-      <div v-if="selectedScenarioId" class="py-4 lg:py-6 lg:px-2">
-          <div v-if="detailPending" class="text-center py-10">
+      <div class="py-4 lg:py-6 lg:px-2">
+          <div v-if="rightColumnMode === 'detail' && detailPending" class="text-center py-10">
               <Icon name="line-md:loading-twotone-loop" class="w-8 h-8 text-fg-muted animate-spin inline-block" />
           </div>
-          <div v-else-if="detailError" class="text-center py-10 text-red-500">
+          <div v-else-if="rightColumnMode === 'detail' && detailError" class="text-center py-10 text-red-500">
               <Icon name="heroicons:exclamation-triangle" class="w-8 h-8 inline-block mb-2" />
               <p>Error loading scenario details.</p>
           </div>
-          <ScenarioDetail v-else-if="selectedScenarioData" :scenario="selectedScenarioData" :is-embedded="true" />
+          <ScenarioDetail v-else-if="rightColumnMode === 'detail' && selectedScenarioData" :scenario="selectedScenarioData" :is-embedded="true" />
+          
+          <!-- Request Form View -->
+          <template v-if="rightColumnMode === 'requestForm'">
+              <!-- Optionally pass article context if available -->
+               <ScenarioRequestForm 
+                 :article-id="contextArticleId" 
+                 :article-title="contextArticleTitle" 
+                 @submitted="handleRequestSubmitted" 
+                 @cancelled="handleRequestCancelled" 
+               />
+          </template>
+
+          <!-- ADDED: Success View -->
+          <template v-if="rightColumnMode === 'requestSuccess'">
+              <div class="text-center px-4 py-8">
+                <Icon name="heroicons:check-circle-solid" class="w-16 h-16 text-primary-500 mx-auto mb-4" />
+                <h2 class="text-2xl font-semibold mb-3 text-fg">Request Submitted!</h2>
+                <p class="text-lg text-fg-muted mb-6">
+                  {{ successMessageContent || 'Thank you for your forecast request.' }}
+                </p>
+                <button
+                    @click="closeRightColumn"
+                    type="button"
+                    class="inline-flex justify-center py-2 px-6 border border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 shadow-sm text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                >
+                    Done
+                </button>
+              </div>
+          </template>
       </div>
 
     </div> <!-- End Right Column / Mobile Detail View -->
@@ -195,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useBookmarkStore } from '~/stores/bookmarks';
 import { useFetch, useRouter, useRoute } from '#app';
@@ -204,6 +251,7 @@ import { useFetch, useRouter, useRoute } from '#app';
 import ScenarioCard from '~/components/scenario/Card.vue'; // Import the new Card component
 import { debounce } from 'lodash-es'; // Using lodash-es for tree-shaking
 import ScenarioDetail from '~/components/scenario/index.vue'; // Import detail component
+import ScenarioRequestForm from '~/components/scenario/RequestForm.vue'; // Import the new form
 
 const route = useRoute();
 const router = useRouter();
@@ -214,25 +262,50 @@ const bookmarkStore = useBookmarkStore(); // Added bookmark store
 const selectedScenarioId = ref(null);
 const isDesktop = ref(false); // Default to mobile
 const activeTab = ref('all'); // Default to 'all' tab
+const rightColumnMode = ref('placeholder'); // 'placeholder', 'detail', 'requestForm', 'requestSuccess'
+
+// Context for Request Form (optional)
+const contextArticleId = ref(null);
+const contextArticleTitle = ref(null);
 
 // Function to handle scenario selection from Card component
 const handleScenarioSelected = (scenarioId) => {
   console.log("Scenario selected:", scenarioId);
+  // Clear potential article context when selecting from list
+  contextArticleId.value = null;
+  contextArticleTitle.value = null;
   if (!isDesktop.value) {
     // On mobile, push state to URL for back button handling
-    router.push({ query: { ...route.query, scenario: scenarioId } });
+    router.push({ query: { ...route.query, view: 'detail', id: scenarioId } });
     // selectedScenarioId will be updated by the route query watcher
   } else {
     // On desktop, just update the state directly
     selectedScenarioId.value = scenarioId;
+    rightColumnMode.value = 'detail';
   }
 };
 
 // Function to handle closing the detail view (used by mobile back button/link)
-const closeDetailView = () => {
-    const { scenario, ...restQuery } = route.query; // Get query without 'scenario'
-    router.push({ query: restQuery });
-    // selectedScenarioId will be set to null by the route query watcher
+const closeRightColumn = () => {
+    const { view, id, articleId, articleTitle, ...restQuery } = route.query; // Remove view/id/context
+    rightColumnMode.value = 'placeholder'; // Set mode explicitly for desktop
+    selectedScenarioId.value = null;
+    successMessageContent.value = ''; // Clear success message
+    router.push({ query: restQuery }); // Update URL for mobile/history
+};
+
+// Function to show request form
+const showRequestForm = () => {
+    console.log("Showing request form");
+    // Clear potential article context when requesting generically
+    contextArticleId.value = null;
+    contextArticleTitle.value = null;
+    if (!isDesktop.value) {
+        router.push({ query: { ...route.query, view: 'request' } });
+    } else {
+        selectedScenarioId.value = null;
+        rightColumnMode.value = 'requestForm';
+    }
 };
 
 // --- Screen Size Detection ---
@@ -246,8 +319,21 @@ onMounted(() => {
   checkScreenSize();
   window.addEventListener('resize', checkScreenSize);
   // Sync state from URL on initial load
-  if (route.query.scenario) {
-      selectedScenarioId.value = route.query.scenario;
+  if (route.query.view === 'detail' && route.query.id) {
+      selectedScenarioId.value = route.query.id;
+      rightColumnMode.value = 'detail';
+  } else if (route.query.view === 'request') {
+      rightColumnMode.value = 'requestForm';
+      selectedScenarioId.value = null;
+      contextArticleId.value = route.query.articleId || null;
+      contextArticleTitle.value = route.query.articleTitle || null;
+  } else if (route.query.view === 'success') { // Check for success state from URL?
+       rightColumnMode.value = 'requestSuccess'; // Maybe restore success view?
+       selectedScenarioId.value = null;
+       // Need to persist successMessageContent if we want to restore it from URL state
+  } else {
+       rightColumnMode.value = 'placeholder';
+       selectedScenarioId.value = null;
   }
   if (authStore.isAuthenticated) {
     bookmarkStore.fetchBookmarks();
@@ -263,6 +349,7 @@ const effectiveSearchQuery = ref(route.query.q || ''); // Query actually sent to
 const selectedStatus = ref(route.query.status || 'OPEN');
 const selectedSort = ref(route.query.sort || 'newest');
 const currentPage = ref(parseInt(route.query.page) || 1);
+const successMessageContent = ref('');
 // const selectedPlatform = ref(route.query.platform || ''); // Example if platform filter added
 
 // Computed object for query parameters
@@ -312,10 +399,16 @@ watch(() => authStore.isAuthenticated, (isAuth, wasAuth) => {
 const fetchScenarios = async (page = currentPage.value) => {
   console.log(`Fetching scenarios list page: ${page}, query:`, queryParams.value);
   currentPage.value = page;
-  // Keep existing scenario query param if present when changing page/filter
-  const queryToPush = { ...queryParams.value };
-  if(route.query.scenario) {
-      queryToPush.scenario = route.query.scenario;
+  const currentView = route.query.view;
+  const currentId = route.query.id;
+  const queryToPush = { ...queryParams.value }; // This now reflects the new page via currentPage
+  // Preserve view/id if they exist
+  if(currentView) queryToPush.view = currentView;
+  if(currentId && currentView === 'detail') queryToPush.id = currentId;
+  // Preserve article context if in request view
+  if(currentView === 'request'){
+      if(route.query.articleId) queryToPush.articleId = route.query.articleId;
+      if(route.query.articleTitle) queryToPush.articleTitle = route.query.articleTitle;
   }
   router.push({ query: queryToPush }); 
 };
@@ -329,10 +422,16 @@ const debouncedFetchScenarios = debounce(() => {
     console.log(`Updating effective search query to: "${query}"`);
     effectiveSearchQuery.value = query;
     currentPage.value = 1;
-    // Keep existing scenario query param if present when searching
-    const queryToPush = { ...queryParams.value }; // queryParams now includes new search term
-    if(route.query.scenario) {
-         queryToPush.scenario = route.query.scenario;
+    const currentView = route.query.view;
+    const currentId = route.query.id;
+    const queryToPush = { ...queryParams.value }; // Includes new `q` via computed prop
+    // Preserve view/id if they exist
+    if(currentView) queryToPush.view = currentView;
+    if(currentId && currentView === 'detail') queryToPush.id = currentId;
+    // Preserve article context if in request view
+    if(currentView === 'request'){
+        if(route.query.articleId) queryToPush.articleId = route.query.articleId;
+        if(route.query.articleTitle) queryToPush.articleTitle = route.query.articleTitle;
     }
     router.push({ query: queryToPush });
   } else {
@@ -344,7 +443,7 @@ const debouncedFetchScenarios = debounce(() => {
 watch(() => route.query, (newQuery, oldQuery) => {
     console.log('Route query changed:', newQuery);
     
-    // Update filter/pagination state (same as before)
+    // Update filter/pagination state 
     const newQueryQ = newQuery.q || '';
     if (searchQuery.value !== newQueryQ) searchQuery.value = newQueryQ;
     if (effectiveSearchQuery.value !== newQueryQ) effectiveSearchQuery.value = newQueryQ;
@@ -352,29 +451,42 @@ watch(() => route.query, (newQuery, oldQuery) => {
     if (selectedSort.value !== (newQuery.sort || 'newest')) selectedSort.value = newQuery.sort || 'newest';
     if (currentPage.value !== (parseInt(newQuery.page) || 1)) currentPage.value = parseInt(newQuery.page) || 1;
 
-    // Update selected scenario ID based on query param
-    if (newQuery.scenario) {
-        if (selectedScenarioId.value !== newQuery.scenario) {
-            console.log('Setting selected scenario from route query:', newQuery.scenario);
-            selectedScenarioId.value = newQuery.scenario;
-        }
-    } else {
-        if (selectedScenarioId.value !== null) {
-            console.log('Clearing selected scenario as route query param removed');
-            selectedScenarioId.value = null;
-        }
+    // Update right column mode and selected ID based on view/id params
+    const newMode = newQuery.view === 'detail' ? 'detail' 
+                  : (newQuery.view === 'request' ? 'requestForm' 
+                  : (newQuery.view === 'success' ? 'requestSuccess' : 'placeholder')); // Added success
+    const newId = newQuery.view === 'detail' ? newQuery.id : null;
+    
+    if (rightColumnMode.value !== newMode) {
+        console.log(`Changing right column mode to: ${newMode}`);
+        rightColumnMode.value = newMode;
+    }
+    if (selectedScenarioId.value !== newId) {
+        console.log(`Changing selected scenario ID to: ${newId}`);
+        selectedScenarioId.value = newId;
     }
     
-    // Note: We DON'T reset selection here anymore based *only* on filter changes 
-    // if the scenario param is still present in the URL. Resetting selection
-    // is now primarily driven by the removal of the `scenario` query param.
+    // Update context if switching to request view
+    if(newMode === 'requestForm'){
+         contextArticleId.value = newQuery.articleId || null;
+         contextArticleTitle.value = newQuery.articleTitle || null;
+    } else if (newMode !== 'requestSuccess') { // Clear context unless showing success
+         contextArticleId.value = null;
+         contextArticleTitle.value = null;
+    }
+    
+    // If switching to success view, potentially grab message from state? 
+    // (Or rely on it being set by handleRequestSubmitted)
 
 }, { deep: true }); 
 
 // --- Fetching Selected Scenario Detail ---
 // Create a computed ref for the detail URL that only updates when needed
 const detailApiUrl = computed(() => {
-    return selectedScenarioId.value ? `/api/scenarios/${selectedScenarioId.value}` : null;
+    // Only generate URL if mode is detail and ID is present
+    return (rightColumnMode.value === 'detail' && selectedScenarioId.value) 
+           ? `/api/scenarios/${selectedScenarioId.value}` 
+           : null;
 });
 
 // Use useFetch for the detail, but disable immediate fetch
@@ -392,11 +504,33 @@ const {
 
 // --- Watch activeTab to reset selection? ---
 watch(activeTab, (newTab) => {
-    // When switching tabs, clear the selected scenario in the detail view
-    selectedScenarioId.value = null; 
-    // If switching away from bookmarks, ensure filters are reset or reapplied if needed?
-    // For now, filters only apply to 'all' tab, so no action needed here.
+    // Reset view when switching tabs
+    if(isDesktop.value) {
+        rightColumnMode.value = 'placeholder';
+        selectedScenarioId.value = null;
+    } else {
+        // On mobile, changing tabs implies going back to list view
+        closeRightColumn();
+    }
 });
+
+// Helper function to handle request submission
+const handleRequestSubmitted = (message) => {
+    console.log('Form submitted event received:', message);
+    successMessageContent.value = message;
+    rightColumnMode.value = 'requestSuccess'; // Change mode to show success view
+    selectedScenarioId.value = null; // Ensure detail view isn't accidentally shown
+    // Update URL for mobile/history
+    if (!isDesktop.value) {
+         router.push({ query: { ...route.query, view: 'success' } }); // Or just remove view/id?
+    }
+};
+
+// Helper function to handle request cancellation
+const handleRequestCancelled = () => {
+    console.log('Form cancelled event received');
+    closeRightColumn(); // Go back to list view / placeholder
+};
 
 </script>
 

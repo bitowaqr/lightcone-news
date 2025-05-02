@@ -10,7 +10,7 @@ async function questionEvalAgent(formData) {
 
   // Simulate different outcomes randomly for now
     let rand = Math.random();
-    rand = 0.9
+    rand = 0.1
   if (rand < 0.5) { // 50% chance of confirmation
     console.log('Agent decision: Confirmed');
     return { status: 'confirmed', data: formData };

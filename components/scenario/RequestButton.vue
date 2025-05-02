@@ -44,20 +44,18 @@ const props = defineProps({
   },
 });
 
-// Generate the link with query parameters if article context exists
+// Generate the link to /scenarios with query parameters
 const requestLink = computed(() => {
-  const base = '/scenarios/request';
+  const query = { view: 'request' }; // Always set view to request
   if (props.articleId) {
-    const query = {
-      articleId: props.articleId,
-    };
-    // Optionally include title for display convenience, URL encode handled by NuxtLink
-    if (props.articleTitle) {
-      query.articleTitle = props.articleTitle;
-    }
-    return { path: base, query };
+    query.articleId = props.articleId;
   }
-  return base; // Return base path if no article context
+  // Optionally include title for display convenience
+  if (props.articleTitle) {
+    query.articleTitle = props.articleTitle;
+  }
+  // Target the main scenarios page with these query params
+  return { path: '/scenarios', query }; 
 });
 
 </script>
