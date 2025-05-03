@@ -101,95 +101,22 @@
 
       <!-- Contact Us Section (Moved from contact.vue) -->
       <section class="border-t border-bg-muted pt-6">
-        <h2 class="text-xl font-semibold mb-4">Contact</h2>
+        <h2 class="text-xl font-semibold mb-4">Contact Us</h2>
 
+        <p class="mb-4">
+            Have questions or feedback? We'd love to hear from you!
+            <br>Reach out via email:
+            <a href="mailto:contact@priorb.com" class="font-medium text-primary-600 dark:text-primary-400 hover:underline">contact@priorb.com</a>
+        </p>
 
-        <p class="text-fg-muted text-sm">Lightcone News is a service provided by:</p>
-        <p class="mb-3 text-fg-muted">
-              <a href="https://priorb.com" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline">PRIORB UG</a>, Gewerkenstr 8, 44805 Bochum, Germany.
-            </p>
+        <p class="text-fg-muted text-sm mt-6">Lightcone News is a service provided by:</p>
+        <address class="not-italic text-fg-muted text-sm">
+              <a href="https://priorb.com" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline">PRIORB UG</a>, 
+              Gewerkenstr 8,
+              44805 Bochum, 
+              Germany
+        </address>
 
-
-        <!-- Show Form if not success -->
-        <div v-if="submissionStatus !== 'success'">
-
-
-            
-            
-
-          <p class="mb-6">
-            If you have questions or feedback, 
-            send an email to <a href="mailto:contact@priorb.com" class="text-primary-600 dark:text-primary-400 hover:underline">contact@priorb.com</a> or use the form below &ndash; we'd love to hear from you!
-          </p>
-
-          <form @submit.prevent="handleSubmit" class="space-y-4">
-            <div>
-              <label for="name" class="block text-sm font-medium mb-1">Name</label>
-              <input
-                v-model="name"
-                type="text"
-                id="name"
-                required
-                class="w-full px-4 py-2 rounded border border-bg-muted focus:outline-none focus:ring-2 focus:ring-primary-500 bg-bg"
-                placeholder="Your name"
-                :disabled="submissionStatus === 'sending'"
-              />
-            </div>
-
-            <div>
-              <label for="email" class="block text-sm font-medium mb-1">Email</label>
-              <input
-                v-model="email"
-                type="email"
-                id="email"
-                required
-                class="w-full px-4 py-2 rounded border border-bg-muted focus:outline-none focus:ring-2 focus:ring-primary-500 bg-bg"
-                placeholder="your.email@example.com"
-                :disabled="submissionStatus === 'sending'"
-              />
-            </div>
-
-            <div>
-              <label for="message" class="block text-sm font-medium mb-1">Message</label>
-              <textarea
-                v-model="message"
-                id="message"
-                rows="5"
-                required
-                class="w-full px-4 py-2 rounded border border-bg-muted focus:outline-none focus:ring-2 focus:ring-primary-500 bg-bg"
-                placeholder="Your message here..."
-                :disabled="submissionStatus === 'sending'"
-              ></textarea>
-            </div>
-
-            <div class="flex items-center space-x-4">
-              <button
-                type="submit"
-                class="px-5 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="submissionStatus === 'sending'"
-                >
-                {{ submissionStatus === 'sending' ? 'Sending...' : 'Send Message' }}
-              </button>
-              <!-- Error message shown below button if sending fails -->
-              <p v-if="submissionStatus === 'error'" class="text-red-600 dark:text-red-400">Error: {{ errorMessage }}</p>
-            </div>
-          </form>
-        </div>
-
-        <!-- Show Success Message instead of form -->
-        <div v-else class="text-center py-10">
-          <svg class="mx-auto h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h3 class="mt-2 text-lg font-medium text-green-700 dark:text-green-300">Message Sent Successfully!</h3>
-          <p class="mt-1 text-text-secondary">Thank you for contacting us. We'll get back to you if needed.</p>
-          <!-- Optional: Button to send another message -->
-          <!--
-          <button @click="resetForm" class="mt-4 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-800">
-            Send another message
-          </button>
-          -->
-        </div>
       </section>
 
 
@@ -217,56 +144,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'; // Added ref import
-
-// Refs and logic for contact form (copied from contact.vue)
-const name = ref('');
-const email = ref('');
-const message = ref('');
-const submissionStatus = ref(''); // '', 'sending', 'success', 'error'
-const errorMessage = ref('');
-
-const handleSubmit = async () => {
-  submissionStatus.value = 'sending';
-  errorMessage.value = '';
-
-  try {
-    // Use $fetch directly as it's globally available in Nuxt 3
-    const response = await $fetch('/api/contact', {
-      method: 'POST',
-      body: {
-        name: name.value,
-        email: email.value,
-        message: message.value,
-      },
-    });
-
-    if (response.success) {
-      submissionStatus.value = 'success';
-      // Optionally clear the form
-      // name.value = '';
-      // email.value = '';
-      // message.value = '';
-    } else {
-      throw new Error(response.message || 'An unknown error occurred.');
-    }
-  } catch (error) {
-    console.error('Contact form submission error:', error);
-    submissionStatus.value = 'error';
-    errorMessage.value = error.message || 'Failed to send message. Please try again later.';
-  }
-};
-
-// Function to allow sending another message (optional) - Keep if needed, can be removed if not
-const resetForm = () => {
-  submissionStatus.value = '';
-  name.value = '';
-  email.value = '';
-  message.value = '';
-  errorMessage.value = '';
-};
-
-// No script logic needed for this static content page
+// No script logic needed for this static content page + removed contact form logic
 </script>
 
 <style scoped>
