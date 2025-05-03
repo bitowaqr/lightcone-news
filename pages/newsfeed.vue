@@ -1,6 +1,6 @@
 <template>
   <!-- Updated main container for responsive grid -->
-  <div class="md:grid md:grid-cols-5 md:gap-x-6 lg:gap-x-8 max-w-screen-xl mx-auto">
+  <div class="md:grid md:grid-cols-5 md:gap-x-2 lg:gap-x-4 max-w-screen-xl mx-auto">
 
     <!-- Main Content Column (Articles) -->
     <div class="md:col-span-3">
