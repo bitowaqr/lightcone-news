@@ -20,6 +20,10 @@
   --accent: #502978;
   --accent-fg: #502978;
   --selection-bg: hsl(22 56% 52% / 0.5);
+
+  /* HSL values for accent-bg */
+  --accent-bg-light-hsl: 35 33% 88%;
+  --accent-bg-dark-hsl: 30 25% 25%;
 }
 
 /* Light Mode */
@@ -28,8 +32,15 @@ html {
   --background-muted: hsl(40 33% 92%);
   --foreground: hsl(240 6% 14%);
   --foreground-muted: hsl(35 70% 30%);
-  --accent-bg: hsl(35 33% 88%);
+
+  /* Use light HSL values */
+  --accent-bg-hsl: var(--accent-bg-light-hsl);
+  --accent-bg: hsl(var(--accent-bg-hsl)); /* Define color from HSL values */
+
+  /* Keep existing hover definitions for now, may need adjustment */
   --accent-bg-hover: hsl(35 33% 88% / 0.84);
+  --accent-bg-hover-dark: hsl(30 25% 25% / 0.84);
+
   --secondary-bg: hsl(268 50% 95%);
   --article-bg: hsl(35 40% 93%);
   --input-bg: hsl(240 10% 97%);
@@ -47,7 +58,11 @@ html.dark {
     --background-muted: hsl(240 6% 20%);
     --foreground: hsl(40 33% 90%);
     --foreground-muted: hsl(35 70% 80%);
-    --accent-bg: hsl(30 25% 25%);
+
+    /* Use dark HSL values */
+    --accent-bg-hsl: var(--accent-bg-dark-hsl);
+    --accent-bg: hsl(var(--accent-bg-hsl)); /* Define color from HSL values */
+
     --secondary-bg: hsl(280 20% 20%);
     --article-bg: hsl(0 0% 13%);
     --input-bg: hsl(240 5% 25%);

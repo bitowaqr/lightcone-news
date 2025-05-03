@@ -44,9 +44,10 @@ export default {
         },
         secondary: 'var(--secondary)',
         accent: {
-          bg: 'var(--accent-bg)',
+          bg: 'hsl(var(--accent-bg-hsl) / <alpha-value>)',
           fg: 'var(--accent-fg)',
           bgHover: 'var(--accent-bg-hover)',
+          bgHoverDark: 'var(--accent-bg-hover-dark)',
         },
       },
       fontFamily: {
