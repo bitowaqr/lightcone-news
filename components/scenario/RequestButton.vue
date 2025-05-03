@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="requestLink"
-    class="bg-accent-bg/50 px-2 md:px-4 py-3 relative overflow-hidden hover:bg-accent-bgHover/80 transition-colors duration-100 group h-full flex items-center border border-dotted border-accent-bg hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-bg"
+    class="bg-accent-bg/30 px-2 md:px-4 py-4 relative overflow-hidden hover:bg-accent-bgHover/80 transition-colors duration-100 group h-full flex items-center border border-accent-bg/30 hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-bg"
   >
     <div class="flex justify-between items-center space-x-2 leading-tight grow">
       <!-- Left Side: Title & Description -->

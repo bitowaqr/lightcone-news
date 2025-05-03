@@ -82,12 +82,12 @@
       <!-- SCENARIOS section wrapper -->
       <div class="">
         <!-- Section Title -->
-        <div class="mt-4 mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">
+        <div class="mt-4 mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2" v-if="group.scenarios && group.scenarios.length > 0">
           How the story might continue:
         </div>
   
-        <!-- Grid for Scenarios and Request Button -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+        <!-- UPDATED: Simple vertical list for Scenarios -->
+        <div class="flex flex-col gap-1">
           <!-- Iterate over existing scenarios -->
           <template v-if="group.scenarios && group.scenarios.length > 0">
             <div
@@ -95,27 +95,18 @@
               :key="scenario.scenarioId"
               :class="{ 
                 'hidden': !showAllScenarios && index >= initialScenarioCount,
-                'md:block': true
+                'block': true // Changed from md:block to block
               }"
             >
               <ScenarioTeaser :scenario="scenario" />
             </div>
           </template>
           
-          <!-- Add the Request Scenario card -->
-          <div :class="{
-              'hidden': group.scenarios && !showAllScenarios && group.scenarios.length >= initialScenarioCount,
-              'md:block': true
-            }">
-             <ScenarioRequestButton 
-                :article-id="group.story?.articleId" 
-                :article-title="group.story?.title"
-             />
-          </div>
+          <!-- REMOVED: Request Scenario card/button -->
         </div>
   
-        <!-- Expand/Collapse Button -->
-        <div v-if="group.scenarios && group.nScenarios > initialScenarioCount" class="mt-2 ps-2 lg:ps-4 md:hidden">
+        <!-- Expand/Collapse Button (Kept for mobile/inline context) -->
+        <div v-if="group.scenarios && group.nScenarios > initialScenarioCount" class="mt-2 ps-2 lg:ps-4">
           <button
             @click="toggleShowAllScenarios"
             class="text-fg-muted font-medium mt-1 italic block text-sm hover:underline"
@@ -130,11 +121,7 @@
           </button>
         </div>
   
-        <!-- Placeholder if NO scenarios exist -->
-        <!-- The request button will still be shown in the grid above -->
-        <div v-if="!group.scenarios || group.scenarios.length === 0" class="text-sm text-fg-muted italic pt-1 pb-2 ps-2 px-2 lg:px-4">
-          No forecast scenarios available yet for this story.
-        </div>
+        <!-- REMOVED: Placeholder if NO scenarios exist (Request button handled this before) -->
       </div>
     </div>
   
@@ -159,7 +146,6 @@ import { useRequestURL } from '#app';
 // Import NEW TeaserSources component
 import TeaserSources from '~/components/article/TeaserSources.vue'; 
 import ScenarioTeaser from '~/components/scenario/Teaser.vue'; // Ensure ScenarioTeaser is imported if not globally registered
-import ScenarioRequest from '~/components/scenario/RequestButton.vue'; // <-- Import the new component
 // ADDED: Import auth store
 import { useAuthStore } from '~/stores/auth'; 
 // ADDED: Import bookmark store

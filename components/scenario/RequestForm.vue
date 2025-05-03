@@ -1,172 +1,145 @@
 <template>
-  <!-- Form structure copied from pages/scenarios/request.vue -->
-  <!-- We'll wrap it slightly differently if needed for embedding -->
-  <div class="p-4 lg:p-0">
-    <h1 class="text-2xl font-bold mb-4 text-primary-700 dark:text-primary-300">
+  <!-- Modern, clean form approach -->
+  <div class="bg-bg border-r border-bg-muted p-4 sm:p-6 lg:h-[calc(100vh-114px)]"> <!-- Clean container -->
+    <h1 class="text-2xl font-bold mb-4 text-fg">
       {{ articleTitleFromQuery ? 'Request Related Forecast' : 'Request a New Scenario' }}
     </h1>
-    <p class="text-base text-fg-muted mb-6">
+    <p class="text-base text-fg-muted mb-8"> <!-- Increased bottom margin -->
       Propose a question about a future event. If accepted, we'll work on generating a probabilistic forecast.
     </p>
 
-    <!-- Show Form or Success Message -->
-    <form @submit.prevent="submitForm" class="space-y-6">
-       <!-- Combined Form Sections into One Card/Area -->
-       <!-- Removed outer card bg/border - parent container handles styling -->
-       <div>
-        <!-- ADDED Combobox for Related Article -->
-         <div class="mb-2">
-            <Combobox v-model="selectedArticle" @update:modelValue="handleSelectionUpdate" nullable>
-                <ComboboxLabel class="block text-sm font-medium text-fg mb-1">Related Article (Optional)</ComboboxLabel>
-                <div class="relative mt-1">
-                    <div class="relative w-full cursor-default overflow-hidden rounded-md bg-bg text-left border border-fg-muted/30 shadow-sm focus-within:outline-none focus-within:ring-1 
-                    focus-within:ring-primary focus-within:border-primary sm:text-sm outline-none focus:outline-none">
-                       <ComboboxInput
-                         ref="comboboxInputRef"
-                         class="w-full border-none text-sm px-3 py-1.5 leading-5 text-fg bg-bg placeholder-fg-muted/50 focus:ring-0 focus:outline-none"
-                         :displayValue="(article) => article?.title ?? ''" 
-                         @change="articleQuery = $event.target.value"
-                         @focus="handleComboboxFocus"
-                         @blur="handleComboboxBlur"
-                         placeholder="Search or select an article..."
-                       />
-                       <ComboboxButton class="absolute inset-y-0 right-0 flex items-center pr-2">
-                          <Icon name="heroicons:chevron-up-down-20-solid" class="h-5 w-5 text-gray-400" aria-hidden="true" />
-                       </ComboboxButton>
-                    </div>
-                    <Transition
-                        leave-active-class="transition duration-100 ease-in"
-                        leave-from-class="opacity-100"
-                        leave-to-class="opacity-0"
-                        @after-leave="articleQuery = ''"
-                    >
-                        <ComboboxOptions class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-bg py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10 border border-bg-muted">
-                         <div v-if="filteredArticles.length === 0 && articleQuery !== '' && !loadingTitles" class="relative cursor-default select-none px-4 py-2 text-fg-muted"> Nothing found. </div>
-                         <div v-else-if="loadingTitles" class="relative cursor-default select-none px-4 py-2 text-fg-muted italic"> Loading articles... </div>
-                        
-                         <ComboboxOption
-                            v-for="article in filteredArticles" 
-                            :key="article._id || 'no-article'"
-                            :value="article"
-                            v-slot="{ selected, active }"
-                            as="template"
-                          >
-                            <li :class="[
-                                'relative list-none cursor-default select-none py-2 pl-4 pr-4',
-                                active ? 'bg-primary/10 text-primary' : (article._id === null ? 'text-fg-muted' : 'text-fg'),
-                              ]">
-                                <span :class="[
-                                    'block truncate', 
-                                    selected ? 'font-medium text-primary' : 'font-normal',
-                                    article._id === null ? 'italic' : ''
-                                ]"> 
-                                 {{ article.title }} 
-                                </span>
-                            </li>
-                          </ComboboxOption>
-                        </ComboboxOptions>
-                    </Transition>
-                </div>
-            </Combobox>
-         </div>
-
-         <!-- Display Precis - simplified -->
-         <div v-if="selectedArticle?._id && selectedArticle?.precis" class="mb-4 py-2 px-3 bg-bg-muted/50 border border-bg-muted rounded">
-             
-             <p class="text-sm text-fg italic">{{ selectedArticle.precis }}</p>
-         </div>
-
-        <div class="space-y-6"> 
-          <!-- Section 1: The Question -->
-          <section>
-            <h2 class="text-lg font-semibold mb-2 flex items-center">
-              <Icon name="heroicons:question-mark-circle-solid" class="w-5 h-5 mr-2 text-primary opacity-80" />
-              Forecast Question
-            </h2>
-            <p class="text-xs text-fg-muted mb-3">Clearly state the question (unambiguous, answerable Yes/No or with value/date).</p>
-            <div>
-              <label for="request-question" class="block text-sm font-medium text-fg mb-1">Question</label>
-              <textarea
-                id="request-question" 
-                v-model="formData.question"
-                rows="3"
-                required
-                class="w-full text-sm px-3 py-1.5 border border-fg-muted/30 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-bg text-fg placeholder-fg-muted/50"
-                placeholder="e.g., Will SpaceX land humans on Mars by 2030?"
-              ></textarea>
+    <form @submit.prevent="submitForm" class="space-y-8"> <!-- Increased spacing -->
+       <!-- Article Selection -->
+       <div class="space-y-2">
+          <label class="block text-base font-medium text-fg-muted mb-2">Related Article (Optional)</label>
+          <Combobox v-model="selectedArticle" @update:modelValue="handleSelectionUpdate" nullable>
+            <div class="relative">
+              <!-- Input styling using bg-bg-input and standard border -->
+              <div class="relative w-full cursor-default overflow-hidden rounded-md bg-bg-input text-left border border-gray-300 dark:border-gray-700 shadow-sm focus-within:outline-none focus-within:ring-1 focus-within:ring-primary focus-within:border-primary sm:text-sm">
+                <ComboboxInput
+                  ref="comboboxInputRef"
+                  class="w-full border-none text-sm px-3 py-2 leading-5 text-fg bg-transparent placeholder-fg-muted/60 focus:ring-0 focus:outline-none" 
+                  :displayValue="(article) => article?.title ?? ''"
+                  @change="articleQuery = $event.target.value"
+                  @focus="handleComboboxFocus"
+                  @blur="handleComboboxBlur"
+                  placeholder="Search or select an article..."
+                />
+                <ComboboxButton class="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <Icon name="heroicons:chevron-up-down-20-solid" class="h-5 w-5 text-gray-400" aria-hidden="true" />
+                </ComboboxButton>
+              </div>
+              <Transition
+                leave-active-class="transition duration-100 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+                @after-leave="articleQuery = ''"
+              >
+                <!-- Dropdown options styling -->
+                <ComboboxOptions class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-bg py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10 border border-bg-muted">
+                    <div v-if="filteredArticles.length === 0 && articleQuery !== '' && !loadingTitles" class="relative cursor-default select-none px-4 py-2 text-fg-muted"> Nothing found. </div>
+                    <div v-else-if="loadingTitles" class="relative cursor-default select-none px-4 py-2 text-fg-muted italic"> Loading articles... </div>
+                   
+                    <ComboboxOption
+                       v-for="article in filteredArticles" 
+                       :key="article._id || 'no-article'"
+                       :value="article"
+                       v-slot="{ selected, active }"
+                       as="template"
+                     >
+                       <li :class="[
+                           'relative list-none cursor-default select-none py-2 pl-4 pr-4',
+                           active ? 'bg-primary/10 text-primary' : (article._id === null ? 'text-fg-muted' : 'text-fg'),
+                         ]">
+                           <span :class="[
+                               'block truncate', 
+                               selected ? 'font-medium text-primary' : 'font-normal',
+                               article._id === null ? 'italic' : ''
+                           ]"> 
+                            {{ article.title }} 
+                           </span>
+                       </li>
+                     </ComboboxOption>
+                </ComboboxOptions>
+              </Transition>
             </div>
-          </section>
+          </Combobox>
+          <!-- Display Precis -->
+          <div v-if="selectedArticle?._id && selectedArticle?.precis" class="mt-4 border-t border-bg-muted pt-4"> <!-- Clean separator -->
+            <p class="text-sm text-fg italic">
+              <code class="text-xs text-fg-muted">summary: </code>
+              {{ selectedArticle.precis }}
+            </p>
+          </div>
+       </div>
 
-          <!-- Section 2: Context/Description -->
-          <section>
-            <h2 class="text-lg font-semibold mb-2 flex items-center">
-              <Icon name="heroicons:information-circle-solid" class="w-5 h-5 mr-2 text-primary opacity-80" />
-              Background & Context
-            </h2>
-            <p class="text-xs text-fg-muted mb-3">Provide context, importance, relevant links.</p>
-            <div>
-              <label for="request-description" class="block text-sm font-medium text-fg mb-1">Description (Optional)</label>
-              <textarea
-                id="request-description"
-                v-model="formData.description"
-                rows="4"
-                class="w-full text-sm px-3 py-1.5 border border-fg-muted/30 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-bg text-fg placeholder-fg-muted/50"
-                placeholder="Explain why this forecast is relevant..."
-              ></textarea>
-            </div>
-          </section>
+      <!-- Section 1: The Question -->
+      <div>
+        <label for="request-question" class="block text-base font-medium text-fg-muted mb-2">Forecast Question</label>
+        <textarea
+          id="request-question" 
+          v-model="formData.question"
+          rows="3"
+          required
+          class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
+          placeholder="e.g., Will SpaceX land humans on Mars by January 1, 2030?"
+        ></textarea>
+        <p class="text-xs text-fg">State the question clearly. It should be unambiguous and answerable with Yes/No, a value, or a date.</p>
+      </div>
 
-          <!-- Section 3: Resolution -->
-          <section>
-            <h2 class="text-lg font-semibold mb-2 flex items-center text-primary-700 dark:text-primary-300">
-              <Icon name="heroicons:check-circle-solid" class="w-5 h-5 mr-2" />
-              Resolution Criteria & Date
-            </h2>
-            <p class="text-xs text-fg-muted mb-3"><strong class="font-medium text-fg">Crucial:</strong> Define clear, objective criteria & sources.</p>
+      <!-- Section 2: Context/Description -->
+      <div>
+         <label for="request-description" class="block text-base font-medium text-fg-muted mb-2">Background & Context (Optional)</label>
+        <textarea
+          id="request-description"
+          v-model="formData.description"
+          rows="4"
+          class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
+          placeholder="Add background information here..."
+        ></textarea>
+         <p class="text-xs text-fg">Explain why this forecast is relevant or interesting. Include links to sources if helpful.</p>
+      </div>
 
-            <div class="mb-4">
-              <label for="request-resolutionCriteria" class="block text-sm font-medium text-fg mb-1">Resolution Criteria</label>
-              <textarea
-                id="request-resolutionCriteria"
-                v-model="formData.resolutionCriteria"
-                rows="5"
-                required
-                class="w-full text-sm px-3 py-1.5 border border-fg-muted/30 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-bg text-fg placeholder-fg-muted/50"
-                placeholder="Define exactly how the question will be answered..."
-              ></textarea>
-            </div>
+      <!-- Section 3: Resolution -->
+       <div class="space-y-4"> <!-- More spacing within this complex section -->
+          <label class="block text-base font-medium text-fg-muted mb-2">Resolution Criteria & Date</label>
+          
+          <!-- Criteria Input -->
+          <div>
+            <label for="request-resolutionCriteria" class="block text-sm font-medium text-fg-muted mb-1">Resolution Criteria (Required)</label>
+            <textarea
+              id="request-resolutionCriteria"
+              v-model="formData.resolutionCriteria"
+              rows="5"
+              required
+              class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
+              placeholder="Define exactly how the question will be answered (e.g., based on announcement from Agency X, data from Source Y)."
+            ></textarea>
+            <p class="text-xs text-fg">Define clear, objective criteria for how the question will be resolved and specify trusted sources.</p>
+          </div>
 
-            <div>
-              <label for="request-resolutionDate" class="block text-sm font-medium text-fg mb-1">Latest Resolution Date</label>
-               <p class="text-xs text-fg-muted mb-2">When should the question finally resolve if the event hasn't occurred?</p>
-              <input
-                type="date" 
-                id="request-resolutionDate"
-                v-model="formData.resolutionDate"
-                required
-                :min="minDate" 
-                class="w-full md:w-auto text-sm px-3 py-1.5 border border-fg-muted/30 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-bg text-fg"
-              />
-            </div>
-          </section>
-        </div>
+          <!-- Date Input -->
+          <div>
+            <label for="request-resolutionDate" class="block text-sm font-medium text-fg-muted mb-1">Latest Resolution Date (Required)</label>
+            <input
+              type="date" 
+              id="request-resolutionDate"
+              v-model="formData.resolutionDate"
+              required
+              :min="minDate" 
+              class="w-full md:w-auto text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg focus:outline-none"
+            />
+          </div>
        </div>
 
       <!-- Submission Area -->
-      <div class="pt-6 flex items-center justify-end gap-3">
-         <!-- Add a Cancel button -->
-         <button
-            type="button"
-            @click="cancelForm"
-            :disabled="isSubmitting"
-            class="inline-flex justify-center py-2 px-5 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-fg bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-          >
-            Cancel
-          </button>
+      <div class="pt-1 flex items-center justify-end gap-3"> 
+         
+          <!-- Submit button styling -->
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="inline-flex justify-center items-center py-2 px-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex items-center py-2 px-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Icon v-if="isSubmitting" name="line-md:loading-twotone-loop" class="w-4 h-4 mr-2 animate-spin" />
           {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
@@ -187,7 +160,7 @@
 
     </form>
 
-    <!-- Revision Suggestion Modal (kept for API consistency) -->
+    <!-- Revision Suggestion Modal -->
      <div v-if="showRevisionDialog && revisedData" 
          class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 flex items-center justify-center p-4"
          @click.self="closeRevisionDialog"> 

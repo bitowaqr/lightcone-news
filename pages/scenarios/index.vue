@@ -5,7 +5,7 @@
     <!-- Left Column: Tabs, Filters, List, Pagination - Now uses Flexbox for sticky header -->
     <div 
       :class="{
-          'lg:col-span-2 lg:flex lg:flex-col lg:h-[calc(100vh-130px)] px-4 lg:px-0 lg:border-r lg:border-bg-muted': true, // Use calc() for height
+          'lg:col-span-2 lg:flex lg:flex-col lg:h-[calc(100vh-114px)] px-4 lg:px-0 lg:border-r lg:border-bg-muted': true, // Use calc() for height
           'hidden lg:flex': !isDesktop && (rightColumnMode === 'detail' || rightColumnMode === 'requestForm' || rightColumnMode === 'requestSuccess'), // Hide if showing detail OR form OR success on mobile
           'flex flex-col': isDesktop // Ensure flex direction on desktop
       }"
@@ -210,7 +210,7 @@
       </div>
 
       <!-- Detail Loading/Error/Content -->
-      <div class="py-4 lg:py-6 lg:px-2">
+      <div class="">
           <div v-if="rightColumnMode === 'detail' && detailPending" class="text-center py-10">
               <Icon name="line-md:loading-twotone-loop" class="w-8 h-8 text-fg-muted animate-spin inline-block" />
           </div>
@@ -233,7 +233,7 @@
 
           <!-- ADDED: Success View -->
           <template v-if="rightColumnMode === 'requestSuccess'">
-              <div class="text-center px-4 py-8">
+              <div class="text-center px-4 py-8 my-8">
                 <Icon name="heroicons:check-circle-solid" class="w-16 h-16 text-primary-500 mx-auto mb-4" />
                 <h2 class="text-2xl font-semibold mb-3 text-fg">Request Submitted!</h2>
                 <p class="text-lg text-fg-muted mb-6">
@@ -296,9 +296,24 @@ const handleScenarioSelected = (scenarioId) => {
   // Clear potential article context when selecting from list
   contextArticleId.value = null;
   contextArticleTitle.value = null;
+
   if (!isDesktop.value) {
     // On mobile, push state to URL for back button handling
-    router.push({ query: { ...route.query, view: 'detail', id: scenarioId } });
+    // Explicitly preserve the tab if it's 'bookmarks'
+    const targetQuery = { 
+      ...route.query, 
+      view: 'detail', 
+      id: scenarioId 
+    };
+    if (activeTab.value === 'bookmarks') {
+      targetQuery.tab = 'bookmarks'; 
+    } else {
+      // Remove tab param if navigating from 'all' to avoid potential conflicts
+      // or ensure it's not present if it shouldn't be.
+      delete targetQuery.tab; 
+    }
+    router.push({ query: targetQuery });
+
   } else {
     // On desktop, just update the state directly
     selectedScenarioId.value = scenarioId;
@@ -382,6 +397,14 @@ onMounted(() => {
   attachScrollListener(); 
   
   // Sync state from URL on initial load
+  const initialTab = route.query.tab;
+  if (authStore.isAuthenticated && initialTab === 'bookmarks') {
+      activeTab.value = 'bookmarks';
+  } else {
+      activeTab.value = 'all'; // Default to all if not authenticated or tab is different
+  }
+
+  // Sync view/detail state
   if (route.query.view === 'detail' && route.query.id) {
       selectedScenarioId.value = route.query.id;
       rightColumnMode.value = 'detail';
@@ -394,17 +417,20 @@ onMounted(() => {
        rightColumnMode.value = 'requestSuccess'; 
        selectedScenarioId.value = null;
   } else {
-       rightColumnMode.value = 'placeholder';
-       selectedScenarioId.value = null;
+       // Only reset to placeholder if not coming from a specific tab link
+       if (!initialTab) { 
+           rightColumnMode.value = 'placeholder';
+           selectedScenarioId.value = null;
+       }
   }
   if (authStore.isAuthenticated) {
+    // Ensure bookmarks are fetched if starting on that tab or just generally logged in
     bookmarkStore.fetchBookmarks();
   }
 
-  // Ensure initial fetch happens if queryParams are set
+  // Ensure initial fetch happens 
   if (queryParams.value) {
-      // console.log("Triggering initial fetch on mount");
-      refresh(); // Use refresh for initial load
+      refresh(); 
   }
 });
 onUnmounted(() => {
@@ -565,8 +591,6 @@ const handleScroll = debounce((event) => {
 
 // --- Watch Route Query Changes --- 
 watch(() => route.query, (newQuery, oldQuery) => {
-    // console.log('Route query changed:', newQuery);
-    
     // Update filter/sort/search state from URL 
     const newQueryQ = newQuery.q || '';
     if (searchQuery.value !== newQueryQ) searchQuery.value = newQueryQ;
@@ -575,6 +599,19 @@ watch(() => route.query, (newQuery, oldQuery) => {
     if (selectedStatus.value !== (newQuery.status || 'OPEN')) selectedStatus.value = newQuery.status || 'OPEN';
     if (selectedSort.value !== (newQuery.sort || 'newest')) selectedSort.value = newQuery.sort || 'newest';
 
+    // ADDED: Update activeTab based on query param
+    const newTab = newQuery.tab;
+    if (authStore.isAuthenticated && newTab === 'bookmarks') {
+        if (activeTab.value !== 'bookmarks') {
+           activeTab.value = 'bookmarks';
+        }
+    } else {
+        // If tab is not bookmarks or user isn't logged in, switch to 'all'
+        if (activeTab.value !== 'all') {
+           activeTab.value = 'all';
+        }
+    }
+
     // Update right column mode 
     const newMode = newQuery.view === 'detail' ? 'detail' 
                   : (newQuery.view === 'request' ? 'requestForm' 
@@ -582,11 +619,9 @@ watch(() => route.query, (newQuery, oldQuery) => {
     const newId = newQuery.view === 'detail' ? newQuery.id : null;
     
     if (rightColumnMode.value !== newMode) {
-        // console.log(`Changing right column mode to: ${newMode}`);
         rightColumnMode.value = newMode;
     }
     if (selectedScenarioId.value !== newId) {
-        // console.log(`Changing selected scenario ID to: ${newId}`);
         selectedScenarioId.value = newId;
     }
     

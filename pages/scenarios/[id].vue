@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto grow bg-article h-full pt-4 md:pt-12 lg:pt-20 w-full shadow-md">
+  <div class="max-w-4xl mx-auto grow  h-full pt-2 md:pt-4 lg:pt-8 w-full">
 
     <!-- Loading State -->
     <div v-if="pending">Loading scenario {{ scenarioId }}...</div>

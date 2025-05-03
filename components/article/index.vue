@@ -69,7 +69,7 @@
           <ArticleSources :sources="articleData.sources" />
       </div>
           
-          <div v-if="isDesktop" class="interaction-area-desktop mt-6 pt-6 border-t border-bg-muted space-y-0"> 
+          <div v-if="isDesktop" class="interaction-area-desktop mt-3 pt-3 border-bg-muted space-y-0"> 
              <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
              <!-- Timeline Instance -->
              <MobileInteraction 
@@ -96,22 +96,30 @@
         <!-- Sidebar Column (Desktop Only) - Rebuilt Content -->
         <aside v-if="isDesktop" 
                class="lg:col-span-2 flex flex-col space-y-6 lg:pt-0 pt-8 lg:border-l lg:border-bg-muted lg:pl-8">
-          <!-- Sources REMOVED FROM SIDEBAR -->
+          <!-- Sources -->
           <ArticleSources :sources="articleData.sources" :isDesktop="true" />
-          <!-- Timeline REMOVED FROM SIDEBAR -->
+          <!-- Timeline -->
           <!-- <ArticleTimeline :timeline="articleData.timeline" /> -->
           <!-- Scenarios -->
-          <div v-if="articleData.scenarios?.length" class="scenarios-sidebar-section">
-            <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">
+          <div class="scenarios-sidebar-section">
+            <div class="text-xs font-semibold text-fg-muted mb-2">
               How the story might continue:
             </div>
-            <div class="grid grid-cols-1 gap-1 mt-2">
-              <div 
-                v-for="scenario in articleData.scenarios" 
-                :key="scenario.scenarioId" 
+            <div class="grid grid-cols-1 gap-1">
+              <!-- Real Scenarios -->
+              <div
+                v-for="scenario in articleData.scenarios"
+                :key="scenario.scenarioId"
                 class=""
               >
                 <ScenarioTeaser :scenario="scenario" :forceSmallText="true" />
+              </div>
+              <!-- Request Button (Inside the grid - Conditionally Shown) -->
+              <div v-if="articleData?.scenarios && articleData.scenarios.length < 10">
+                <ScenarioRequestButton
+                  :articleId="articleData._id"
+                  :articleTitle="articleData.title"
+                />
               </div>
             </div>
           </div>
@@ -121,40 +129,52 @@
 
       
 
-      <!-- Scenarios Section (Mobile Only) - ADDED BACK -->
+      <!-- Scenarios Section (Mobile Only) -->
       <div
-        v-if="!isDesktop && articleData.scenarios?.length"
-        class="mt-6 pt-6 border-t border-bg-muted"
-      >
-        <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">
+        v-if="!isDesktop" class="mt-4 pt-4">
+        <div class="text-xs font-semibold text-fg-muted mb-1">
           How the story might continue:
         </div>
         <div class="grid grid-cols-1 gap-1">
-          <div 
-            v-for="scenario in displayedScenarios" 
-            :key="scenario.scenarioId" 
+          <!-- Displayed Real Scenarios -->
+          <div
+            v-for="scenario in displayedScenarios"
+            :key="scenario.scenarioId"
             class=""
           >
             <ScenarioTeaser :scenario="scenario" />
           </div>
         </div>
+
+        <!-- Request Button (Mobile - Conditionally Shown) -->
+        <div 
+          class="mt-1" 
+          v-if="(articleData?.scenarios && articleData.scenarios.length < 10) && (showAllMobileScenarios || articleData.scenarios.length <= initialMobileScenarios)"
+        >
+          <ScenarioRequestButton
+            :articleId="articleData._id"
+            :articleTitle="articleData.title"
+          />
+        </div>
+
         <!-- Show More/Fewer Button (Mobile Only) -->
-        <button 
-          v-if="!isDesktop && articleData.scenarios.length > initialMobileScenarios"
+        <button
+          v-if="!isDesktop && articleData.scenarios && articleData.scenarios.length > initialMobileScenarios"
           @click="showAllMobileScenarios = !showAllMobileScenarios"
           class="text-fg-muted mt-1 italic block text-sm hover:underline font-medium"
         >
-          <span v-if="!showAllMobileScenarios"> 
-            Show {{ articleData.scenarios.length - initialMobileScenarios }} more 
+          <span v-if="!showAllMobileScenarios">
+            Show {{ articleData.scenarios.length - initialMobileScenarios }} more
             {{ articleData.scenarios.length - initialMobileScenarios === 1 ? 'scenario' : 'scenarios' }}...
           </span>
-          <span v-else> 
+          <span v-else>
             Show fewer scenarios
           </span>
         </button>
+
       </div>
 
-      <!-- Mobile Interaction Area (Timeline/Prompts/Response Window) - ADDED BACK for Mobile -->
+      <!-- Mobile Interaction Area -->
       <div v-if="!isDesktop" class="interaction-area-mobile mt-6 pt-6 border-t border-bg-muted space-y-0"> 
          <div class="mb-1 text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
          <!-- Timeline Instance -->
@@ -203,6 +223,7 @@ import CommonShareDialog from '~/components/common/ShareDialog.vue';
 import ArticleSources from '~/components/article/Sources.vue';
 import ArticleTimeline from '~/components/article/Timeline.vue';
 import MobileInteraction from '~/components/article/MobileInteraction.vue';
+import ScenarioRequestButton from '~/components/scenario/RequestButton.vue';
 import { useAuthStore } from '~/stores/auth';
 import { useBookmarkStore } from '~/stores/bookmarks';
 
@@ -244,15 +265,16 @@ const showAltSummary = useCookie('lightcone-summary-view', {
   maxAge: 60 * 60 * 24 * 365
 });
 
-// Scenarios Mobile State - RESTORED
+// Scenarios Mobile State
 const initialMobileScenarios = 3;
 const showAllMobileScenarios = ref(false);
 const displayedScenarios = computed(() => {
-  // Note: isDesktop check is implicitly handled by the v-if on the section now
+  // This correctly handles showing the real scenarios based on the toggle
+  if (!props.articleData?.scenarios) return []; // Added null/undefined check
   if (showAllMobileScenarios.value) {
     return props.articleData.scenarios;
   }
-  return props.articleData.scenarios?.slice(0, initialMobileScenarios) || [];
+  return props.articleData.scenarios.slice(0, initialMobileScenarios);
 });
 
 // Use the composable's render function

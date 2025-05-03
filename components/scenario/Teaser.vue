@@ -1,7 +1,7 @@
 <template>
   <NuxtLink :to="`/scenarios/${scenario.scenarioId}`"
     v-if="scenario"
-    class="bg-accent-bg px-2 md:px-4 pt-3 pb-2.5 relative overflow-hidden hover:bg-accent-bgHover transition-colors duration-100 group h-full flex items-center"
+    class="bg-accent-bg px-2 md:px-4 pt-3 pb-2.5 relative overflow-hidden hover:bg-accent-bgHover dark:hover:bg-accent-bgHoverDark transition-colors duration-100 group h-full flex items-center"
   >
 
 

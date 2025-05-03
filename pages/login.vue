@@ -1,10 +1,10 @@
 <template>
-  <div class="w-full max-w-md mx-auto mt-10 px-4 sm:px-0">
+  <div class="w-full max-w-md mx-auto mt-12 px-4 sm:px-0">
     <h1 class="text-2xl font-bold mb-6 text-center text-fg dark:text-white">Login</h1>
     <ClientOnly>
       <div>
         <!-- Merged Login Form -->
-        <form @submit.prevent="handleLogin" class="space-y-6 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
+        <form @submit.prevent="handleLogin" class="space-y-6 p-6 bg-article shadow-md rounded-md border border-accent-bg">
           <div>
             <label for="email" class="block text-sm font-medium text-fg-muted">Email</label>
             <input 
