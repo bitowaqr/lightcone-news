@@ -7,7 +7,7 @@
       <div>
         <!-- Waitlist Form -->
         <form v-if="viewState === 'waitlist'" @submit.prevent="handleJoinWaitlist" class="space-y-4 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
-          <p class="text-sm text-fg-muted text-center">Lightcone News is currently in closed beta. Sign up to get notified when it launches publicly.</p>
+          <p class="text-sm text-fg-muted text-center">Lightcone News is currently in closed beta.<br>Sign up to get notified when it launches publicly.</p>
           <div>
             <label for="waitlist-email" class="sr-only">Email</label>
             <input
