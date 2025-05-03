@@ -586,12 +586,96 @@ async function getPolymarketPriceHistory(
   }
 }
 
+
+/**
+ * Gets the price from 24 hours ago for a Polymarket token
+ * @param {string} tokenId - The token ID to fetch price for
+ * @returns {Promise<{price: number|null, timestamp: number|null}>} - The price 24h ago and its timestamp
+ */
+async function getPrice24hAgo(tokenId) {
+  if (!tokenId) {
+    console.warn('No token ID provided to getPrice24hAgo');
+    return { price: null, timestamp: null };
+  }
+
+  // Calculate timestamps for 25 hours ago and 23 hours ago to get a 2-hour window
+  // This gives us flexibility in case there's no exact datapoint at 24h ago
+  const now = Math.floor(Date.now() / 1000); // Current time in seconds
+  const twentyFiveHoursAgo = now - (25 * 60 * 60); // 25 hours ago in seconds
+  const twentyThreeHoursAgo = now - (23 * 60 * 60); // 23 hours ago in seconds
+
+  const params = new URLSearchParams({
+    market: tokenId,
+    interval: 'max',
+    fidelity: '60', // 1-minute intervals should be sufficient
+    startTs: twentyFiveHoursAgo.toString(),
+    endTs: twentyThreeHoursAgo.toString()
+  });
+
+  const url = `${POLYMARKET_CLOB_API_URL}/prices-history?${params.toString()}`;
+  console.log(`Fetching 24h ago price from: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`No price history found for token ${tokenId} with status 404.`);
+        return { price: null, timestamp: null };
+      }
+      
+      const errorBody = await response.text();
+      throw new Error(
+        `HTTP error ${response.status}: ${response.statusText}. Body: ${errorBody}`
+      );
+    }
+
+    const data = await response.json();
+    
+    // Validate response structure
+    if (!data || !Array.isArray(data.history) || data.history.length === 0) {
+      console.warn(`No history data found for token ${tokenId} in the 24h ago window`);
+      return { price: null, timestamp: null };
+    }
+    
+    // Find the datapoint closest to exactly 24 hours ago
+    const targetTimestamp = now - (24 * 60 * 60); // Exactly 24 hours ago
+    let closestPoint = data.history[0];
+    let smallestDiff = Math.abs(closestPoint.t - targetTimestamp);
+    
+    for (const point of data.history) {
+      const diff = Math.abs(point.t - targetTimestamp);
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        closestPoint = point;
+      }
+    }
+    
+    return { 
+      price: closestPoint.p,
+      timestamp: closestPoint.t * 1000 // Convert to milliseconds
+    };
+  } catch (error) {
+    console.error(`Error fetching 24h ago price for token ${tokenId}:`, error);
+    return { price: null, timestamp: null };
+  }
+}
+
+// test it
+
+// (async () => {
+//   const price24hAgo = await getPrice24hAgo('30347295529946841010662719101200013191091148788635909330345386153708187484821');
+//   console.log(price24hAgo);
+// })();
+
+
 export { 
   scrapePolymarketData,
   fetchAndFormatSinglePolymarketMarket,
   getPolymarketClobMarketByConditionId,
   getMarketDetailsAndTokens,
   getPolymarketPriceHistory,
+  getPrice24hAgo,
 }; // Export main functions
 
 // // test
