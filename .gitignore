@@ -25,6 +25,7 @@ logs
 
 # internal documentation
 doc.*
+*.mdc
 
 # db
 mock-db.json
