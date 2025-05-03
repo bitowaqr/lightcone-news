@@ -37,6 +37,9 @@
                 ]"
               >
                 All Scenarios
+                <span v-if="scenariosData?.pagination?.total > 0" class="ml-1.5 inline-block bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                  {{ scenariosData.pagination.total }}
+                </span>
               </button>
               <button 
                 v-if="authStore.isAuthenticated" 
@@ -108,40 +111,51 @@
       </div> <!-- End Left Column Header -->
 
       <!-- Left Column Content (Scrollable Part) -->
-      <div class="flex-grow overflow-y-auto pb-8 w-full ">
+      <div 
+        ref="scrollContainerRef" 
+        @scroll="handleScroll" 
+        class="flex-grow overflow-y-auto pb-8 w-full "
+      >
            <!-- Main Scenarios List & Pagination (for 'All' tab) -->
-           <div v-if="activeTab === 'all'" class="pt-4">
-               <div v-if="pending && !scenariosData?.scenarios?.length" class="text-center py-12">
+           <div v-if="activeTab === 'all'" class="pt-2">
+               <!-- Initial Loading/Error/Empty States (Based on allScenarios now) -->
+               <div v-if="pending && allScenarios.length === 0" class="text-center py-12">
                   <Icon name="line-md:loading-twotone-loop" class="w-8 h-8 text-fg-muted animate-spin inline-block" /> <p class="mt-2 text-fg-muted">Loading scenarios...</p>
-                  <div class="w-[400px]"></div>
+                  <div class="w-[500px]"></div>
                </div>
-               <div v-else-if="error" class="text-center py-12">
+               <div v-else-if="error && allScenarios.length === 0" class="text-center py-12">
                     <Icon name="heroicons:exclamation-triangle" class="w-8 h-8 text-red-500 inline-block" /> <p class="mt-2 text-red-600">Error loading scenarios...</p>
-                    <button @click="refresh" class="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark">Retry</button>
-                    <div class="w-[400px]"></div>
+                    <button @click="refreshPageOne" class="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark">Retry</button>
+                    <div class="w-[500px]"></div>
                </div>
-               <div v-else-if="!pending && scenariosData?.scenarios?.length === 0" class="text-center py-12 grid grid-cols-1 gap-3">
-               <div class="flex flex-col items-center justify-center">
-                    <Icon name="heroicons:magnifying-glass" class="w-8 h-8 text-fg-muted inline-block" /> <p class="mt-2 text-fg-muted">No scenarios found matching filters.</p>
-                    <div class="w-[400px]"></div>
-               </div>
-
-                    
+               <div v-else-if="!pending && allScenarios.length === 0" class="text-center py-12 grid grid-cols-1 gap-1">
+                  <div class="flex flex-col items-center justify-center">
+                        <Icon name="heroicons:magnifying-glass" class="w-8 h-8 text-fg-muted inline-block" /> <p class="mt-2 text-fg-muted">No scenarios found matching filters.</p>
+                        <div class="w-[500px]"></div>
+                  </div>
                </div>
                
-               <div v-else class="grid grid-cols-1 gap-3">
+               <!-- Scenario Cards (Iterate over allScenarios) -->
+               <div v-else class="grid grid-cols-1 gap-1">
                     <ScenarioCard 
-                        v-for="scenario in scenariosData.scenarios" 
+                        v-for="scenario in allScenarios" 
                         :key="scenario.scenarioId" 
                         :scenario="scenario"
                         @scenario-selected="handleScenarioSelected" 
                     />
                </div>
-               <div v-if="scenariosData?.pagination && scenariosData.pagination.totalPages > 1" class="mt-6 flex justify-between items-center">
-                    <button @click="fetchScenarios(currentPage - 1)" :disabled="currentPage <= 1 || pending" class="px-3 py-1 border border-bg-muted rounded-md text-sm font-medium text-fg hover:bg-bg-muted disabled:opacity-50 disabled:cursor-not-allowed">Prev</button>
-                    <span class="text-xs text-fg-muted">Page {{ scenariosData.pagination.page }} of {{ scenariosData.pagination.totalPages }}</span>
-                    <button @click="fetchScenarios(currentPage + 1)" :disabled="currentPage >= scenariosData.pagination.totalPages || pending" class="px-3 py-1 border border-bg-muted rounded-md text-sm font-medium text-fg hover:bg-bg-muted disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+               
+               <!-- Infinite Scroll Loading Indicator -->
+               <div v-if="pending && currentPage > 1" class="text-center py-4">
+                  <Icon name="line-md:loading-twotone-loop" class="w-6 h-6 text-fg-muted animate-spin inline-block" />
                </div>
+
+               <!-- ADDED: End of List Indicator -->
+               <div v-if="!pending && scenariosData?.pagination && currentPage >= scenariosData.pagination.totalPages && allScenarios.length > 0" 
+                    class="text-center py-4 text-sm text-fg-muted">
+                    You've reached the end.
+               </div>
+
            </div>
 
             <!-- Bookmarked Scenarios List (for 'Bookmarks' tab) -->
@@ -266,20 +280,25 @@ const isDesktop = ref(false); // Default to mobile
 const activeTab = ref('all'); // Default to 'all' tab
 const rightColumnMode = ref('placeholder'); // 'placeholder', 'detail', 'requestForm', 'requestSuccess'
 
+// ADDED: Ref for the scrollable container
+const scrollContainerRef = ref(null);
+
 // Context for Request Form (optional)
 const contextArticleId = ref(null);
 const contextArticleTitle = ref(null);
 
+// ADDED: State for combined scenarios list
+const allScenarios = ref([]);
+
 // Function to handle scenario selection from Card component
 const handleScenarioSelected = (scenarioId) => {
-  console.log("Scenario selected:", scenarioId);
+  // console.log("Scenario selected:", scenarioId);
   // Clear potential article context when selecting from list
   contextArticleId.value = null;
   contextArticleTitle.value = null;
   if (!isDesktop.value) {
     // On mobile, push state to URL for back button handling
     router.push({ query: { ...route.query, view: 'detail', id: scenarioId } });
-    // selectedScenarioId will be updated by the route query watcher
   } else {
     // On desktop, just update the state directly
     selectedScenarioId.value = scenarioId;
@@ -298,7 +317,7 @@ const closeRightColumn = () => {
 
 // Function to show request form
 const showRequestForm = () => {
-    console.log("Showing request form");
+    // console.log("Showing request form");
     // Clear potential article context when requesting generically
     contextArticleId.value = null;
     contextArticleTitle.value = null;
@@ -312,14 +331,56 @@ const showRequestForm = () => {
 
 // --- Screen Size Detection ---
 const checkScreenSize = () => {
-  // Using 1024px as the breakpoint for 'lg' in Tailwind default config
+  const previouslyDesktop = isDesktop.value;
   isDesktop.value = window.innerWidth >= 1024;
-  // If resizing from mobile to desktop with a scenario selected, keep it selected
-  // If resizing from desktop to mobile, the detail view overlay logic handles it
+  
+  // If the viewport size changed across the breakpoint, update listeners
+  if (previouslyDesktop !== isDesktop.value) {
+      // console.log(`Resized: ${previouslyDesktop ? 'Desktop' : 'Mobile'} -> ${isDesktop.value ? 'Desktop' : 'Mobile'}. Re-attaching scroll listener.`);
+      detachScrollListener(); 
+      nextTick(() => {
+          attachScrollListener(); 
+      });
+  }
 };
+
+// --- Scroll Listener Management --- 
+let scrollListenerTarget = null; 
+
+const attachScrollListener = () => {
+    if (scrollListenerTarget) {
+        // console.warn("Scroll listener already attached.");
+        return;
+    }
+    if (isDesktop.value) {
+        if (scrollContainerRef.value) {
+            // console.log("Attaching scroll listener to scrollContainerRef");
+            scrollContainerRef.value.addEventListener('scroll', handleScroll);
+            scrollListenerTarget = scrollContainerRef.value;
+        } else {
+            console.warn("Cannot attach scroll listener: scrollContainerRef not found.");
+        }
+    } else {
+        // console.log("Attaching scroll listener to window");
+        window.addEventListener('scroll', handleScroll);
+        scrollListenerTarget = window;
+    }
+};
+
+const detachScrollListener = () => {
+    if (scrollListenerTarget) {
+        // console.log("Detaching scroll listener from:", scrollListenerTarget === window ? 'window' : 'scrollContainerRef');
+        scrollListenerTarget.removeEventListener('scroll', handleScroll);
+        scrollListenerTarget = null;
+    } 
+};
+
+// --- Component Lifecycle: Mounting and Unmounting --- 
 onMounted(() => {
-  checkScreenSize();
+  checkScreenSize(); 
   window.addEventListener('resize', checkScreenSize);
+  attachScrollListener(); 
+  
   // Sync state from URL on initial load
   if (route.query.view === 'detail' && route.query.id) {
       selectedScenarioId.value = route.query.id;
@@ -329,10 +390,9 @@ onMounted(() => {
       selectedScenarioId.value = null;
       contextArticleId.value = route.query.articleId || null;
       contextArticleTitle.value = route.query.articleTitle || null;
-  } else if (route.query.view === 'success') { // Check for success state from URL?
-       rightColumnMode.value = 'requestSuccess'; // Maybe restore success view?
+  } else if (route.query.view === 'success') { 
+       rightColumnMode.value = 'requestSuccess'; 
        selectedScenarioId.value = null;
-       // Need to persist successMessageContent if we want to restore it from URL state
   } else {
        rightColumnMode.value = 'placeholder';
        selectedScenarioId.value = null;
@@ -340,33 +400,36 @@ onMounted(() => {
   if (authStore.isAuthenticated) {
     bookmarkStore.fetchBookmarks();
   }
+
+  // Ensure initial fetch happens if queryParams are set
+  if (queryParams.value) {
+      // console.log("Triggering initial fetch on mount");
+      refresh(); // Use refresh for initial load
+  }
 });
 onUnmounted(() => {
   window.removeEventListener('resize', checkScreenSize);
+  detachScrollListener(); 
 });
 
-// Reactive refs for filters and pagination
-const searchQuery = ref(route.query.q || ''); // Input field model
-const effectiveSearchQuery = ref(route.query.q || ''); // Query actually sent to API
+// --- State for Filters, Pagination, Search --- 
+const searchQuery = ref(route.query.q || ''); 
+const effectiveSearchQuery = ref(route.query.q || ''); 
 const selectedStatus = ref(route.query.status || 'OPEN');
 const selectedSort = ref(route.query.sort || 'newest');
 const currentPage = ref(parseInt(route.query.page) || 1);
 const successMessageContent = ref('');
-// const selectedPlatform = ref(route.query.platform || ''); // Example if platform filter added
 
-// Computed object for query parameters
+// --- Computed Query Params for API --- 
 const queryParams = computed(() => {
   const params = {
-    page: currentPage.value,
+    page: currentPage.value, 
     status: selectedStatus.value,
     sort: selectedSort.value,
-    // platform: selectedPlatform.value, // Example
   };
-  // Use the effective search query for the API call
   if (effectiveSearchQuery.value) {
     params.q = effectiveSearchQuery.value;
   }
-  // Clean undefined/empty params before returning
   Object.keys(params).forEach(key => {
     if (params[key] === '' || params[key] === null || params[key] === undefined) {
       delete params[key];
@@ -375,96 +438,155 @@ const queryParams = computed(() => {
   return params;
 });
 
-// useFetch for scenarios data
+// --- Fetching Scenario Data (useFetch) --- 
 const { data: scenariosData, pending, error, refresh } = useFetch('/api/scenarios', {
-  query: queryParams, // Pass computed reactive query params
-  watch: [queryParams], // Watch the computed object directly
-  key: 'scenariosFeed', // Unique key for caching/refetching
-  immediate: true, // Fetch immediately when component mounts
+  query: queryParams, 
+  watch: [queryParams], 
+  key: 'scenariosFeed', 
+  immediate: false, 
 });
 
-// Watch auth state changes to potentially fetch bookmarks if user logs in
+// --- Watcher to handle scenariosData updates --- 
+watch(scenariosData, (newData) => {
+    if (newData?.scenarios) {
+        const fetchedPage = newData.pagination?.page || 1;
+        // console.log(`Watcher: Received data for page ${fetchedPage}. Current allScenarios length: ${allScenarios.value.length}`);
+        
+        if (fetchedPage === 1) {
+            // console.log('Watcher: Replacing allScenarios with page 1 data.');
+            allScenarios.value = newData.scenarios;
+        } else {
+            // console.log(`Watcher: Appending ${newData.scenarios.length} scenarios to allScenarios.`);
+            // Avoid duplicates just in case of race conditions or API quirks
+            const existingIds = new Set(allScenarios.value.map(s => s.scenarioId));
+            const newUniqueScenarios = newData.scenarios.filter(s => !existingIds.has(s.scenarioId));
+            allScenarios.value.push(...newUniqueScenarios);
+        }
+    } else if (newData === null && !pending.value) {
+        // console.log('Watcher: scenariosData is null and not pending.');
+    }
+}, { immediate: true }); 
+
+// --- Watch Auth State --- 
 watch(() => authStore.isAuthenticated, (isAuth, wasAuth) => {
     if (isAuth && !wasAuth) {
-        console.log('[ScenariosPage] User authenticated, fetching bookmarks...');
+        // console.log('[ScenariosPage] User authenticated, fetching bookmarks...');
         bookmarkStore.fetchBookmarks();
     } else if (!isAuth && wasAuth) {
-        console.log('[ScenariosPage] User logged out.');
-        // If user logs out, switch back to 'all' tab if they were on 'bookmarks'
+        // console.log('[ScenariosPage] User logged out.');
         if (activeTab.value === 'bookmarks') {
             activeTab.value = 'all';
         }
     }
 });
 
-// Function to fetch/refresh scenarios and update URL
+// --- Function to fetch scenarios --- 
 const fetchScenarios = async (page = currentPage.value) => {
-  console.log(`Fetching scenarios list page: ${page}, query:`, queryParams.value);
-  currentPage.value = page;
-  const currentView = route.query.view;
-  const currentId = route.query.id;
-  const queryToPush = { ...queryParams.value }; // This now reflects the new page via currentPage
-  // Preserve view/id if they exist
-  if(currentView) queryToPush.view = currentView;
-  if(currentId && currentView === 'detail') queryToPush.id = currentId;
-  // Preserve article context if in request view
-  if(currentView === 'request'){
-      if(route.query.articleId) queryToPush.articleId = route.query.articleId;
-      if(route.query.articleTitle) queryToPush.articleTitle = route.query.articleTitle;
+  // console.log(`Fetching scenarios list page: ${page}, query:`, queryParams.value);
+  currentPage.value = page; 
+  
+  // Update URL only with filter/sort/search changes, not pagination
+  const { page: queryPage, ...restQuery } = route.query;
+  const queryToPush = { ...restQuery }; 
+  if (selectedStatus.value !== 'OPEN') queryToPush.status = selectedStatus.value;
+  if (selectedSort.value !== 'newest') queryToPush.sort = selectedSort.value;
+  if (effectiveSearchQuery.value) queryToPush.q = effectiveSearchQuery.value;
+  
+  if (JSON.stringify(queryToPush) !== JSON.stringify(restQuery)) {
+      // console.log('Pushing filter/sort/search changes to URL:', queryToPush);
+      router.push({ query: queryToPush }); 
   }
-  router.push({ query: queryToPush }); 
+  
+  // Triggering useFetch is handled by the queryParams watcher
 };
 
-// Debounced version for search input
-// Only updates the effectiveSearchQuery (and thus the API query) if conditions are met
+// --- Debounced Search Handler --- 
 const debouncedFetchScenarios = debounce(() => {
   const query = searchQuery.value.trim();
   const queryLength = query.length;
   if ((queryLength === 0 || queryLength >= 3) && effectiveSearchQuery.value !== query) {
-    console.log(`Updating effective search query to: "${query}"`);
+    // console.log(`Updating effective search query to: "${query}"`);
     effectiveSearchQuery.value = query;
-    currentPage.value = 1;
-    const currentView = route.query.view;
-    const currentId = route.query.id;
-    const queryToPush = { ...queryParams.value }; // Includes new `q` via computed prop
-    // Preserve view/id if they exist
-    if(currentView) queryToPush.view = currentView;
-    if(currentId && currentView === 'detail') queryToPush.id = currentId;
-    // Preserve article context if in request view
-    if(currentView === 'request'){
-        if(route.query.articleId) queryToPush.articleId = route.query.articleId;
-        if(route.query.articleTitle) queryToPush.articleTitle = route.query.articleTitle;
-    }
+    currentPage.value = 1; // IMPORTANT: Reset to page 1 for new search/filter
+    
+    const { page, ...restQuery } = route.query;
+    const queryToPush = { ...restQuery, q: effectiveSearchQuery.value || undefined };
+    if (!queryToPush.q) delete queryToPush.q;
+    // console.log('Pushing search query changes to URL:', queryToPush);
     router.push({ query: queryToPush });
   } else {
-    console.log(`Search input changed to "${query}", but not triggering API fetch.`);
+    // console.log(`Search input changed to "${query}", but not triggering API fetch.`);
   }
 }, 700);
 
-// Watcher for route query changes (handles browser back/forward and manual URL changes)
+// Helper to refresh page one
+const refreshPageOne = () => {
+    // console.log("Refreshing page 1...");
+    currentPage.value = 1;
+    refresh(); 
+};
+
+// --- Scroll Handler --- 
+const handleScroll = debounce((event) => {
+    let scrollHeight, scrollTop, clientHeight;
+    const threshold = 300; 
+
+    if (scrollListenerTarget === window) {
+        scrollHeight = document.documentElement.scrollHeight;
+        scrollTop = window.scrollY;
+        clientHeight = window.innerHeight; 
+    } else if (scrollListenerTarget instanceof Element) {
+        const element = event.target;
+        scrollHeight = element.scrollHeight;
+        scrollTop = element.scrollTop;
+        clientHeight = element.clientHeight;
+    } else {
+        return; 
+    }
+
+    const nearBottom = scrollHeight - scrollTop - clientHeight < threshold;
+
+    if (nearBottom) {
+        if (activeTab.value === 'all') {
+             // console.log(`Reached near bottom! Target: ${scrollListenerTarget === window ? 'window' : 'element'}`);
+             
+             const pagination = scenariosData.value?.pagination;
+             if (pagination && !pending.value && currentPage.value < pagination.totalPages) {
+                 // console.log(`Triggering fetch for next page (${currentPage.value + 1})...`);
+                 fetchScenarios(currentPage.value + 1);
+             } else if (pending.value) {
+                 // console.log('Near bottom, but a fetch is already pending.');
+             } else if (pagination && currentPage.value >= pagination.totalPages) {
+                 // console.log('Near bottom, but already on the last page.');
+             }
+        }
+    }
+}, 200); 
+
+// --- Watch Route Query Changes --- 
 watch(() => route.query, (newQuery, oldQuery) => {
-    console.log('Route query changed:', newQuery);
+    // console.log('Route query changed:', newQuery);
     
-    // Update filter/pagination state 
+    // Update filter/sort/search state from URL 
     const newQueryQ = newQuery.q || '';
     if (searchQuery.value !== newQueryQ) searchQuery.value = newQueryQ;
     if (effectiveSearchQuery.value !== newQueryQ) effectiveSearchQuery.value = newQueryQ;
+    
     if (selectedStatus.value !== (newQuery.status || 'OPEN')) selectedStatus.value = newQuery.status || 'OPEN';
     if (selectedSort.value !== (newQuery.sort || 'newest')) selectedSort.value = newQuery.sort || 'newest';
-    if (currentPage.value !== (parseInt(newQuery.page) || 1)) currentPage.value = parseInt(newQuery.page) || 1;
 
-    // Update right column mode and selected ID based on view/id params
+    // Update right column mode 
     const newMode = newQuery.view === 'detail' ? 'detail' 
                   : (newQuery.view === 'request' ? 'requestForm' 
-                  : (newQuery.view === 'success' ? 'requestSuccess' : 'placeholder')); // Added success
+                  : (newQuery.view === 'success' ? 'requestSuccess' : 'placeholder'));
     const newId = newQuery.view === 'detail' ? newQuery.id : null;
     
     if (rightColumnMode.value !== newMode) {
-        console.log(`Changing right column mode to: ${newMode}`);
+        // console.log(`Changing right column mode to: ${newMode}`);
         rightColumnMode.value = newMode;
     }
     if (selectedScenarioId.value !== newId) {
-        console.log(`Changing selected scenario ID to: ${newId}`);
+        // console.log(`Changing selected scenario ID to: ${newId}`);
         selectedScenarioId.value = newId;
     }
     
@@ -472,67 +594,56 @@ watch(() => route.query, (newQuery, oldQuery) => {
     if(newMode === 'requestForm'){
          contextArticleId.value = newQuery.articleId || null;
          contextArticleTitle.value = newQuery.articleTitle || null;
-    } else if (newMode !== 'requestSuccess') { // Clear context unless showing success
+    } else if (newMode !== 'requestSuccess') { 
          contextArticleId.value = null;
          contextArticleTitle.value = null;
     }
     
-    // If switching to success view, potentially grab message from state? 
-    // (Or rely on it being set by handleRequestSubmitted)
-
 }, { deep: true }); 
 
-// --- Fetching Selected Scenario Detail ---
-// Create a computed ref for the detail URL that only updates when needed
+// --- Fetching Selected Scenario Detail --- 
 const detailApiUrl = computed(() => {
-    // Only generate URL if mode is detail and ID is present
     return (rightColumnMode.value === 'detail' && selectedScenarioId.value) 
            ? `/api/scenarios/${selectedScenarioId.value}` 
            : null;
 });
 
-// Use useFetch for the detail, but disable immediate fetch
-// It will react to changes in detailApiUrl
 const { 
     data: selectedScenarioData, 
     pending: detailPending, 
     error: detailError, 
-    execute: fetchScenarioDetail // Use execute to trigger fetch manually or via watch
+    execute: fetchScenarioDetail 
 } = useFetch(detailApiUrl, {
-    immediate: false, // Don't fetch immediately on load
-    watch: [detailApiUrl], // Re-fetch when the URL changes (i.e., selectedScenarioId changes)
-    key: 'scenarioDetail' // Optional unique key
+    immediate: false, 
+    watch: [detailApiUrl], 
+    key: 'scenarioDetail' 
 });
 
-// --- Watch activeTab to reset selection? ---
+// --- Watch activeTab --- 
 watch(activeTab, (newTab) => {
-    // Reset view when switching tabs
     if(isDesktop.value) {
         rightColumnMode.value = 'placeholder';
         selectedScenarioId.value = null;
     } else {
-        // On mobile, changing tabs implies going back to list view
         closeRightColumn();
     }
 });
 
-// Helper function to handle request submission
+// --- Form Submission/Cancellation Handlers --- 
 const handleRequestSubmitted = (message) => {
-    console.log('Form submitted event received:', message);
+    // console.log('Form submitted event received:', message);
     successMessageContent.value = message;
     rightColumnMode.value = 'requestSuccess';
     selectedScenarioId.value = null; 
     if (!isDesktop.value) {
-        // Update URL to reflect success state for mobile history
          router.push({ query: { ...route.query, view: 'success' } }); 
     }
 
 };
 
-// Helper function to handle request cancellation
 const handleRequestCancelled = () => {
-    console.log('Form cancelled event received');
-    closeRightColumn(); // Go back to list view / placeholder
+    // console.log('Form cancelled event received');
+    closeRightColumn(); 
 };
 
 </script>

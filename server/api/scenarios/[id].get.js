@@ -3,6 +3,7 @@ import mongoose from 'mongoose'; // Import mongoose for ObjectId validation
 import Scenario from '../../models/Scenario.model'; // Adjusted path for Scenario model
 import Article from '../../models/Article.model'; // Import Article model
 import { formatRelativeTime } from '../../utils/formatRelativeTime'; // Optional: if date formatting is needed
+
 export default defineEventHandler(async (event) => {
   // Make handler async
 

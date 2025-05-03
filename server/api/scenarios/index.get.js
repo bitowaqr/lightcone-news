@@ -1,8 +1,8 @@
 import { defineEventHandler, getQuery, createError } from 'h3';
 import Scenario from '../../models/Scenario.model';
 
-const DEFAULT_LIMIT = 24; // Default number of scenarios per page
-const MAX_LIMIT = 100; // Max limit to prevent abuse
+const DEFAULT_LIMIT = 20; // Default number of scenarios per page
+const MAX_LIMIT = 2_000; // Max limit to prevent abuse
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -95,7 +95,7 @@ export default defineEventHandler(async (event) => {
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select('_id question platform platformScenarioId status resolutionData.expectedResolutionDate resolutionData.resolutionDate volume liquidity createdAt description') // Added description
+        .select('_id question questionNew platform platformScenarioId status resolutionData.expectedResolutionDate resolutionData.resolutionDate volume liquidity createdAt description') // Added description
         .lean(),
       Scenario.countDocuments(filter)
     ]);
@@ -127,7 +127,7 @@ export default defineEventHandler(async (event) => {
     };
 
   } catch (error) {
-    console.error('Error fetching scenarios feed:', error);
+    console.error('Error fetching scenarios feed:', error); // Keep critical error log
     throw createError({ statusCode: 500, statusMessage: 'Internal Server Error fetching scenarios' });
   }
 }); 
