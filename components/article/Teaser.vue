@@ -82,7 +82,7 @@
       <!-- SCENARIOS section wrapper -->
       <div class="">
         <!-- Section Title -->
-        <div class="mt-4 mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2" v-if="group.scenarios && group.scenarios.length > 0">
+        <div class="mt-4 mb-1 text-xs font-semibold text-fg-muted ps-2" v-if="group.scenarios && group.scenarios.length > 0">
           How the story might continue:
         </div>
   
