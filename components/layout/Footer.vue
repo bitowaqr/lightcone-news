@@ -14,7 +14,7 @@
         </div>
         
         <div class="text-xs">
-          &copy; {{ new Date().getFullYear() }} Lightcone News
+          &copy; {{ new Date().getFullYear() }} PRIORB 
         </div>
       </div>
     </div>
