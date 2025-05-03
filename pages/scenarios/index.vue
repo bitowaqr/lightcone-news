@@ -225,13 +225,15 @@
                 <p class="text-lg text-fg-muted mb-6">
                   {{ successMessageContent || 'Thank you for your forecast request.' }}
                 </p>
+                <!-- ADDED: Mobile-only Primary Go Back Button -->
                 <button
-                    @click="closeRightColumn"
-                    type="button"
-                    class="inline-flex justify-center py-2 px-6 border border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 shadow-sm text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                >
-                    Done
-                </button>
+                   v-if="!isDesktop" 
+                   @click="closeRightColumn"
+                   type="button"
+                   class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+               >
+                   Go Back to List
+               </button>
               </div>
           </template>
       </div>
@@ -518,12 +520,13 @@ watch(activeTab, (newTab) => {
 const handleRequestSubmitted = (message) => {
     console.log('Form submitted event received:', message);
     successMessageContent.value = message;
-    rightColumnMode.value = 'requestSuccess'; // Change mode to show success view
-    selectedScenarioId.value = null; // Ensure detail view isn't accidentally shown
-    // Update URL for mobile/history
+    rightColumnMode.value = 'requestSuccess';
+    selectedScenarioId.value = null; 
     if (!isDesktop.value) {
-         router.push({ query: { ...route.query, view: 'success' } }); // Or just remove view/id?
+        // Update URL to reflect success state for mobile history
+         router.push({ query: { ...route.query, view: 'success' } }); 
     }
+
 };
 
 // Helper function to handle request cancellation

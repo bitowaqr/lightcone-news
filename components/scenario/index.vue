@@ -164,7 +164,29 @@
         </div>
       </div>
       
-      
+      <!-- ADDED: Related Articles Section (Collapsible) -->
+      <div v-if="scenario.relatedArticles && scenario.relatedArticles.length > 0" class="mb-6">
+        <button 
+          @click="isRelatedArticlesVisible = !isRelatedArticlesVisible"
+          class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-start border-t border-bg-muted pt-3 mt-3"
+        >
+          <Icon :name="isRelatedArticlesVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+          <span class="text-base font-medium">Related Articles ({{ scenario.relatedArticles.length }})</span>
+        </button>
+        <div v-if="isRelatedArticlesVisible" class="mt-3 space-y-3">
+          <div v-for="article in scenario.relatedArticles" :key="article._id" 
+               class="border border-bg-muted rounded bg-bg-muted/30 p-3 transition-colors hover:border-primary/50">
+             <NuxtLink :to="`/articles/${article.slug}`" class="block hover:no-underline">
+               <h4 class="font-medium text-fg text-base mb-1 hover:text-primary">{{ article.title }}</h4>
+               <p v-if="article.precis" class="text-sm text-fg-muted line-clamp-2 leading-snug mb-1">{{ article.precis }}</p>
+               <p v-if="article.publishedDate" class="text-xs text-fg-muted/80">
+                   Published: {{ formatDate(article.publishedDate) }}
+                </p>
+             </NuxtLink>
+          </div>
+        </div>
+      </div>
+      <!-- END ADDED -->
 
       <!-- Related Scenarios Section -->
       <div class="mt-6 pt-6 border-t border-bg-muted" v-if="scenario.scenarios && scenario.scenarios.length > 0">
@@ -253,14 +275,11 @@ const { chance, loading: loadingChance, error: errorChance, volume, status, liqu
 // Fetch history data
 const { historyData, loading: loadingHistory, error: errorHistory } = useScenarioHistory(scenarioRef);
 
-// State for collapsible criteria
+// State for collapsible sections
 const isCriteriaVisible = ref(false);
-
-// State for details visibility
 const isDetailsVisible = ref(false);
-
-// ADDED: State for resolution visibility (default true)
 const isResolutionVisible = ref(true);
+const isRelatedArticlesVisible = ref(true); // Default to visible
 
 // Formatting Functions
 const formatProbability = (prob) => {

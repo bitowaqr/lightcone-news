@@ -1,8 +1,7 @@
 import { defineEventHandler, createError, getRouterParams } from 'h3';
 import mongoose from 'mongoose'; // Import mongoose for ObjectId validation
 import Scenario from '../../models/Scenario.model'; // Adjusted path for Scenario model
-// Import Article model if needed for populating related articles
-// import Article from '../../models/Article.model';
+import Article from '../../models/Article.model'; // Import Article model
 import { formatRelativeTime } from '../../utils/formatRelativeTime'; // Optional: if date formatting is needed
 export default defineEventHandler(async (event) => {
   // Make handler async
@@ -28,13 +27,12 @@ export default defineEventHandler(async (event) => {
           '_id question scenarioType currentProbability platform platformScenarioId clobTokenIds', // Adjust fields as needed
         model: Scenario, // Explicitly specify the model for self-reference
       })
-      // Optionally populate related articles
-      // .populate({
-      //   path: 'relatedArticleIds',
-      //   select: '_id title status publishedDate', // Select relevant article fields
-      //   model: Article,
-      //   match: { status: 'PUBLISHED' } // Only populate published articles
-      // })
+      // Populate related articles
+      .populate({
+        path: 'relatedArticleIds',
+        match: { status: 'PUBLISHED' }, // Only populate published articles
+        select: '_id title slug precis publishedDate imageUrl' // Select needed fields
+      })
       .lean();
 
     if (!scenario) {
@@ -64,12 +62,15 @@ export default defineEventHandler(async (event) => {
       })
     );
 
-    // Optionally format populated related articles
-    // const relatedArticles = (scenario.relatedArticleIds || []).map(article => ({
-    //   articleId: article._id.toString(),
-    //   title: article.title,
-    //   publishedDate: article.publishedDate ? formatRelativeTime(article.publishedDate) : 'N/A',
-    // }));
+    // Format related articles from populated data
+    const relatedArticles = (scenario.relatedArticleIds || []).map(article => ({
+      _id: article._id.toString(),
+      slug: article.slug,
+      title: article.title,
+      precis: article.precis,
+      publishedDate: article.publishedDate,
+      imageUrl: article.imageUrl
+    }));
 
     // Map Scenario model fields to the expected API response structure
 
@@ -107,6 +108,7 @@ export default defineEventHandler(async (event) => {
       dossier: scenario.dossier,
 
       scenarios: relatedScenarios,
+      relatedArticles: relatedArticles,
     };
 
     return response;

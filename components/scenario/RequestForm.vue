@@ -14,15 +14,67 @@
        <!-- Combined Form Sections into One Card/Area -->
        <!-- Removed outer card bg/border - parent container handles styling -->
        <div>
-        <!-- Display Article Title if provided -->
-        <div v-if="articleTitleFromQuery" class="pb-4 mb-4 border-b border-bg-muted">
-          <label class="block text-sm font-medium text-fg mb-1">Related Article</label>
-          <div class="bg-bg-input border border-fg-muted/20 rounded-md px-3 py-2 cursor-not-allowed">
-            <h2 class="text-fg truncate text-primary text-sm italic" :title="articleTitleFromQuery">
-              {{ articleTitleFromQuery }}
-            </h2>
-          </div>
-        </div>
+        <!-- ADDED Combobox for Related Article -->
+         <div class="mb-2">
+            <Combobox v-model="selectedArticle" @update:modelValue="handleSelectionUpdate" nullable>
+                <ComboboxLabel class="block text-sm font-medium text-fg mb-1">Related Article (Optional)</ComboboxLabel>
+                <div class="relative mt-1">
+                    <div class="relative w-full cursor-default overflow-hidden rounded-md bg-bg text-left border border-fg-muted/30 shadow-sm focus-within:outline-none focus-within:ring-1 
+                    focus-within:ring-primary focus-within:border-primary sm:text-sm outline-none focus:outline-none">
+                       <ComboboxInput
+                         ref="comboboxInputRef"
+                         class="w-full border-none text-sm px-3 py-1.5 leading-5 text-fg bg-bg placeholder-fg-muted/50 focus:ring-0 focus:outline-none"
+                         :displayValue="(article) => article?.title ?? ''" 
+                         @change="articleQuery = $event.target.value"
+                         @focus="handleComboboxFocus"
+                         @blur="handleComboboxBlur"
+                         placeholder="Search or select an article..."
+                       />
+                       <ComboboxButton class="absolute inset-y-0 right-0 flex items-center pr-2">
+                          <Icon name="heroicons:chevron-up-down-20-solid" class="h-5 w-5 text-gray-400" aria-hidden="true" />
+                       </ComboboxButton>
+                    </div>
+                    <Transition
+                        leave-active-class="transition duration-100 ease-in"
+                        leave-from-class="opacity-100"
+                        leave-to-class="opacity-0"
+                        @after-leave="articleQuery = ''"
+                    >
+                        <ComboboxOptions class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-bg py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10 border border-bg-muted">
+                         <div v-if="filteredArticles.length === 0 && articleQuery !== '' && !loadingTitles" class="relative cursor-default select-none px-4 py-2 text-fg-muted"> Nothing found. </div>
+                         <div v-else-if="loadingTitles" class="relative cursor-default select-none px-4 py-2 text-fg-muted italic"> Loading articles... </div>
+                        
+                         <ComboboxOption
+                            v-for="article in filteredArticles" 
+                            :key="article._id || 'no-article'"
+                            :value="article"
+                            v-slot="{ selected, active }"
+                            as="template"
+                          >
+                            <li :class="[
+                                'relative list-none cursor-default select-none py-2 pl-4 pr-4',
+                                active ? 'bg-primary/10 text-primary' : (article._id === null ? 'text-fg-muted' : 'text-fg'),
+                              ]">
+                                <span :class="[
+                                    'block truncate', 
+                                    selected ? 'font-medium text-primary' : 'font-normal',
+                                    article._id === null ? 'italic' : ''
+                                ]"> 
+                                 {{ article.title }} 
+                                </span>
+                            </li>
+                          </ComboboxOption>
+                        </ComboboxOptions>
+                    </Transition>
+                </div>
+            </Combobox>
+         </div>
+
+         <!-- Display Precis - simplified -->
+         <div v-if="selectedArticle?._id && selectedArticle?.precis" class="mb-4 py-2 px-3 bg-bg-muted/50 border border-bg-muted rounded">
+             
+             <p class="text-sm text-fg italic">{{ selectedArticle.precis }}</p>
+         </div>
 
         <div class="space-y-6"> 
           <!-- Section 1: The Question -->
@@ -199,7 +251,8 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, defineProps, defineEmits, watch } from 'vue';
+import { ref, computed, nextTick, defineProps, defineEmits, watch, onMounted } from 'vue';
+import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption, ComboboxLabel, TransitionRoot } from '@headlessui/vue' // Import Headless UI components
 
 // Define props
 const props = defineProps({
@@ -233,12 +286,24 @@ const showRevisionDialog = ref(false);
 const revisedData = ref(null);
 const revisionExplanation = ref('');
 
+// State for Article Selection
+const articleTitlesList = ref([]); // Will now contain {_id, title, precis}
+const loadingTitles = ref(false);
+const selectedArticle = ref(null); 
+const articleQuery = ref('');
+
+// State for interaction logic
+const previousSelection = ref(null); // Store selection before focus
+const selectionMade = ref(false); // Flag to track if a selection happened between focus/blur
+
 // Use props directly in template or computed properties
-const articleIdFromQuery = computed(() => props.articleId);
 const articleTitleFromQuery = computed(() => props.articleTitle);
 
 // Declare the template ref
 const errorMessageRef = ref(null);
+
+// Define ref for the input element
+const comboboxInputRef = ref(null);
 
 // Calculate minimum date
 const minDate = computed(() => {
@@ -248,7 +313,108 @@ const minDate = computed(() => {
   return localDate.toISOString().split('T')[0];
 });
 
-// Submit function - adapted for component context
+// Define the placeholder object
+const NO_ARTICLE_SELECTED = { _id: null, title: '-- Not related to a specific article --', precis: null };
+
+// Filtered articles - always include placeholder at the top if query is empty or matches it
+const filteredArticles = computed(() => {
+    const query = articleQuery.value.toLowerCase().replace(/\s+/g, '');
+    let articles = articleTitlesList.value;
+
+    if (query !== '') {
+        articles = articles.filter((article) =>
+            article.title.toLowerCase().replace(/\s+/g, '').includes(query)
+        );
+    }
+    
+    // Always include the placeholder option at the beginning
+    return [NO_ARTICLE_SELECTED, ...articles];
+});
+
+// --- Lifecycle --- 
+onMounted(async () => {
+    // Fetch titles and precis together
+    const fetchArticles = async () => {
+        loadingTitles.value = true;
+        try {
+            // Endpoint now returns title and precis
+            const articles = await $fetch('/api/articles/titles');
+            articleTitlesList.value = articles || [];
+        } catch (error) {
+            console.error("Error fetching articles:", error);
+        } finally {
+            loadingTitles.value = false;
+        }
+    };
+    
+    // Run article fetch
+    await fetchArticles();
+    
+    // Find initial selected article object based on prop ID
+    if (props.articleId) {
+        const initialArticle = articleTitlesList.value.find(a => a._id === props.articleId);
+        selectedArticle.value = initialArticle || NO_ARTICLE_SELECTED;
+    } else {
+        selectedArticle.value = NO_ARTICLE_SELECTED;
+    }
+    // Initialize previous selection after potentially finding initial article
+    previousSelection.value = selectedArticle.value; 
+});
+
+// --- Combobox Interaction Handlers ---
+const handleComboboxFocus = (event) => {
+    console.log('Combobox focused');
+    // Store the current selection when focus starts
+    previousSelection.value = selectedArticle.value;
+    selectionMade.value = false; // Reset flag
+    // Don't clear input if placeholder is selected, allow typing over it
+    if (selectedArticle.value?._id !== null) {
+         event.target.value = '';
+    }
+    articleQuery.value = ''; 
+};
+
+const handleComboboxBlur = () => {
+    console.log('Combobox blurred');
+    setTimeout(() => {
+        if (!selectionMade.value) {
+             // If no selection was made, revert selectedArticle to its pre-focus state
+             // Check if the selection actually changed during typing (e.g. user typed exact match but didnt select)
+             // Or more simply, just revert if the current state doesn't match the pre-focus state.
+             if (selectedArticle.value !== previousSelection.value) {
+                console.log('Reverting selection to:', previousSelection.value?.title);
+                selectedArticle.value = previousSelection.value; 
+             }
+             
+             // **CRITICAL FIX:** Explicitly set the input display value after potential revert
+             if (comboboxInputRef.value?.el) { // Check if ref and element exist
+                // Use the final value of selectedArticle after potential revert
+                comboboxInputRef.value.el.value = selectedArticle.value?.title ?? ''; 
+                console.log('Set input value to:', comboboxInputRef.value.el.value);
+             }
+        }
+        // Reset the query variable used for filtering options
+        articleQuery.value = ''; 
+        // Reset the flag for the next interaction
+        selectionMade.value = false; 
+    }, 100); // Timeout allows selection event to fire first
+};
+
+// Track when a selection is actually made via the Combobox v-model update
+const handleSelectionUpdate = (value) => {
+    console.log('Combobox v-model updated (selection made):', value);
+    selectionMade.value = true; // Set flag when a valid option is selected
+    // Ensure previousSelection is updated if user selects via dropdown without focus/blur cycle
+    previousSelection.value = value; 
+};
+
+// Watch selectedArticle to update precis (only if not null)
+watch(selectedArticle, (newArticle) => {
+    // The precis is now part of the articleTitlesList object, no need to fetch
+    // console.log("Selected article changed:", newArticle?.title);
+});
+
+// Submit function - use selectedArticle._id
 async function submitForm() {
   isSubmitting.value = true;
   submissionStatus.value = null;
@@ -259,7 +425,8 @@ async function submitForm() {
 
   const payload = {
     ...formData.value,
-    ...(articleIdFromQuery.value && { articleId: articleIdFromQuery.value })
+    // Only add articleId if a real article (_id is not null) is selected
+    ...(selectedArticle.value?._id && { articleId: selectedArticle.value._id })
   };
 
   console.log('Submitting form data (from component):', JSON.parse(JSON.stringify(payload)));
@@ -302,9 +469,9 @@ async function submitForm() {
   }
 }
 
-// Accept revision function - adapted for component
+// Accept revision function - use selectedArticle._id
 async function acceptRevision() {
-  if (!revisedData.value) return;
+   if (!revisedData.value) return;
 
   isSubmitting.value = true;
   submissionStatus.value = null;
@@ -313,26 +480,25 @@ async function acceptRevision() {
   const payload = {
     ...revisedData.value,
     isRevisionConfirmation: true,
-    ...(articleIdFromQuery.value && { articleId: articleIdFromQuery.value })
+    // Only add articleId if a real article (_id is not null) is selected
+    ...(selectedArticle.value?._id && { articleId: selectedArticle.value._id })
   };
-   if (revisedData.value.articleId && !payload.articleId) {
-     payload.articleId = revisedData.value.articleId;
-   }
+  // ... rest of acceptRevision ...
 
   console.log('Accepting and resubmitting revised data (from component):', JSON.parse(JSON.stringify(payload)));
-
-  try {
+  
+   try {
     const result = await $fetch('/api/scenarios/request', {
       method: 'POST',
       body: payload,
     });
-
-    if (result.status === 'success') {
+    // ... rest of revision handling ...
+     if (result.status === 'success') {
       showRevisionDialog.value = false;
       submissionStatus.value = 'success';
       submissionMessage.value = result.message || 'Revised request accepted!';
-      emit('submitted', submissionMessage.value);
-      resetFormFields();
+      emit('submitted', submissionMessage.value); 
+      resetFormFields(); 
     } else {
       submissionStatus.value = 'error';
       submissionMessage.value = result.message || 'Unexpected response after revision.';
@@ -343,20 +509,21 @@ async function acceptRevision() {
     console.error('Error submitting accepted revision:', err);
     submissionStatus.value = 'error';
     submissionMessage.value = err.data?.message || 'Error submitting revised request.';
-    // Keep dialog open on error
   } finally {
     isSubmitting.value = false;
   }
 }
 
-// Close revision dialog function
-function closeRevisionDialog() {
-  showRevisionDialog.value = false;
-}
-
-// Function to reset internal form fields
+// Reset function - reset selectedArticle to placeholder or initial
 function resetFormFields() {
   formData.value = { question: '', description: '', resolutionCriteria: '', resolutionDate: '' };
+  const initialArticle = props.articleId 
+      ? articleTitlesList.value.find(a => a._id === props.articleId) 
+      : null;
+  selectedArticle.value = initialArticle || NO_ARTICLE_SELECTED; // Reset to initial prop or placeholder
+  previousSelection.value = selectedArticle.value; // Reset previous selection
+  articleQuery.value = '';
+  selectionMade.value = false;
   submissionStatus.value = null;
   submissionMessage.value = '';
   showRevisionDialog.value = false;
@@ -369,6 +536,11 @@ function resetFormFields() {
 function cancelForm() {
   resetFormFields(); // Clear fields
   emit('cancelled'); // Notify parent to close/hide the form
+}
+
+// Function to close revision dialog
+function closeRevisionDialog() {
+  showRevisionDialog.value = false;
 }
 
 // Computed class for message styling
@@ -387,10 +559,6 @@ const submissionClass = computed(() => {
   }
 });
 
-// Watch props if they might change after mount (optional, depends on parent)
-// watch(() => props.articleId, (newVal) => { /* maybe update state */ });
-// watch(() => props.articleTitle, (newVal) => { /* maybe update state */ });
-
 </script>
 
 <style scoped>
@@ -401,4 +569,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     filter: invert(0.8);
 }
+/* Remove default list styling */
+li {
+  list-style-type: none;
+}
+ul {
+  padding-left: 0;
+}
+/* Additional scoped styles if needed */
 </style> 
