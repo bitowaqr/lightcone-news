@@ -1,8 +1,6 @@
 <template>
   <div class="p-4 sm:p-6">
     <div class="text-xs text-fg-muted">
-
-    {{ scenario }}
     </div>
     <!-- Conditionally render back button -->
     <div v-if="!isEmbedded" class="mb-2 sm:mb-4">
