@@ -1,6 +1,6 @@
 <template>
   <!-- Main container with desktop grid layout -->
-  <div class="lg:grid lg:grid-cols-5 lg:gap-x-0">
+  <div class="lg:grid lg:grid-cols-5 lg:gap-x-0 w-full grow">
 
     <!-- Left Column: Tabs, Filters, List, Pagination - Now uses Flexbox for sticky header -->
     <div 
@@ -13,7 +13,7 @@
       <!-- Left Column Header (Sticky Part) -->
       <div class="lg:px-4 pt-8 flex-shrink-0 bg-bg z-10 border-b border-bg-muted pb-2">
           <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-fg">Explore Scenarios</h1> 
+            <h1 class="text-2xl font-bold text-fg">Scenarios</h1> 
              <!-- Request Button -->
              <button 
                 @click="showRequestForm"
@@ -30,7 +30,7 @@
           <div class="mb-3">
             <nav class="-mb-px flex space-x-6" aria-label="Tabs">
               <button 
-                @click="activeTab = 'all'"
+                @click="setActiveTab('all')"
                 :class="[
                   'whitespace-nowrap pb-2 px-1 border-b-2 font-medium text-sm',
                   activeTab === 'all' ? 'border-primary text-primary' : 'border-transparent text-fg-muted hover:text-fg hover:border-gray-300'
@@ -43,7 +43,7 @@
               </button>
               <button 
                 v-if="authStore.isAuthenticated" 
-                @click="activeTab = 'bookmarks'"
+                @click="setActiveTab('bookmarks')"
                 :class="[
                   'whitespace-nowrap pb-2 px-1 border-b-2 font-medium text-sm',
                   activeTab === 'bookmarks' ? 'border-primary text-primary' : 'border-transparent text-fg-muted hover:text-fg hover:border-gray-300'
@@ -121,23 +121,23 @@
                <!-- Initial Loading/Error/Empty States (Based on allScenarios now) -->
                <div v-if="pending && allScenarios.length === 0" class="text-center py-12">
                   <Icon name="line-md:loading-twotone-loop" class="w-8 h-8 text-fg-muted animate-spin inline-block" /> <p class="mt-2 text-fg-muted">Loading scenarios...</p>
-                  <div class="w-[500px]"></div>
+                  <div class="w-full max-w-[95vw]"></div>
                </div>
                <div v-else-if="error && allScenarios.length === 0" class="text-center py-12">
                     <Icon name="heroicons:exclamation-triangle" class="w-8 h-8 text-red-500 inline-block" /> <p class="mt-2 text-red-600">Error loading scenarios...</p>
                     <button @click="refreshPageOne" class="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark">Retry</button>
-                    <div class="w-[500px]"></div>
+                    <div class="w-full max-w-[95vw]"></div>
                </div>
                <div v-else-if="!pending && allScenarios.length === 0" class="text-center py-12 grid grid-cols-1 gap-1">
                   <div class="flex flex-col items-center justify-center">
                         <Icon name="heroicons:magnifying-glass" class="w-8 h-8 text-fg-muted inline-block" /> <p class="mt-2 text-fg-muted">No scenarios found matching filters.</p>
-                        <div class="w-[500px]"></div>
+                        <div class="w-full max-w-[95vw]"></div>
                   </div>
                </div>
                
                <!-- Scenario Cards (Iterate over allScenarios) -->
                <div v-else class="grid grid-cols-1 gap-1">
-                <div class="w-[500px]"></div>
+                <div class="w-full max-w-[95vw]"></div>
                     <ScenarioCard 
                         v-for="scenario in allScenarios" 
                         :key="scenario.scenarioId" 
@@ -168,7 +168,7 @@
                     <Icon name="heroicons:bookmark-slash" class="w-8 h-8 text-fg-muted inline-block" />
                     <p class="mt-2 text-fg-muted">You haven't bookmarked any scenarios yet.</p>
                 </div>
-                <div v-else class="grid grid-cols-1 gap-1 w-[500px]">
+                <div v-else class="grid grid-cols-1 gap-1 w-full max-w-[95vw]">
                     <ScenarioCard 
                         v-for="scenario in bookmarkStore.bookmarkedScenarios" 
                         :key="scenario.scenarioId" 
@@ -475,6 +475,23 @@ const { data: scenariosData, pending, error, refresh } = useFetch('/api/scenario
   immediate: false, 
 });
 
+// --- NEW: Method to Set Active Tab and Update Route ---
+const setActiveTab = (newTab) => {
+    if (activeTab.value === newTab) return; // Avoid unnecessary updates
+    
+    activeTab.value = newTab;
+    
+    // Update URL query
+    const { tab, ...restQuery } = route.query; // Remove existing tab param
+    const newQuery = { ...restQuery };
+    if (newTab === 'bookmarks') {
+        newQuery.tab = 'bookmarks';
+    } 
+    // No need to explicitly add tab=all, absence implies 'all'
+    
+    router.push({ query: newQuery });
+};
+
 // --- Watcher to handle scenariosData updates --- 
 watch(scenariosData, (newData) => {
     if (newData?.scenarios) {
@@ -503,8 +520,9 @@ watch(() => authStore.isAuthenticated, (isAuth, wasAuth) => {
         bookmarkStore.fetchBookmarks();
     } else if (!isAuth && wasAuth) {
         // console.log('[ScenariosPage] User logged out.');
+        // UPDATED: Use setActiveTab to switch back to 'all' and update URL
         if (activeTab.value === 'bookmarks') {
-            activeTab.value = 'all';
+            setActiveTab('all'); 
         }
     }
 });

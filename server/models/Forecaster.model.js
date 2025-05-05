@@ -54,8 +54,7 @@ const ForecasterSchema = new Schema({
   timestamps: true // Adds createdAt and updatedAt
 });
 
-// Ensure uniqueness for HUMAN forecasters linked to a specific User
-ForecasterSchema.index({ userId: 1 }, { unique: true, sparse: true });
+
 
 const Forecaster = mongoose.models.Forecaster || mongoose.model('Forecaster', ForecasterSchema);
 

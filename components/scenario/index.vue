@@ -17,7 +17,7 @@
       <div class="mb-4 pb-4 relative">
         <h1 class="text-2xl md:text-3xl font-bold text-fg mb-2 leading-tight">{{ scenario.name }}</h1>
         <!-- Main metadata container - full width, space between -->
-        <div class="flex flex-wrap items-center text-sm text-fg-muted w-full justify-between">
+        <div class="flex items-start text-sm text-fg-muted w-full justify-between">
           <!-- Group for left-aligned items -->
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-start">
              <!-- ADDED: Resolved/Unresolved Status -->
