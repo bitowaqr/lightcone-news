@@ -44,6 +44,7 @@
     "exa-js": "^1.5.13",
     "jsonwebtoken": "^9.0.2",
     "lodash-es": "^4.17.21",
+    "lorem-ipsum": "^2.0.8",
     "markdown-it": "^14.1.0",
     "mongoose": "^8.3.2",
     "newsapi": "^2.4.1",

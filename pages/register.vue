@@ -63,8 +63,8 @@
             </p>
         </form>
 
-        <!-- Registration Form (replaces original merged form) -->
-        <form v-if="viewState === 'register'" @submit.prevent="handleRegister" class="space-y-6 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
+        <!-- Registration Form (Step 1: Credentials) -->
+        <form v-if="viewState === 'register' && registerStep === 1" @submit.prevent="goToSectorStep" class="space-y-6 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
           <!-- Email Input -->
           <div>
             <label for="register-email" class="block text-sm font-medium text-fg-muted">Email</label>
@@ -105,23 +105,92 @@
                 class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
               >
           </div>
-          <!-- Submit Button -->
+          <!-- Error Message -->
+          <p v-if="isError && message" class="text-sm text-red-600 dark:text-red-400 text-center pt-1">{{ message }}</p>
+          <!-- Next Button -->
           <button
             type="submit"
             :disabled="isLoading"
             class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
           >
-            {{ isLoading ? 'Registering...' : 'Sign up' }}
+            Next
           </button>
+          <div class="text-center pt-2">
+            <button type="button" @click="goBackToWaitlist" class="text-sm text-primary hover:underline focus:outline-none">
+              Back to waitlist
+            </button>
+          </div>
+        </form>
+        <!-- Registration Form (Step 2: Sector Selection) -->
+        <form v-if="viewState === 'register' && registerStep === 2" @submit.prevent="handleRegister" class="space-y-6 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
+          <!-- Instruction Label -->
+          <div class="text-sm font-medium text-fg mb-3">Which feeds do you want to subscribe to?</div>
+          <!-- News Section -->
+          <div class="mb-4">
+            <div class="text-xs text-fg-muted mb-1">News</div>
+            <div class="flex flex-wrap gap-3">
+              <button
+                v-for="feed in newsFeeds"
+                :key="feed.key"
+                type="button"
+                :disabled="!feed.enabled"
+                @click="feed.enabled ? selectedFeeds = [feed.key] : null"
+                :class="[
+                  'px-3 py-1 rounded-full border text-xs font-medium transition-colors',
+                  feed.enabled ?
+                    (selectedFeeds.includes(feed.key)
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-bg text-primary border-primary/40 hover:bg-primary/10')
+                    : 'bg-bg text-fg-muted border-accent-bg opacity-40 cursor-not-allowed'
+                ]"
+              >
+                {{ feed.label }}
+              </button>
+            </div>
+          </div>
+          <!-- Industries Section -->
+          <div class="mb-4">
+            <div class="text-xs text-fg-muted mb-1">Industries</div>
+            <div class="flex flex-wrap gap-3">
+              <button
+                v-for="feed in industryFeeds"
+                :key="feed.key"
+                type="button"
+                disabled
+                class="px-3 py-1 rounded-full border text-xs font-medium bg-bg text-fg-muted border-accent-bg opacity-40 cursor-not-allowed"
+              >
+                {{ feed.label }}
+              </button>
+            </div>
+          </div>
+          <!-- Custom Section -->
+          <div class="mb-4">
+            <div class="text-xs text-fg-muted mb-1">Custom</div>
+            <button type="button" disabled class="px-3 py-1 rounded-full border text-xs font-medium bg-bg text-fg-muted border-accent-bg opacity-40 cursor-not-allowed">
+              Request a custom feed
+            </button>
+          </div>
+          <!-- Info Note -->
+          <div class="text-xs text-fg-muted mt-2 text-left">
+            Currently, only the <span class="font-semibold text-primary">Global</span> feed is available. More options coming soon.
+          </div>
+          <!-- Back/Submit Buttons -->
+          <div class="flex justify-between items-center pt-2">
+            <button type="button" @click="goBackToCredentials" class="text-sm text-primary hover:underline focus:outline-none">
+              Back
+            </button>
+            <button
+              type="submit"
+              :disabled="isLoading"
+              class="py-2.5 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
+            >
+              Sign up
+            </button>
+          </div>
           <!-- Message Area -->
           <p v-if="message" class="text-sm text-center pt-2" :class="isError ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
             {{ message }}
           </p>
-           <div class="text-center pt-2">
-             <button type="button" @click="goBackToWaitlist" class="text-sm text-primary hover:underline focus:outline-none">
-               Back to waitlist
-             </button>
-           </div>
         </form>
         <!-- End Registration Form -->
 
@@ -172,11 +241,36 @@ const showActivationInput = ref(false);
 const activationCode = ref('');
 const activationError = ref('');
 
+// Registration Step State
+const registerStep = ref(1); // 1 = credentials, 2 = sector selection
+
 // Form Fields
 const waitlistEmail = ref('');
 const registerEmail = ref(''); // Separate email for registration form
 const password = ref('');
 const confirmPassword = ref('');
+
+// Sector Selection (mock, only Global enabled)
+const selectedFeeds = ref(['global']);
+const newsFeeds = [
+  { key: 'global', label: 'Global', enabled: true },
+  { key: 'us', label: 'US', enabled: false },
+  { key: 'uk', label: 'UK', enabled: false },
+  { key: 'germany', label: 'Germany', enabled: false },
+  { key: 'france', label: 'France', enabled: false },
+];
+const industryFeeds = [
+  { key: 'pharma', label: 'Pharma', enabled: false },
+  { key: 'heor', label: 'HEOR', enabled: false },
+  { key: 'solar', label: 'Solar', enabled: false },
+  { key: 'supplychain', label: 'Supply Chain', enabled: false },
+  { key: 'climate', label: 'Climate', enabled: false },
+  { key: 'fintech', label: 'Fintech', enabled: false },
+  { key: 'energy', label: 'Energy', enabled: false },
+  { key: 'agritech', label: 'AgriTech', enabled: false },
+  { key: 'cybersecurity', label: 'Cybersecurity', enabled: false },
+  { key: 'insurance', label: 'Insurance', enabled: false },
+];
 
 // UI Feedback
 const message = ref('');
@@ -242,25 +336,12 @@ async function handleRegister() {
   isLoading.value = true;
   activationError.value = ''; // Clear activation error
 
-  // Client-side validation
-  if (password.value !== confirmPassword.value) {
-    message.value = 'Passwords do not match.';
-    isError.value = true;
-    isLoading.value = false;
-    return;
-  }
-  if (password.value.length < 6) {
-    message.value = 'Password must be at least 6 characters long.';
-    isError.value = true;
-    isLoading.value = false;
-    return;
-  }
-
   // Call auth store's register action, now including the activation code
   const success = await authStore.register({
     email: registerEmail.value,
     password: password.value,
-    activationCode: activationCode.value // Send the code used to unlock the form
+    activationCode: activationCode.value, // Send the code used to unlock the form
+    feeds: selectedFeeds.value // Only 'global' for now
   });
 
   isLoading.value = false;
@@ -277,12 +358,29 @@ async function handleRegister() {
      // Check if the error is specifically about the activation code from the backend
      if (authStore.error && authStore.error.toLowerCase().includes('activation code')) {
          message.value = authStore.error; // Show specific backend error
-         // Maybe force user back to waitlist view? Or just show error.
-         // viewState.value = 'waitlist';
-         // showActivationInput.value = true;
      }
     isError.value = true;
   }
+}
+
+function goToSectorStep() {
+  // Client-side validation for password length and match
+  message.value = '';
+  isError.value = false;
+  if (password.value.length < 6) {
+    message.value = 'Password must be at least 6 characters long.';
+    isError.value = true;
+    return;
+  }
+  if (password.value !== confirmPassword.value) {
+    message.value = 'Passwords do not match.';
+    isError.value = true;
+    return;
+  }
+  registerStep.value = 2;
+}
+function goBackToCredentials() {
+  registerStep.value = 1;
 }
 
 // --- Navigation ---
@@ -297,6 +395,7 @@ function goBackToWaitlist() {
     registerEmail.value = '';
     password.value = '';
     confirmPassword.value = '';
+    registerStep.value = 1;
 }
 
 

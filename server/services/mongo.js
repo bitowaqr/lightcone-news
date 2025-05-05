@@ -4,6 +4,7 @@ import Lineup from '../models/Lineup.model.js';
 import Article from '../models/Article.model.js';
 import Scenario from '../models/Scenario.model.js';
 import StoryIdeas from '../models/StoryIdeas.model.js';
+import Forecaster from '../models/Forecaster.model.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -111,6 +112,66 @@ class MongoService {
     await this.connect();
     const _storyIdeas = await StoryIdeas.create(storyIdeas);
     return _storyIdeas;
+  }
+
+  // Add the new saveScenario function here
+  async saveScenario(scenarioData) {
+    await this.connect();
+    try {
+        // Set default status if not provided (should generally be set before calling)
+        const dataToSave = {
+            ...scenarioData,
+            status: scenarioData.status || 'PENDING', // Ensure status is PENDING
+        };
+
+        // Handle linking article if articleId is present
+        if (scenarioData.articleId) {
+            // Ensure it's a valid ObjectId if using mongoose refs
+            if (mongoose.Types.ObjectId.isValid(scenarioData.articleId)) {
+                 // Add articleId to the relatedArticleIds array
+                 // Use $addToSet to avoid duplicates if scenarioData already has it
+                dataToSave.relatedArticleIds = [
+                    ...(scenarioData.relatedArticleIds || []),
+                    scenarioData.articleId
+                ];
+                // Remove potential duplicate if it was already there
+                dataToSave.relatedArticleIds = [...new Set(dataToSave.relatedArticleIds.map(id => id.toString()))];
+
+            } else {
+                console.warn(`Invalid articleId (${scenarioData.articleId}) provided when saving scenario. Skipping linking.`);
+            }
+            // Remove articleId from top level as it's now in relatedArticleIds
+            // delete dataToSave.articleId; // Keep it for now, model might handle it
+        }
+
+        console.log('Attempting to create Scenario with data:', dataToSave);
+        const newScenario = new Scenario(dataToSave);
+        const savedScenario = await newScenario.save();
+        console.log(`Saved new scenario with ID: ${savedScenario._id}`);
+
+        // **Important**: Manually trigger the Article update if needed here
+        // The Scenario post-save hook updates Articles, but only if relatedArticleIds CHANGES during save.
+        // Since we are setting it on CREATE, the hook might not see a change.
+        // We need to explicitly update the related Article here.
+        if (savedScenario.relatedArticleIds && savedScenario.relatedArticleIds.length > 0) {
+             console.log(`Explicitly updating related articles: ${savedScenario.relatedArticleIds.join(', ')} to add scenario ${savedScenario._id}`);
+             await Article.updateMany(
+                { _id: { $in: savedScenario.relatedArticleIds } },
+                { $addToSet: { relatedScenarioIds: savedScenario._id } }
+             );
+        }
+
+        return savedScenario;
+    } catch (error) {
+        console.error('Error saving scenario:', error);
+        // Check for specific errors like duplicate keys if needed
+        if (error.code === 11000) { // Duplicate key error
+             console.error(`Duplicate key error saving scenario. Platform/ID: ${scenarioData.platform}/${scenarioData.platformScenarioId}`);
+             // Handle duplicate scenario error - maybe return existing or throw specific error
+             throw new Error(`Duplicate scenario error for ${scenarioData.platform}/${scenarioData.platformScenarioId}`);
+        }
+        throw error; // Re-throw other errors
+    }
   }
 
   async getStoryIdeasFromLatestLineup(ideaStatusOnly = true) {

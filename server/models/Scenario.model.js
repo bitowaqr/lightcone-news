@@ -27,12 +27,14 @@ const scenarioSchema = new mongoose.Schema({
   // CURRENT STATE
   status: {
     type: String,
-    enum: ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED', 'UPCOMING', 'UNKNOWN'],
+    enum: ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED', 'UPCOMING', 'UNKNOWN', 'PENDING'],
     default: 'OPEN'
   },
   currentProbability: { type: Number, min: 0, max: 1 }, // BINARY 
   currentValue: { type: mongoose.Schema.Types.Mixed }, // NUMERIC/DATE 
+  valueHistory: [{ timestamp: Date, value: mongoose.Schema.Types.Mixed }], // Optional: History for other types
   options: [{ name: String, probability: Number }], // For CATEGORICAL types
+  optionHistory: [{ timestamp: Date, options: [{ name: String, probability: Number }] }], // Time series for CATEGORICAL types
   
   // URLS
   url: { type: String, unique: true, sparse: true, trim: true }, // Direct URL to the source (if external)
@@ -40,8 +42,38 @@ const scenarioSchema = new mongoose.Schema({
   embedUrl: { type: String, trim: true }, // URL to embed the scenario in a UI
   
   // HISTORY
-  probabilityHistory: [{ timestamp: Date, value: mongoose.Schema.Types.Mixed }], // Time series for BINARY types
-  valueHistory: [{ timestamp: Date, value: mongoose.Schema.Types.Mixed }], // Optional: History for other types
+  probabilityHistory: [{ 
+      timestamp: Date, 
+      probability: Number, 
+      forecasterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Forecaster', index: true },
+      rationalSummary: String, 
+      rationalDetails: String, 
+      comment: String, 
+      dossier: mongoose.Schema.Types.Mixed 
+  }], // Time series for BINARY types
+
+  valueHistory: [{ 
+      timestamp: Date, 
+      value: mongoose.Schema.Types.Mixed, 
+      forecasterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Forecaster', index: true },
+      rationalSummary: String, 
+      rationalDetails: String, 
+      comment: String, 
+      dossier: mongoose.Schema.Types.Mixed 
+  }], // Optional: History for other types
+
+  optionHistory: [{ 
+      timestamp: Date, 
+      options: [{ 
+          name: String, 
+          probability: Number, 
+          forecasterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Forecaster' },
+          rationalSummary: String, 
+          rationalDetails: String, 
+          comment: String, 
+          dossier: mongoose.Schema.Types.Mixed 
+      }] 
+  }], // Time series for CATEGORICAL types
   
   // Data about the scenario
   volume: { type: Number },
@@ -81,6 +113,15 @@ const scenarioSchema = new mongoose.Schema({
   // AI Vector Embedding
   textForEmbedding: { type: String },
   aiVectorEmbedding: { type: [Number], select: false },
+
+
+  // auth
+  visibility: {
+    type: String,
+    enum: ['PUBLIC', 'PRIVATE', 'UNLISTED'],
+    default: 'PUBLIC'
+  },
+  owners: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 }, {
   timestamps: true
 });

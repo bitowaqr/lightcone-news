@@ -33,7 +33,12 @@ export default defineEventHandler(async (event) => {
     '/api/scenarios/*',
     // Add other public API endpoints here (e.g., '/api/newsfeed/public')
   ];
-  const isPublicApiPath = publicApiPaths.some(p => path.startsWith(p));
+  const privateSubPaths = [
+    '/api/scenarios/request',
+  ]
+  let isPublicApiPath = publicApiPaths.some(p => path.startsWith(p) && !privateSubPaths.some(sp => path.startsWith(sp)));
+
+
 
   if (isPublicApiPath) {
     // Skip authentication for public API paths

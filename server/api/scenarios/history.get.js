@@ -250,6 +250,93 @@ async function fetchManifoldHistory(scenario) {
     }
 }
 
+// --- Lightcone History Fetcher --- Calculate Median History at Each Timestamp ---
+async function fetchLightconeHistory(scenario) {
+    if (!scenario) {
+        console.warn(`[Scenario History] Invalid scenario data provided for Lightcone history fetch.`);
+        return null;
+    }
+
+    if (scenario.scenarioType !== 'BINARY') {
+        console.warn(`[Scenario History] Median history fetch for Lightcone only implemented for BINARY type. Scenario ID: ${scenario._id}, Type: ${scenario.scenarioType}`);
+        return null; // Return null for non-binary
+    }
+
+    const history = scenario.probabilityHistory;
+
+    if (!history || history.length === 0) {
+        console.warn(`[Scenario History] No probability history found for Lightcone scenario: ${scenario._id}`);
+        return { Yes: [] }; // Return empty chart data
+    }
+
+    // 1. Filter for valid entries and sort primarily by timestamp, secondarily maybe by something else if needed
+    const validHistory = history
+        .filter(f => f.timestamp && !isNaN(new Date(f.timestamp).getTime()) && f.forecasterId && typeof f.probability === 'number' && !isNaN(f.probability))
+        .map(f => ({ ...f, timestampMillis: new Date(f.timestamp).getTime() })) // Pre-calculate milliseconds
+        .sort((a, b) => a.timestampMillis - b.timestampMillis);
+
+    if (validHistory.length === 0) {
+        console.warn(`[Scenario History] No valid entries found in probability history for Lightcone scenario: ${scenario._id}`);
+        return { Yes: [] };
+    }
+
+    // 2. Get all unique timestamps where forecasts occurred
+    const uniqueTimestamps = [...new Set(validHistory.map(f => f.timestampMillis))].sort((a, b) => a - b);
+
+    const medianHistoryPoints = [];
+
+    // 3. Iterate through each unique timestamp
+    for (const tPoint of uniqueTimestamps) {
+        // 4. Filter forecasts made at or before this timestamp
+        const relevantForecasts = validHistory.filter(f => f.timestampMillis <= tPoint);
+
+        if (relevantForecasts.length === 0) continue;
+
+        // 5. Find the latest forecast for each forecaster *within this subset*
+        const latestForecastsAtPoint = new Map();
+        for (const forecast of relevantForecasts) {
+            const key = forecast.forecasterId._id ? forecast.forecasterId._id.toString() : forecast.forecasterId.toString();
+            const existing = latestForecastsAtPoint.get(key);
+
+            // Compare based on pre-calculated timestampMillis
+            if (!existing || forecast.timestampMillis > existing.timestampMillis) {
+                latestForecastsAtPoint.set(key, forecast);
+            }
+        }
+
+        // 6. Calculate the median of these latest probabilities
+        const probabilities = Array.from(latestForecastsAtPoint.values()).map(f => f.probability);
+
+        if (probabilities.length > 0) {
+            probabilities.sort((a, b) => a - b);
+            let medianChance;
+            const mid = Math.floor(probabilities.length / 2);
+            if (probabilities.length % 2 === 0) {
+                medianChance = (probabilities[mid - 1] + probabilities[mid]) / 2;
+            } else {
+                medianChance = probabilities[mid];
+            }
+
+            // 7. Add the median data point for this timestamp
+            medianHistoryPoints.push({
+                t: tPoint, // Use the exact unique timestamp
+                y: medianChance
+            });
+        }
+    }
+     // 8. Deduplicate points with the same median at consecutive timestamps (optional but good for chart rendering)
+     const finalMedianHistory = medianHistoryPoints.filter((point, index, arr) => {
+        // Keep the first point
+        if (index === 0) return true;
+        // Keep the point if its value is different from the previous one
+        return point.y !== arr[index - 1].y;
+    });
+
+
+    // 9. Return in the format expected by the chart composable
+    return { Yes: finalMedianHistory };
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const { platform, id: platformScenarioId } = query; // Use 'id' from query as platformScenarioId
@@ -274,7 +361,16 @@ export default defineEventHandler(async (event) => {
 
   try {
     // 1. Find the Scenario document in the database
-    const scenario = await Scenario.findOne({ platform, platformScenarioId }).lean();
+    let scenarioQuery = Scenario.findOne({ platform, platformScenarioId }); // Use let for query modification
+
+    // --- RE-ADD POPULATE: Populate forecaster details for Lightcone history --- 
+    if (platform === 'Lightcone') {
+      // Select only the needed fields from Forecaster
+      scenarioQuery = scenarioQuery.populate('probabilityHistory.forecasterId', 'name avatar'); 
+    }
+    // --- END RE-ADD POPULATE ---
+
+    const scenario = await scenarioQuery.lean(); // Execute the query
 
     if (!scenario) {
       throw createError({ statusCode: 404, statusMessage: 'Scenario not found in database' });
@@ -290,6 +386,15 @@ export default defineEventHandler(async (event) => {
         break;
       case 'Manifold':
         history = await fetchManifoldHistory(scenario);
+        break;
+      case 'Lightcone':
+        // Calculate the median history for the chart
+        const chartHistory = await fetchLightconeHistory(scenario); // Returns { Yes: [...] }
+        // Combine chart data and the original populated history for the details
+        history = { 
+            chartData: chartHistory, 
+            detailsData: scenario.probabilityHistory // Use the populated history from the main query
+        };
         break;
       default:
         throw createError({

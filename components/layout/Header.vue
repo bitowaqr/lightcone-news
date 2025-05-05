@@ -271,6 +271,72 @@ async function handleLogout() {
           </div>
         </div>
       </nav>
+      <!-- Sector Selection Row -->
+      <div v-if="false" class="w-full bg-bg shadow-sm border-b border-bg-light">
+        <div class="container mx-auto px-4 py-0.5 flex-nowrap flex overflow-x-auto space-x-1 items-center text-xs select-none whitespace-nowrap">
+          <NuxtLink
+            to="/"
+            class="px-2 py-0.5 rounded-full transition-colors duration-150 text-primary/80 font-medium cursor-pointer hover:text-primary hover:bg-primary/10"
+            >Global</NuxtLink>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >USA</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >UK</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Germany</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >France</span>
+          <span class="mx-1 text-fg-muted opacity-40 select-none">|</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Pharma</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >HEOR</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Solar</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Supply Chain</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Climate</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Fintech</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Energy</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >AgriTech</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Cybersecurity</span>
+          <span
+            class="px-2 py-0.5 rounded-full text-fg-muted opacity-40 cursor-not-allowed hover:bg-primary/20 transition-colors duration-150"
+            title="Subscriber feature"
+            >Insurance</span>
+        </div>
+      </div>
     </div>
   </header>
 </template>

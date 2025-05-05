@@ -137,6 +137,7 @@
                
                <!-- Scenario Cards (Iterate over allScenarios) -->
                <div v-else class="grid grid-cols-1 gap-1">
+                <div class="w-[500px]"></div>
                     <ScenarioCard 
                         v-for="scenario in allScenarios" 
                         :key="scenario.scenarioId" 
@@ -152,14 +153,14 @@
 
                <!-- ADDED: End of List Indicator -->
                <div v-if="!pending && scenariosData?.pagination && currentPage >= scenariosData.pagination.totalPages && allScenarios.length > 0" 
-                    class="text-center py-4 text-sm text-fg-muted">
+                    class="text-center text-xs font-medium text-fg-muted pt-6 pb-2 opacity-60">
                     You've reached the end.
                </div>
 
            </div>
 
             <!-- Bookmarked Scenarios List (for 'Bookmarks' tab) -->
-           <div v-if="activeTab === 'bookmarks'" class="pt-4">
+           <div v-if="activeTab === 'bookmarks'" class="pt-2">
                  <div v-if="bookmarkStore.isLoading" class="text-center py-12">
                     <Icon name="line-md:loading-twotone-loop" class="w-8 h-8 text-fg-muted animate-spin inline-block" /> <p class="mt-2 text-fg-muted">Loading bookmarks...</p>
                 </div>
@@ -167,7 +168,7 @@
                     <Icon name="heroicons:bookmark-slash" class="w-8 h-8 text-fg-muted inline-block" />
                     <p class="mt-2 text-fg-muted">You haven't bookmarked any scenarios yet.</p>
                 </div>
-                <div v-else class="grid grid-cols-1 gap-3">
+                <div v-else class="grid grid-cols-1 gap-1 w-[500px]">
                     <ScenarioCard 
                         v-for="scenario in bookmarkStore.bookmarkedScenarios" 
                         :key="scenario.scenarioId" 
@@ -223,11 +224,13 @@
           <!-- Request Form View -->
           <template v-if="rightColumnMode === 'requestForm'">
               <!-- Optionally pass article context if available -->
-               <ScenarioRequestForm 
-                 :article-id="contextArticleId" 
-                 :article-title="contextArticleTitle" 
-                 @submitted="handleRequestSubmitted" 
-                 @cancelled="handleRequestCancelled" 
+               <ScenarioRequestForm
+                 :article-id="contextArticleId"
+                 :article-title="contextArticleTitle"
+                 :is-desktop="isDesktop" 
+                 @submitted="handleRequestSubmitted"
+                 @cancelled="handleRequestCancelled"
+                 @scenario-created="handleScenarioCreated"
                />
           </template>
 
@@ -679,6 +682,19 @@ const handleRequestSubmitted = (message) => {
 const handleRequestCancelled = () => {
     // console.log('Form cancelled event received');
     closeRightColumn(); 
+};
+
+// --- ADDED: Handler for Scenario Creation Event ---
+const handleScenarioCreated = (scenarioId) => {
+    console.log('Scenario created event received with ID:', scenarioId);
+    if (isDesktop.value) {
+        // On desktop, automatically select and show the newly created scenario
+        handleScenarioSelected(scenarioId);
+    } else {
+        // On mobile, the success message is already shown by handleRequestSubmitted
+        // We don't need to automatically navigate away from the success message.
+        console.log('On mobile, keeping success message visible.');
+    }
 };
 
 </script>

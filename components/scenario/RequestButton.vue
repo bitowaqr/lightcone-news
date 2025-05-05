@@ -7,10 +7,10 @@
       <!-- Left Side: Title & Description -->
       <div class="flex flex-col flex-1 min-w-0">
          <div class="font-semibold text-fg w-full text-sm leading-tight sm:leading-tight line-clamp-3 group-hover:">
-           Request a Forecast
+           Request New Scenario
          </div>
          <div class="text-[11px] text-fg-muted opacity-90 mt-0.5 truncate">
-           Suggest a topic for a new probabilistic forecast.
+          Suggest a question for a new probabilistic forecast.
          </div>
       </div>
       

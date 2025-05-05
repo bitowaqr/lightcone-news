@@ -1,7 +1,6 @@
 import { defineEventHandler, createError, getRouterParams } from 'h3';
 import mongoose from 'mongoose'; // Import mongoose for ObjectId validation
 import Scenario from '../../models/Scenario.model'; // Adjusted path for Scenario model
-import Article from '../../models/Article.model'; // Import Article model
 import { formatRelativeTime } from '../../utils/formatRelativeTime'; // Optional: if date formatting is needed
 
 export default defineEventHandler(async (event) => {
@@ -25,7 +24,7 @@ export default defineEventHandler(async (event) => {
       .populate({
         path: 'relatedScenarioIds',
         select:
-          '_id question scenarioType currentProbability platform platformScenarioId clobTokenIds', // Adjust fields as needed
+          '_id question questionNew scenarioType currentProbability platform platformScenarioId clobTokenIds resolutionCriteria', // Adjust fields as needed
         model: Scenario, // Explicitly specify the model for self-reference
       })
       // Populate related articles
@@ -43,6 +42,8 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+
+    console.log('Scenario:', scenario);
     // Optional: Check if scenario is 'OPEN' or meets other criteria for viewing
     // if (scenario.resolutionData.status !== 'OPEN' /* && !isAdmin(event.context.user) */) {
     //    throw createError({ statusCode: 403, statusMessage: 'Scenario not accessible' });
@@ -59,6 +60,7 @@ export default defineEventHandler(async (event) => {
             : null,
         platform: relScenario.platform,
         platformScenarioId: relScenario.platformScenarioId,
+        resolutionCriteria: relScenario.resolutionCriteria,
         // TODO: Handle other scenario types if needed
       })
     );
@@ -75,7 +77,7 @@ export default defineEventHandler(async (event) => {
 
     // Map Scenario model fields to the expected API response structure
 
-    let resolutionDate = scenario?.resolutionData?.resolutionDate;
+    let resolutionDate = scenario?.resolutionData?.resolutionCloseDate;
     let expectedResolutionDate =
       scenario?.resolutionData?.expectedResolutionDate;
     let closeDate = resolutionDate || expectedResolutionDate;
@@ -91,10 +93,10 @@ export default defineEventHandler(async (event) => {
       platform: scenario.platform, // Add platform if needed
       platformScenarioId: scenario.platformScenarioId,
       closeDate: closeDate,
+      resolutionCriteria: scenario.resolutionData?.resolutionCriteria ?? scenario.description,
       resolutionDate: resolutionDate,
       expectedResolutionDate: expectedResolutionDate,
       description: scenario.description,
-      resolutionCriteria: scenario.resolutionCriteria,
       scenarioType: scenario.scenarioType,
       status: scenario?.status || 'UNKNOWN',
       resolutionValue: scenario.resolutionData?.resolutionValue,
@@ -104,12 +106,20 @@ export default defineEventHandler(async (event) => {
       volume: scenario.volume,
       numberOfTraders: scenario.numberOfTraders,
       liquidity: scenario.liquidity,
+
+
+      // rationale history:
+      probabilityHistory: scenario.platform === 'Lightcone' ? scenario.probabilityHistory : [],
+      valueHistory: scenario.platform === 'Lightcone' ? scenario.valueHistory : [],
+      optionHistory: scenario.platform === 'Lightcone' ? scenario.optionHistory : [],
+
       rationaleSummary: scenario.rationaleSummary,
       rationaleDetails: scenario.rationaleDetails,
       dossier: scenario.dossier,
 
       scenarios: relatedScenarios,
       relatedArticles: relatedArticles,
+      
     };
 
     return response;

@@ -1,118 +1,73 @@
 import { defineEventHandler, getQuery, createError } from 'h3';
-import { useRuntimeConfig } from '#imports'; // Import useRuntimeConfig
-import { fetchAndFormatSingleManifoldMarket } from '../../scraper-scenarios/manifold.js'; // <-- Import Manifold fetcher
+import { useRuntimeConfig } from '#imports';
+import { fetchAndFormatSingleManifoldMarket } from '../../scraper-scenarios/manifold.js';
+import Scenario from '../../models/Scenario.model.js';
+import mongoose from 'mongoose';
 
-// Base URLs for different platforms (consider moving to config if grows)
 const PLATFORM_API_URLS = {
   Polymarket: 'https://gamma-api.polymarket.com/markets/',
-  Metaculus: 'https://www.metaculus.com/api/posts/', // Example
-  // Manifold doesn't need a base URL here as its function constructs the full URL
+  Metaculus: 'https://www.metaculus.com/api/posts/',
 };
 
-// Simple cache object (in-memory, basic)
 const cache = new Map();
-const CACHE_DURATION_MS = 1 * 60 * 1000; // Cache for 1 minutes
-const FETCH_TIMEOUT_MS = 10_000; // 10 seconds timeout
+const CACHE_DURATION_MS = 1 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 10_000;
 
 async function fetchPolymarketChance(apiUrl) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     
     try {
-        // Use $fetch available globally in Nuxt server routes, pass signal
         const data = await $fetch(apiUrl, { signal: controller.signal });
-        // Clear timeout if fetch completes successfully
         clearTimeout(timeoutId);
-        
 
-    if (data && data.outcomes && data.outcomePrices) {
-      const outcomes = JSON.parse(data.outcomes);
-      const prices = JSON.parse(data.outcomePrices);
+        if (data && data.outcomes && data.outcomePrices) {
+            const outcomes = JSON.parse(data.outcomes);
+            const prices = JSON.parse(data.outcomePrices);
+            const yesIndex = outcomes.findIndex(o => typeof o === 'string' && o.toLowerCase() === 'yes');
 
-      // Find the index of the "Yes" outcome (case-insensitive)
-      const yesIndex = outcomes.findIndex(o => typeof o === 'string' && o.toLowerCase() === 'yes');
-
-      if (yesIndex !== -1 && prices[yesIndex] !== undefined) {
-        const parsedChance = parseFloat(prices[yesIndex]);
-        if (!isNaN(parsedChance)) {
-          return { chance: parsedChance, volume: data.volumeNum, status: data.umaResolutionStatus === 'resolved' && data.closed ? 'RESOLVED' : (data.closed ? 'CLOSED' : 'OPEN') };
-        } else {
-          console.error(`[Scenario Chance Proxy] Failed to parse chance from Polymarket response for ${apiUrl}`);
-          throw new Error('Failed to parse chance');
+            if (yesIndex !== -1 && prices[yesIndex] !== undefined) {
+                const parsedChance = parseFloat(prices[yesIndex]);
+                if (!isNaN(parsedChance)) {
+                    return { chance: parsedChance, volume: data.volumeNum, status: data.umaResolutionStatus === 'resolved' && data.closed ? 'RESOLVED' : (data.closed ? 'CLOSED' : 'OPEN') };
+                }
+                throw new Error('Failed to parse chance');
+            }
+            return null;
         }
-      } else {
-        // Handle cases where 'Yes'/'No' might not be present or structure differs
-        // For non-binary, maybe we return the structure or a primary outcome?
-        console.warn(`[Scenario Chance Proxy] Could not find standard "Yes" outcome/price in Polymarket response for ${apiUrl}. Outcomes: ${data.outcomes}`);
-        // For now, let's return null if it's not a clear Yes/No binary market for simplicity
-        // Or throw an error if a chance is strictly expected
-        // throw new Error('Could not find valid Yes/No outcome/price');
-        return null; // Indicate not found or not applicable
-      }
-    } else {
-      console.error(`[Scenario Chance Proxy] Invalid data structure from Polymarket API for ${apiUrl}`);
-      throw new Error('Invalid data structure from API');
+        throw new Error('Invalid data structure from API');
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw createError({ statusCode: 504, statusMessage: `Timeout fetching data from Polymarket after ${FETCH_TIMEOUT_MS / 1000}s` });
+        }
+        if (error.response && error.response.status === 404) {
+            return null;
+        }
+        throw createError({ statusCode: error.response?.status || 502, statusMessage: `Failed to fetch or parse data from Polymarket: ${error.message}` });
     }
-  } catch (error) {
-    // Clear timeout in case of error too
-    clearTimeout(timeoutId);
-
-    // Check if error is due to abort/timeout
-    if (error.name === 'AbortError') {
-        console.warn(`[Scenario Chance Proxy] Timeout fetching Polymarket data for ${apiUrl}`);
-        throw createError({
-            statusCode: 504, // Gateway Timeout
-            statusMessage: `Timeout fetching data from Polymarket after ${FETCH_TIMEOUT_MS / 1000}s`,
-        });
-    }
-
-    // Check if the error is from $fetch itself (e.g., 404 Not Found)
-    if (error.response && error.response.status === 404) {
-        console.warn(`[Scenario Chance Proxy] 404 Not Found fetching Polymarket data for ${apiUrl}`);
-        // Return null or a specific indicator instead of throwing a server error for a simple 404
-        return null;
-    }
-
-    console.error(`[Scenario Chance Proxy] Error fetching or parsing Polymarket data for ${apiUrl}:`, error);
-    // Re-throw a more specific error or handle it
-    throw createError({
-      statusCode: error.response?.status || 502, // Use status from upstream if available, else 502
-      statusMessage: `Failed to fetch or parse data from Polymarket: ${error.message}`,
-    });
-  }
 }
-
 
 async function fetchMetaculusChance(apiUrl) {
     const runtimeConfig = useRuntimeConfig();
-    const headers = { 'Authorization': `Token ${runtimeConfig.metaculusApiToken}` }; // Use token
+    const headers = { 'Authorization': `Token ${runtimeConfig.metaculusApiToken}` };
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     
     try {
-        // Metaculus API endpoint is /api/questions/{id}/
-        // The provided apiUrl already includes the base and ID from the calling function
-        // CORRECTED: Use /api/posts/{id}/ endpoint
         const data = await $fetch(apiUrl, { 
             signal: controller.signal,
             headers: headers,
-            parseResponse: JSON.parse // Ensure response is parsed as JSON
+            parseResponse: JSON.parse
         });
         
         clearTimeout(timeoutId);
         
-        // Extract data based on the provided example structure and scraper logic
-        // The API returns the question data directly, not nested under 'question' like the posts endpoint
-        // CORRECTED: Data is nested under 'question' in the /posts/ response
         if (data && data.question && typeof data.question === 'object' && data.question.type === 'binary') { 
             let currentProbability = null;
             let status = 'UNKNOWN';
-
-            // Get probability from community prediction first, then metaculus prediction, nested under 'question'
-            // CORRECTED: Use aggregations path based on response and scraper logic
             const predictionSource = data.question.aggregations?.recency_weighted?.latest || data.question.aggregations?.metaculus_prediction?.latest;
 
-            // Extract probability using correct paths/indices
             if (predictionSource) {
                 let prob = null;
                 if (predictionSource.centers && predictionSource.centers.length > 0) {
@@ -126,137 +81,151 @@ async function fetchMetaculusChance(apiUrl) {
                 }
             }
             
-            // Get status from the main question object
-            // CORRECTED: Get status from either post or question, prioritizing question
             const statusSource = data.question.status || data.status;
             const statusLower = statusSource ? statusSource.toLowerCase() : 'unknown';
             if (statusLower === 'open') status = 'OPEN';
-            else if (statusLower === 'closed') status = 'CLOSED'; // Closed but not yet resolved
+            else if (statusLower === 'closed') status = 'CLOSED';
             else if (statusLower === 'resolved') status = 'RESOLVED';
-            else if (statusLower === 'upcoming') status = 'UPCOMING'; // Upcoming/pending
-            
-            // Return the structured data, volume/liquidity are null for Metaculus
-            // Use nr_forecasters or vote score as a proxy for volume?
-            // CORRECTED: Use nr_forecasters from post or question
+            else if (statusLower === 'upcoming') status = 'UPCOMING';
             return {
                  chance: currentProbability,
-                 volume: data.nr_forecasters ?? data.question.nr_forecasters ?? null, // Using nr_forecasters as proxy
+                 volume: data.nr_forecasters ?? data.question.nr_forecasters ?? null,
                  status: status,
                  liquidity: null
             };
         } else if (data && data.question && data.question.type !== 'binary') {
-             console.warn(`[Scenario Chance Proxy] Metaculus question ${apiUrl} is not binary (type: ${data.question.type}). Returning null.`);
-             return null; // Only handle binary for now
+            return null;
         } else {
-            console.error(`[Scenario Chance Proxy] Invalid data structure from Metaculus API for ${apiUrl}`);
             throw new Error('Invalid data structure from API');
         }
 
     } catch (error) {
         clearTimeout(timeoutId);
-
         if (error.name === 'AbortError') {
-            console.warn(`[Scenario Chance Proxy] Timeout fetching Metaculus data for ${apiUrl}`);
-            throw createError({
-                statusCode: 504,
-                statusMessage: `Timeout fetching data from Metaculus after ${FETCH_TIMEOUT_MS / 1000}s`,
-            });
+            throw createError({ statusCode: 504, statusMessage: `Timeout fetching data from Metaculus after ${FETCH_TIMEOUT_MS / 1000}s` });
         }
-        
         if (error.response && error.response.status === 404) {
-            console.warn(`[Scenario Chance Proxy] 404 Not Found fetching Metaculus data for ${apiUrl}`);
-            return null; // Return null for 404s
+            return null;
         }
-        
         if (error.response && error.response.status === 401) {
-           console.error(`[Scenario Chance Proxy] 401 Unauthorized fetching Metaculus data for ${apiUrl}. Check API Token.`);
-           throw createError({
-             statusCode: 401,
-             statusMessage: `Unauthorized fetching Metaculus data. Check API Token.`,
-           });
+           throw createError({ statusCode: 401, statusMessage: `Unauthorized fetching Metaculus data. Check API Token.` });
         }
-
-        console.error(`[Scenario Chance Proxy] Error fetching or parsing Metaculus data for ${apiUrl}:`, error);
-        throw createError({
-            statusCode: error.response?.status || 502,
-            statusMessage: `Failed to fetch or parse data from Metaculus: ${error.message}`,
-        });
+        throw createError({ statusCode: error.response?.status || 502, statusMessage: `Failed to fetch or parse data from Metaculus: ${error.message}` });
     }
 }
 
-// --- Manifold Chance Fetcher ---
 async function fetchManifoldChance(platformScenarioId) {
     if (!platformScenarioId) {
-        console.warn(`[Scenario Chance Proxy] Missing Manifold platformScenarioId.`);
         return null;
     }
 
-    // Add a timeout mechanism around the scraper function call
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
         throw new Error('Manifold chance fetch timed out');
     }, FETCH_TIMEOUT_MS);
 
     try {
-        // Use the existing function that fetches and formats the full market data
         const scenarioData = await fetchAndFormatSingleManifoldMarket(platformScenarioId);
         clearTimeout(timeoutId);
 
         if (!scenarioData) {
-            // This could be due to 404, formatting error, or other issues handled inside the function
-            console.warn(`[Scenario Chance Proxy] fetchAndFormatSingleManifoldMarket returned null for Manifold ID ${platformScenarioId}.`);
-            return null; // Treat as not found or invalid
+            return null;
         }
 
-        // Extract the required fields
         return {
-            chance: scenarioData.currentProbability, // Will be null if not BINARY
+            chance: scenarioData.currentProbability,
             volume: scenarioData.volume ?? null,
             status: scenarioData.status ?? 'UNKNOWN',
             liquidity: scenarioData.liquidity ?? null,
-            // Add other fields if needed, like options for CATEGORICAL?
         };
 
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.message === 'Manifold chance fetch timed out') {
-            console.warn(`[Scenario Chance Proxy] Timeout fetching Manifold chance for ${platformScenarioId}`);
             throw createError({ statusCode: 504, statusMessage: `Timeout fetching Manifold chance after ${FETCH_TIMEOUT_MS / 1000}s` });
         }
-        // Log other errors from the fetch/format function
-        console.error(`[Scenario Chance Proxy] Error in fetchAndFormatSingleManifoldMarket for ${platformScenarioId}:`, error);
-        // Determine if it was a 404 implicitly handled by the function returning null, or a different error
-        // Re-throwing a generic error for now, could refine based on error types if needed
         throw createError({ statusCode: 502, statusMessage: `Failed to fetch or process Manifold chance data: ${error.message}` });
     }
 }
 
+async function fetchLightconeChance(platformScenarioId) {
+  try {
+    const scenario = await Scenario.findOne({ platformScenarioId: platformScenarioId }).select('scenarioType probabilityHistory status').lean();
+    if (!scenario) {
+      return null;
+    }
+
+    if (scenario.scenarioType !== 'BINARY') {
+      return null;
+    }
+
+    if (!scenario.probabilityHistory || scenario.probabilityHistory.length === 0) {
+      return { chance: null, volume: 0, status: scenario.status, liquidity: null };
+    }
+
+    const latestForecasts = new Map();
+
+    for (const forecast of scenario.probabilityHistory) {
+      if (forecast.forecasterId && forecast.timestamp && typeof forecast.probability === 'number' && !isNaN(forecast.probability)) {
+        const forecasterIdString = forecast.forecasterId.toString();
+        const existing = latestForecasts.get(forecasterIdString);
+        if (!existing || forecast.timestamp > existing.timestamp) {
+          latestForecasts.set(forecasterIdString, {
+            probability: forecast.probability,
+            timestamp: forecast.timestamp
+          });
+        }
+      }
+    }
+
+    const probabilities = Array.from(latestForecasts.values()).map(f => f.probability);
+    
+    if (probabilities.length === 0) {
+      return { chance: null, volume: 0, status: scenario.status, liquidity: null };
+    }
+
+    probabilities.sort((a, b) => a - b);
+
+    let medianChance;
+    const mid = Math.floor(probabilities.length / 2);
+    if (probabilities.length % 2 === 0) {
+      medianChance = (probabilities[mid - 1] + probabilities[mid]) / 2;
+    } else {
+      medianChance = probabilities[mid];
+    }
+
+    return {
+      chance: medianChance,
+      volume: latestForecasts.size,
+      status: scenario.status,
+      liquidity: null
+    };
+
+  } catch (error) {
+    if (error instanceof mongoose.Error.CastError) {
+        return null;
+    }
+    throw createError({ statusCode: 500, statusMessage: `Internal server error fetching Lightcone chance: ${error.message}` });
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  // Expect 'platform' and 'id' (platformScenarioId)
   const { platform, id } = query;
 
   if (!platform || !id) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Missing required query parameters: platform and id',
-    });
+    throw createError({ statusCode: 400, statusMessage: 'Missing required query parameters: platform and id' });
   }
 
-  // Construct cache key using platform and id
   const cacheKey = `${platform}:${id}`;
   const cachedItem = cache.get(cacheKey);
 
-  // Check cache
   if (cachedItem && (Date.now() - cachedItem.timestamp < CACHE_DURATION_MS)) {
-    // console.log(`[Scenario Chance Proxy] Cache hit for ${cacheKey}`);
-    return { chance: cachedItem.data.chance, volume: cachedItem.data.volume, status: cachedItem.data.status, liquidity: cachedItem.data.liquidity }; // Return cached data structure
+    return { chance: cachedItem.data.chance, volume: cachedItem.data.volume, status: cachedItem.data.status, liquidity: cachedItem.data.liquidity };
   }
 
-  // console.log(`[Scenario Chance Proxy] Cache miss or expired for ${cacheKey}`);
-
   try {
-    let result = null; // Default to null
+    let result = null;
     let apiUrl = '';
 
     switch (platform) {
@@ -269,12 +238,8 @@ export default defineEventHandler(async (event) => {
         result = await fetchPolymarketChance(apiUrl);
         break;
 
-      // Add cases for other platforms (Metaculus, etc.) here
       case 'Metaculus':
-         // Correct Metaculus API endpoint is /api/questions/{id}/
-         // The scraper uses /api/posts/{id}/, but the example shows /api/questions/{id} contains the probability data.
-         // CORRECTED: Use the /api/posts/ endpoint URL from PLATFORM_API_URLS
-         const metaculusBaseUrl = PLATFORM_API_URLS[platform]; // Use the defined base URL
+         const metaculusBaseUrl = PLATFORM_API_URLS[platform];
          if (!metaculusBaseUrl) { 
             throw createError({ statusCode: 500, statusMessage: `API URL not configured for platform: ${platform}` });
          }
@@ -283,34 +248,25 @@ export default defineEventHandler(async (event) => {
          break;
         
       case 'Manifold':
-        // Manifold function takes the ID directly
         result = await fetchManifoldChance(id);
         break;
 
+      case 'Lightcone':
+        result = await fetchLightconeChance(id);
+        break;
+
       default:
-        throw createError({
-          statusCode: 400,
-          statusMessage: `Unsupported platform: ${platform}`,
-        });
+        throw createError({ statusCode: 400, statusMessage: `Unsupported platform: ${platform}` });
     }
 
-    // Store result (even null) in cache to avoid re-fetching known misses (like 404s or non-binary)
     cache.set(cacheKey, { data: result, timestamp: Date.now() });
 
-    return result ; // Return the result (could be null)
+    return result;
 
   } catch (error) {
-    // Log the error server-side
-    console.error(`[Scenario Chance Proxy] Error processing ${platform}:${id}:`, error);
-
-    // Ensure the error is propagated correctly
     if (error.statusCode) {
-      throw error; // Re-throw H3 errors directly
+      throw error;
     }
-    // Wrap other errors
-    throw createError({
-      statusCode: 500,
-      statusMessage: `Internal server error processing scenario chance: ${error.message}`,
-    });
+    throw createError({ statusCode: 500, statusMessage: `Internal server error processing scenario chance: ${error.message}` });
   }
 });

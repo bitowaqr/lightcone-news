@@ -14,53 +14,72 @@ export default defineEventHandler(async (event) => {
   const skip = (page - 1) * limit;
 
   // --- Filtering --- 
-  const filter = { 
-      status: 'OPEN', // Default to showing only OPEN scenarios
-      relatedArticleIds: { $exists: true, $not: { $size: 0 } } // ADDED: Ensure linked to at least one article
-  }; 
+  // Base filter conditions
+  let baseFilter = {
+    status: 'OPEN', // Default to showing only OPEN scenarios
+  };
+  let orBranches = [
+    { relatedArticleIds: { $exists: true, $not: { $size: 0 } } },
+    { platform: 'Lightcone' }
+  ];
 
   if (query.status) {
     const validStatuses = ['OPEN', 'CLOSED', 'RESOLVING', 'RESOLVED', 'CANCELED', 'UPCOMING', 'UNKNOWN'];
-    // Allow comma-separated statuses or single status
     const requestedStatuses = query.status.split(',').map(s => s.trim().toUpperCase());
     const validRequested = requestedStatuses.filter(s => validStatuses.includes(s));
     if (validRequested.length > 0) {
-      // If 'ALL' is specified, remove the default OPEN filter
       if (validRequested.includes('ALL')) {
-          // Still keep the relatedArticleIds filter
-          // delete filter.status; // Don't delete the whole status filter, just potentially modify it
-          filter.status = { $in: validRequested.filter(s => s !== 'ALL') }; // Apply other valid statuses
-          if (!filter.status.$in || filter.status.$in.length === 0) {
-              delete filter.status; // If only 'ALL' was requested, remove status filter entirely
+          baseFilter.status = { $in: validRequested.filter(s => s !== 'ALL') };
+          if (!baseFilter.status.$in || baseFilter.status.$in.length === 0) {
+              delete baseFilter.status;
           }
       } else {
-         filter.status = { $in: validRequested };
+         baseFilter.status = { $in: validRequested };
       }
     } 
-    // If invalid status provided, the default 'OPEN' filter remains
   }
 
   if (query.platform) {
-    // Allow comma-separated platforms or single platform
     const platforms = query.platform.split(',').map(p => p.trim());
-    // Basic validation: Ensure platforms are strings
     if (platforms.every(p => typeof p === 'string' && p.length > 0)) {
-      filter.platform = { $in: platforms };
+      const includeLightcone = platforms.includes('Lightcone');
+      const nonLightconePlatforms = platforms.filter(p => p !== 'Lightcone');
+      orBranches = [];
+      if (nonLightconePlatforms.length > 0) {
+        // Apply platform filter ONLY to the relatedArticleIds branch
+        orBranches.push({ relatedArticleIds: { $exists: true, $not: { $size: 0 } }, platform: { $in: nonLightconePlatforms } });
+      }
+      if (includeLightcone) {
+        orBranches.push({ platform: 'Lightcone' });
+      }
+      if (orBranches.length === 0) {
+        orBranches.push({ _id: null }); // Match nothing
+      }
     }
   }
 
-  // --- Search --- 
+  baseFilter.$or = orBranches;
+
+  // --- Combine with Search Filter using $and ---
+  let finalFilter = baseFilter; // Start with the base filter
+
   if (query.q) {
     const searchQuery = query.q.trim();
     if (searchQuery.length > 0) {
-      // Case-insensitive regex search on question and description
-      filter.$or = [
-        { question: { $regex: searchQuery, $options: 'i' } },
-        { description: { $regex: searchQuery, $options: 'i' } },
-        // { tags: { $regex: searchQuery, $options: 'i' } } // Optional: search tags
-      ];
+      const searchFilter = {
+        $or: [
+          { question: { $regex: searchQuery, $options: 'i' } },
+          { description: { $regex: searchQuery, $options: 'i' } },
+          // { tags: { $regex: searchQuery, $options: 'i' } } // Optional: search tags
+        ]
+      };
+      // Combine base filter and search filter
+      finalFilter = { $and: [baseFilter, searchFilter] };
     }
   }
+
+  // --- Debug: log the final filter ---
+  console.log('Scenario API finalFilter:', JSON.stringify(finalFilter, null, 2));
 
   // --- Sorting --- 
   let sort = { createdAt: -1 }; // Default: newest first
@@ -91,13 +110,13 @@ export default defineEventHandler(async (event) => {
   try {
     // Fetch scenarios and total count matching the filters
     const [scenarios, totalCount] = await Promise.all([
-      Scenario.find(filter)
+      Scenario.find(finalFilter) // Use finalFilter
         .sort(sort)
         .skip(skip)
         .limit(limit)
         .select('_id question questionNew platform platformScenarioId status resolutionData.expectedResolutionDate resolutionData.resolutionDate volume liquidity createdAt description') // Added description
         .lean(),
-      Scenario.countDocuments(filter)
+      Scenario.countDocuments(finalFilter) // Use finalFilter
     ]);
 
     // Format data for the frontend (similar to ScenarioTeaser needs)

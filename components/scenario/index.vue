@@ -1,5 +1,9 @@
 <template>
-  <div class="p-4 sm:p-6 pt-0 sm:pt-0">
+  <div class="p-4 sm:p-6">
+    <div class="text-xs text-fg-muted">
+
+    {{ scenario }}
+    </div>
     <!-- Conditionally render back button -->
     <div v-if="!isEmbedded" class="mb-2 sm:mb-4">
       <a
@@ -10,7 +14,6 @@
         <div class="text-sm">Back</div>
       </a>
     </div>
-  
     <div v-if="scenario">
       <!-- Header -->
       <div class="mb-4 pb-4 relative">
@@ -19,6 +22,19 @@
         <div class="flex flex-wrap items-center text-sm text-fg-muted w-full justify-between">
           <!-- Group for left-aligned items -->
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-start">
+             <!-- ADDED: Resolved/Unresolved Status -->
+             <span :class="[
+                'inline-flex items-center text-xs font-medium px-1.5 py-0.5 rounded-full border',
+                isResolvedStatus 
+                  ? 'border-green-600/50 bg-green-500/10 text-green-700 dark:text-green-400 dark:border-green-500/50 dark:bg-green-500/10'
+                  : 'border-orange-600/50 bg-orange-500/10 text-orange-700 dark:text-orange-400 dark:border-orange-500/50 dark:bg-orange-500/10'
+             ]">
+                <Icon 
+                  :name="isResolvedStatus ? 'heroicons:check-badge-solid' : 'heroicons:clock-solid'" 
+                  class="w-3 h-3 mr-1"
+                />
+                {{ isResolvedStatus ? 'Resolved' : 'Unresolved' }}
+             </span>
              <!-- MOVED BACK: Close Date -->
              <span v-if="scenario.closeDate" class="inline-flex items-center">
                 <Icon name="mdi:calendar-clock" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />
@@ -92,7 +108,7 @@
           </div>
 
           <!-- Chart Component -->
-          <HistoryChart v-else-if="historyData" :history-data="historyData" />
+          <HistoryChart v-else-if="chartHistoryData" :history-data="chartHistoryData" />
 
           <!-- Fallback if no data and no error (should be handled by HistoryChart internal state, but as safety) -->
            <div v-else class="h-64 md:h-80 flex items-center justify-center bg-bg-muted/50 rounded-lg border border-bg-muted">
@@ -102,68 +118,162 @@
       <!-- *************************** -->
 
       <!-- ADDED: Details (Collapsible) -->
-      <div class="mb-6">
+      <div class="mb-8">
         <button 
           @click="isDetailsVisible = !isDetailsVisible"
-          class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-start border-t border-bg-muted pt-3 mt-3"
+          class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
         >
           <Icon :name="isDetailsVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
-          <span class="text-base font-medium">Details</span>
+          <span>Details</span>
         </button>
-        <div v-if="isDetailsVisible" class="mt-3 space-y-2 text-sm text-fg-muted bg-bg-muted p-3 rounded border border-accent-bg">
-          <!-- Moved Metadata Items -->
+        <div v-if="isDetailsVisible" class="mt-2 space-y-2 text-sm text-fg-muted bg-bg-muted p-4 rounded border border-accent-bg">
           <div v-if="scenario.status" class="flex items-center">
-             <span class="font-medium w-20 inline-block flex-shrink-0">Status:</span> 
-             <span :class="['px-1.5 py-0.5 rounded-full text-xs font-medium', statusClass]">{{ scenario.status }}</span>
+            <span class="w-24 flex-shrink-0 text-xs text-fg-muted">Status</span>
+            <span :class="['px-1.5 py-0.5 rounded-full text-xs font-medium ml-2', statusClass]">{{ scenario.status }}</span>
+          </div>
+          <div v-if="scenario.openDate" class="flex items-center">
+            <span class="w-24 flex-shrink-0 text-xs text-fg-muted">Opened</span>
+            <span class="font-medium text-fg ml-2">{{ formatDate(scenario.openDate) }}</span>
           </div>
           <div v-if="scenario.liquidity" class="flex items-center">
-             <span class="font-medium w-20 inline-block flex-shrink-0">Liquidity:</span> 
-             <span class="font-medium text-fg">{{ Math.round(scenario.liquidity).toLocaleString() }}</span>
+            <span class="w-24 flex-shrink-0 text-xs text-fg-muted">Liquidity</span>
+            <span class="font-medium text-fg ml-2">{{ Math.round(scenario.liquidity).toLocaleString() }}</span>
           </div>
-           <div v-if="volume || scenario.volume" class="flex items-center">
-             <span class="font-medium w-20 inline-block flex-shrink-0">Volume:</span> 
-             <span class="font-medium text-fg">{{ Math.round(volume || scenario.volume).toLocaleString() }}</span>
+          <div v-if="volume || scenario.volume" class="flex items-center">
+            <span class="w-24 flex-shrink-0 text-xs text-fg-muted">Volume</span>
+            <span class="font-medium text-fg ml-2">{{ Math.round(volume || scenario.volume).toLocaleString() }}</span>
           </div>
-          <!-- Add other details like openDate if available/needed -->
-           <div v-if="scenario.openDate" class="flex items-center">
-             <span class="font-medium w-20 inline-block flex-shrink-0">Opened:</span> 
-             <span class="font-medium text-fg">{{ formatDate(scenario.openDate) }}</span>
-          </div>
-           <div v-if="scenario.resolutionDate" class="flex items-center">
-             <span class="font-medium w-20 inline-block flex-shrink-0">Resolved:</span> 
-             <span class="font-medium text-fg">{{ formatDate(scenario.resolutionDate) }}</span>
+          <div v-if="scenario.resolutionDate || (scenario.resolutionData && scenario.resolutionData.resolutionDate)" class="flex items-center">
+            <span class="w-24 flex-shrink-0 text-xs text-fg-muted">Resolved</span>
+            <span class="font-medium text-fg ml-2">
+              {{ formatDate(scenario.resolutionData?.resolutionDate || scenario.resolutionDate) }}
+            </span>
           </div>
         </div>
       </div>
-      <!-- END ADDED -->
+      <!-- END Details -->
 
-      <!-- Resolution Toggle Button -->
-      <button 
-        @click="isResolutionVisible = !isResolutionVisible"
-        class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-start border-t border-bg-muted pt-3 mt-3"
-      >
-        <Icon :name="isResolutionVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
-        <span class="text-base font-medium">Resolution</span>
-      </button>
-       <!-- Resolution Content (Collapsible) -->
-      <div v-if="isResolutionVisible" class="mt-3 text-sm text-fg-muted bg-bg-muted p-3 rounded border border-accent-bg">
-        <p class="leading-relaxed whitespace-pre-wrap">{{ scenario.description }}</p>
-      </div>
-
-      <!-- Resolution Criteria (Collapsible) -->
-      <div v-if="scenario.resolutionCriteria" class="mb-6">
+      <!-- Resolution Section (Updated) -->
+      <div class="mb-8">
         <button 
-          @click="isCriteriaVisible = !isCriteriaVisible"
-          class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-between border-t border-bg-muted pt-3 mt-3"
+          @click="isResolutionVisible = !isResolutionVisible"
+          class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
         >
-          <span>Resolution Criteria</span>
-          <Icon :name="isCriteriaVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 ml-1" />
+          <Icon :name="isResolutionVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+          <span>Resolution</span>
         </button>
-        <div v-if="isCriteriaVisible" class="mt-2 text-sm text-fg-muted bg-bg-muted p-3 rounded border border-accent-bg">
-          <p class="whitespace-pre-wrap">{{ scenario.resolutionCriteria }}</p>
+        <div v-if="isResolutionVisible" class="mt-2 text-sm text-fg-muted bg-bg-muted p-4 rounded border border-accent-bg space-y-3">
+          <div>
+            <span class="block text-xs text-fg-muted mb-1">
+              <template v-if="scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate">
+                Resolved Date
+              </template>
+              <template v-else>
+                Expected Resolution Date
+              </template>
+            </span>
+            <span class="block text-fg">
+              <template v-if="scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate">
+                {{ formatDate(scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate) }}
+              </template>
+              <template v-else-if="scenario.resolutionData?.expectedResolutionDate || scenario.expectedResolutionDate">
+                {{ formatDate(scenario.resolutionData?.expectedResolutionDate || scenario.expectedResolutionDate) }}
+              </template>
+              <template v-else>
+                <span class="text-fg-muted italic">Not yet resolved</span>
+              </template>
+            </span>
+          </div>
+          <div>
+            <span class="block text-xs text-fg-muted mb-1">Resolution Criteria</span>
+            <span class="block text-fg">{{ scenario.resolutionData?.resolutionCriteria || scenario.resolutionCriteria || 'No criteria provided.' }}</span>
+          </div>
         </div>
       </div>
-      
+      <!-- END Resolution -->
+
+      <!-- ADDED: Forecast Details Section (Collapsible) -->
+      <div v-if="showForecastDetailsSection" class="mb-8">
+        <button 
+          @click="isForecastsVisible = !isForecastsVisible"
+          class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
+        >
+          <Icon :name="isForecastsVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+          <span>Forecast Details ({{ latestForecastsByForecaster.length }})</span>
+        </button>
+        <div v-if="isForecastsVisible" class="mt-2 space-y-4">
+          <!-- Iterate through stats object which contains latestForecast and totalCount -->
+          <div v-for="(stats) in latestForecastsByForecaster" :key="stats.latestForecast.forecasterId._id"
+               class="bg-bg-muted p-4 rounded border border-accent-bg transition-colors hover:border-primary/30"
+          >
+            <!-- Forecaster Header -->
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                   <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 mr-3 flex-shrink-0">
+                       <Icon :name="stats.latestForecast.forecasterId.avatar || 'mdi:account-circle'" class="h-5 w-5 text-primary" />
+                   </span>
+                   <div>
+                     <span class="font-semibold text-fg text-base block leading-tight">{{ stats.latestForecast.forecasterId.name || 'Unknown Forecaster' }}</span>
+                     <!-- Added: Total Forecast Count -->
+                     <span class="text-xs text-fg-muted leading-tight">{{ stats.totalCount }} forecast{{ stats.totalCount === 1 ? '' : 's' }}</span>
+                   </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xl font-bold text-primary">{{ formatProbability(stats.latestForecast.probability) }}</span>
+                    <!-- Added: Timestamp under latest forecast -->
+                    <span class="block text-xs text-fg-muted leading-tight mt-0.5">
+                        {{ formatDate(stats.latestForecast.timestamp, true) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Rationale Summary -->
+            <p v-if="stats.latestForecast.rationalSummary" class="text-sm text-fg-muted mb-3 italic pl-11">
+                "{{ stats.latestForecast.rationalSummary }}"
+            </p>
+
+            <!-- Expandable Details -->
+            <div class="pl-11">
+              <button 
+                @click="toggleDetails(stats.latestForecast.forecasterId._id)"
+                class="text-xs font-medium text-primary-600 hover:text-primary flex items-center mb-1"
+              >
+                 <Icon :name="expandedDetails[stats.latestForecast.forecasterId._id] ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-4 h-4 mr-0.5" />
+                 {{ expandedDetails[stats.latestForecast.forecasterId._id] ? 'Hide Details' : 'Show Details & Evidence' }}
+              </button>
+              <div v-if="expandedDetails[stats.latestForecast.forecasterId._id]" class="text-sm text-fg-muted space-y-2 border-l-2 border-primary/20 pl-3 pt-2 pb-1">
+                  <p v-if="stats.latestForecast.rationalDetails">{{ stats.latestForecast.rationalDetails }}</p>
+                  <div v-if="stats.latestForecast.dossier && stats.latestForecast.dossier.length > 0">
+                      <h5 class="text-xs font-semibold text-fg mt-2 mb-1">Evidence:</h5>
+                      <ul class="list-disc list-inside space-y-1">
+                          <li v-for="(url, urlIndex) in stats.latestForecast.dossier" :key="urlIndex">
+                              <a :href="url" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline hover:text-primary break-all text-xs">
+                                {{ url }}
+                                <Icon name="mdi:open-in-new" class="w-3 h-3 ml-0.5 inline-block align-baseline opacity-70" />
+                              </a>
+                          </li>
+                      </ul>
+                  </div>
+                  <!-- Added: Individual Forecast History List -->
+                  <div v-if="stats.history && stats.history.length > 1" class="mt-4 pt-3 border-t border-primary/10">
+                      <h5 class="text-xs font-semibold text-fg mb-2">Previous Forecasts:</h5>
+                      <ul class="space-y-1.5 max-h-40 overflow-y-auto text-xs pr-2">
+                          <!-- Iterate over history, skipping the absolute latest one shown above -->
+                          <li v-for="(prevForecast) in stats.history.slice(1)" :key="prevForecast._id || prevForecast.timestamp" 
+                              class="flex justify-between items-center text-fg-muted">
+                               <span class="font-medium text-fg">{{ formatProbability(prevForecast.probability) }}</span>
+                               <span class="text-fg-muted/80">{{ formatDate(prevForecast.timestamp, true) }}</span>
+                          </li>
+                      </ul>
+                  </div>
+                  <!-- End Individual Forecast History List -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- END Forecast Details -->
+
       <!-- ADDED: Related Articles Section (Collapsible) -->
       <div v-if="scenario.relatedArticles && scenario.relatedArticles.length > 0" class="mb-6">
         <button 
@@ -220,7 +330,7 @@
 </template>
 
 <script setup>
-import { computed, ref, toRefs } from 'vue';
+import { computed, ref, toRefs, reactive } from 'vue';
 import { useScenarioChance } from '~/composables/useScenarioChance';
 import { useScenarioHistory } from '~/composables/useScenarioHistory'; // Import history composable
 import CommonShareDialog from '~/components/common/ShareDialog.vue';
@@ -252,7 +362,7 @@ const props = defineProps({
       scenarios: []
     })
   },
-  // ADDED: Prop to control back button visibility
+  // ADDED: Prop to control back button
   isEmbedded: {
       type: Boolean,
       default: false // Default to false, meaning show back button unless explicitly embedded
@@ -273,13 +383,14 @@ const { scenario: scenarioRef } = toRefs(props); // Use toRefs for reactivity
 const { chance, loading: loadingChance, error: errorChance, volume, status, liquidity } = useScenarioChance(scenarioRef);
 
 // Fetch history data
-const { historyData, loading: loadingHistory, error: errorHistory } = useScenarioHistory(scenarioRef);
+const { detailsHistoryData, chartHistoryData, loading: loadingHistory, error: errorHistory } = useScenarioHistory(scenarioRef);
 
 // State for collapsible sections
 const isCriteriaVisible = ref(false);
 const isDetailsVisible = ref(false);
 const isResolutionVisible = ref(true);
 const isRelatedArticlesVisible = ref(true); // Default to visible
+const isForecastsVisible = ref(true); // Default to visible for the new section
 
 // Formatting Functions
 const formatProbability = (prob) => {
@@ -293,10 +404,16 @@ const formatVolume = (volume) => {
   return `$${volume.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`; // No cents for volume
 };
 
-const formatDate = (dateString) => {
+const formatDate = (dateString, includeTime = false) => {
   if (!dateString) return 'N/A';
   try {
-    return new Date(dateString).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    if (includeTime) {
+        options.hour = '2-digit';
+        options.minute = '2-digit';
+        // options.timeZoneName = 'short'; // Optional: Add timezone
+    }
+    return new Date(dateString).toLocaleDateString('en-GB', options);
   } catch (e) {
     return dateString;
   }
@@ -346,9 +463,73 @@ const handleShare = () => {
 };
 // --- END ADDED ---
 
+// --- ADDED: Computed property for resolved status ---
+const isResolvedStatus = computed(() => {
+  return !!(props.scenario.resolutionData?.resolutionCloseDate || props.scenario.resolutionCloseDate);
+});
+// --- END ADDED ---
+
+// --- ADDED: Logic for Forecast Details Section ---
+const showForecastDetailsSection = computed(() => {
+    // Show section only if platform is Lightcone and we have raw history data
+    return props.scenario?.platform === 'Lightcone' && detailsHistoryData.value && detailsHistoryData.value.length > 0;
+});
+
+const latestForecastsByForecaster = computed(() => {
+    if (!showForecastDetailsSection.value) {
+        return [];
+    }
+
+    // --- MODIFIED: Store full history per forecaster --- 
+    const forecasterStats = new Map(); // Key: forecasterId._id, Value: { latestForecast: null, totalCount: 0, history: [] }
+
+    for (const forecast of detailsHistoryData.value) {
+        // Ensure forecast has necessary fields AND populated forecasterId
+        if (forecast.forecasterId && typeof forecast.forecasterId === 'object' && forecast.timestamp && forecast.probability !== undefined) {
+            const forecasterKey = forecast.forecasterId._id; // Use _id as the unique key
+
+            // Initialize if first time seeing this forecaster
+            if (!forecasterStats.has(forecasterKey)) {
+                // Initialize with the first forecast encountered as potential latest
+                forecasterStats.set(forecasterKey, { latestForecast: forecast, totalCount: 0, history: [] }); 
+            }
+
+            const stats = forecasterStats.get(forecasterKey);
+            stats.totalCount += 1; // Increment count
+            stats.history.push(forecast); // Add current forecast to their history list
+
+            // Check if this forecast is later than the currently stored latest
+            const currentTimestamp = new Date(forecast.timestamp).getTime();
+            const existingTimestamp = stats.latestForecast ? new Date(stats.latestForecast.timestamp).getTime() : 0;
+
+            if (!stats.latestForecast || currentTimestamp > existingTimestamp) {
+                stats.latestForecast = forecast; // Update the latest forecast object
+            }
+        }
+    }
+
+    // Post-process: Sort individual history arrays and the main array
+    for (const stats of forecasterStats.values()) {
+        stats.history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()); // Sort history descending by time
+    }
+
+    return Array.from(forecasterStats.values())
+                .filter(stats => stats.latestForecast) 
+                .sort((a, b) => b.latestForecast.probability - a.latestForecast.probability);
+});
+
+// State to track expanded details for each forecaster
+const expandedDetails = reactive({});
+
+const toggleDetails = (forecasterId) => { // <-- Parameter is now forecasterId
+    expandedDetails[forecasterId] = !expandedDetails[forecasterId];
+};
+
 </script>
 
 <style scoped>
 /* Add any component-specific styles if needed */
 </style>
+
+
 

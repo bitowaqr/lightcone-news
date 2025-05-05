@@ -153,10 +153,10 @@ const chartOptions = computed(() => {
         type: 'time',
         time: {
             // Adjust time units and display formats as needed
-            unit: 'day',
             tooltipFormat: 'PP', // Requires date-fns adapter - locale aware format
              displayFormats: {
-                 day: 'MMM d', 
+                 hour: 'HH:mm',
+                 day: 'MMM d',
                  week: 'MMM d yyyy',
                  month: 'MMM yyyy',
                  year: 'yyyy'

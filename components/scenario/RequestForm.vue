@@ -2,15 +2,34 @@
   <!-- Modern, clean form approach -->
   <div class="bg-bg border-r border-bg-muted p-4 sm:p-6 lg:h-[calc(100vh-114px)]"> <!-- Clean container -->
     <h1 class="text-2xl font-bold mb-4 text-fg">
-      {{ articleTitleFromQuery ? 'Request Related Forecast' : 'Request a New Scenario' }}
+        Request New Scenario
     </h1>
-    <p class="text-base text-fg-muted mb-8"> <!-- Increased bottom margin -->
-      Propose a question about a future event. If accepted, we'll work on generating a probabilistic forecast.
+    <p class="text-base text-fg mb-8 font-medium leading-tight"> 
+      Once submitted, our AI Forecasting Agents will work on your scenario question to generate research reports, and submit probabilistic forecasts. You'll typically receive 3 forecasts  within 5-20 minutes.
     </p>
 
-    <form @submit.prevent="submitForm" class="space-y-8"> <!-- Increased spacing -->
-       <!-- Article Selection -->
-       <div class="space-y-2">
+    <form @submit.prevent="submitForm" class="space-y-8"> 
+       
+
+      <!-- Section 1: The Question -->
+      <div>
+        <label for="request-question" class="block text-base font-medium text-fg-muted mb-2">Forecast Question</label>
+        <textarea
+          id="request-question" 
+          v-model="formData.question"
+          rows="1"
+          required
+          class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
+          placeholder="e.g., Will the woolly mammoth be de-extincted before 2030?"
+          style="resize: none;"
+        ></textarea>
+        <p class="text-xs text-fg">Read <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">our guide</a> on how to ask good scenario questions.</p>
+      </div>
+
+
+
+<!-- Article Selection -->
+<div class="space-y-2">
           <label class="block text-base font-medium text-fg-muted mb-2">Related Article (Optional)</label>
           <Combobox v-model="selectedArticle" @update:modelValue="handleSelectionUpdate" nullable>
             <div class="relative">
@@ -64,49 +83,26 @@
               </Transition>
             </div>
           </Combobox>
+          <div v-if="!selectedArticle?._id" class="text-xs text-fg">If this Scenario question is related to an article, select the article to the left.
+          </div>
           <!-- Display Precis -->
-          <div v-if="selectedArticle?._id && selectedArticle?.precis" class="mt-4 border-t border-bg-muted pt-4"> <!-- Clean separator -->
-            <p class="text-sm text-fg italic">
-              <code class="text-xs text-fg-muted">summary: </code>
+          <blockquote v-if="selectedArticle?._id && selectedArticle?.precis" class="pt-1"> <!-- Clean separator -->
+            <p class="text-sm text-fg leading-tight italic">
               {{ selectedArticle.precis }}
             </p>
-          </div>
+          </blockquote>
        </div>
 
-      <!-- Section 1: The Question -->
-      <div>
-        <label for="request-question" class="block text-base font-medium text-fg-muted mb-2">Forecast Question</label>
-        <textarea
-          id="request-question" 
-          v-model="formData.question"
-          rows="3"
-          required
-          class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
-          placeholder="e.g., Will SpaceX land humans on Mars by January 1, 2030?"
-        ></textarea>
-        <p class="text-xs text-fg">State the question clearly. It should be unambiguous and answerable with Yes/No, a value, or a date.</p>
-      </div>
 
-      <!-- Section 2: Context/Description -->
-      <div>
-         <label for="request-description" class="block text-base font-medium text-fg-muted mb-2">Background & Context (Optional)</label>
-        <textarea
-          id="request-description"
-          v-model="formData.description"
-          rows="4"
-          class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
-          placeholder="Add background information here..."
-        ></textarea>
-         <p class="text-xs text-fg">Explain why this forecast is relevant or interesting. Include links to sources if helpful.</p>
-      </div>
 
+
+     
       <!-- Section 3: Resolution -->
-       <div class="space-y-4"> <!-- More spacing within this complex section -->
-          <label class="block text-base font-medium text-fg-muted mb-2">Resolution Criteria & Date</label>
+       
           
           <!-- Criteria Input -->
           <div>
-            <label for="request-resolutionCriteria" class="block text-sm font-medium text-fg-muted mb-1">Resolution Criteria (Required)</label>
+            <label for="request-resolutionCriteria" class="block text-base font-medium text-fg-muted mb-2">Resolution Criteria</label>
             <textarea
               id="request-resolutionCriteria"
               v-model="formData.resolutionCriteria"
@@ -115,12 +111,12 @@
               class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
               placeholder="Define exactly how the question will be answered (e.g., based on announcement from Agency X, data from Source Y)."
             ></textarea>
-            <p class="text-xs text-fg">Define clear, objective criteria for how the question will be resolved and specify trusted sources.</p>
+            <p class="text-xs text-fg">Define clear, objective criteria for how the question will be resolved. See <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">our guide</a> for tips.</p>
           </div>
 
           <!-- Date Input -->
           <div>
-            <label for="request-resolutionDate" class="block text-sm font-medium text-fg-muted mb-1">Latest Resolution Date (Required)</label>
+            <label for="request-resolutionDate" class="block text-base font-medium text-fg-muted mb-2">Resolution Date</label>
             <input
               type="date" 
               id="request-resolutionDate"
@@ -129,8 +125,59 @@
               :min="minDate" 
               class="w-full md:w-auto text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg focus:outline-none"
             />
+            <p class="text-xs text-fg mt-1.5">Latest date of resolution.</p>
           </div>
-       </div>
+       
+
+
+
+
+
+        <!-- Section 2: Context/Description -->
+      <div>
+         <label for="request-description" class="block text-base font-medium text-fg-muted mb-2">Background (Optional)</label>
+        <textarea
+          id="request-description"
+          v-model="formData.description"
+          rows="4"
+          class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
+          placeholder="Add background information here..."
+        ></textarea>
+         <p class="text-xs text-fg">Provide additional information to explain the context or help our AI agents better understand the question.</p>
+      </div>
+
+      <!-- ADDED: Visibility Toggle -->
+      <div class="space-y-2">
+        <label class="block text-base font-medium text-fg-muted mb-1">Visibility</label>
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center">
+            <input
+              id="visibility-public"
+              name="visibility"
+              type="radio"
+              value="PUBLIC"
+              v-model="formData.visibility"
+              class="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-primary"
+            />
+            <label for="visibility-public" class="ml-2 block text-sm font-medium text-fg">Public</label>
+          </div>
+          <div class="flex items-center">
+            <input
+              id="visibility-private"
+              name="visibility"
+              type="radio"
+              value="PRIVATE"
+              v-model="formData.visibility"
+              class="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-primary"
+            />
+            <label for="visibility-private" class="ml-2 block text-sm font-medium text-fg">Private (Only visible to you)</label>
+          </div>
+        </div>
+        <p class="text-xs text-fg-muted">
+           Private scenarios are only visible to you and won't appear in public feeds or searches.
+        </p>
+      </div>
+
 
       <!-- Submission Area -->
       <div class="pt-1 flex items-center justify-end gap-3"> 
@@ -173,7 +220,7 @@
           <p class="text-sm text-fg-muted mb-4">
             {{ revisionExplanation || 'We suggest some changes to clarify your request:' }}
           </p>
-          <div class="space-y-4 bg-bg/50 dark:bg-bg-muted/20 p-4 rounded border border-bg-muted mb-6 max-h-60 overflow-y-auto">
+          <div class="space-y-4 bg-bg/50 dark:bg-bg-muted/20 p-4 rounded border border-bg-muted mb-6 max-h-75vh overflow-y-auto">
             <!-- ... revision display logic ... -->
              <h3 class="text-lg font-medium text-fg">Proposed Changes:</h3>
             <div v-if="revisedData.question !== formData.question">
@@ -226,6 +273,7 @@
 <script setup>
 import { ref, computed, nextTick, defineProps, defineEmits, watch, onMounted } from 'vue';
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption, ComboboxLabel, TransitionRoot } from '@headlessui/vue' // Import Headless UI components
+import { useBookmarkStore } from '~/stores/bookmarks'; // Import bookmark store
 
 // Define props
 const props = defineProps({
@@ -236,18 +284,26 @@ const props = defineProps({
   articleTitle: {
     type: String,
     default: null
+  },
+  isDesktop: {
+    type: Boolean,
+    required: true
   }
 });
 
 // Define emits
-const emit = defineEmits(['submitted', 'cancelled']);
+const emit = defineEmits(['submitted', 'cancelled', 'scenario-created']); // Added 'scenario-created'
+
+// Initialize bookmark store
+const bookmarkStore = useBookmarkStore();
 
 // Form state - use props for initial values if provided
 const formData = ref({
   question: '',
   description: '',
   resolutionCriteria: '',
-  resolutionDate: ''
+  resolutionDate: '',
+  visibility: 'PUBLIC' // Added visibility field
 });
 
 const isSubmitting = ref(false);
@@ -415,6 +471,26 @@ async function submitForm() {
       submissionStatus.value = 'success';
       submissionMessage.value = result.message;
       emit('submitted', result.message || 'Request submitted successfully!');
+
+      // --- New Auto-Bookmark Logic ---
+      if (result.scenarioId) {
+        console.log(`Scenario created successfully with ID: ${result.scenarioId}. Attempting to bookmark.`);
+        try {
+          // Wait for bookmark action to complete (or handle potential errors)
+          await bookmarkStore.toggleBookmark(result.scenarioId, 'scenario', true); // Force add
+          console.log(`Scenario ${result.scenarioId} bookmarked.`);
+          // Emit event for parent page (scenarios/index.vue)
+          emit('scenario-created', result.scenarioId);
+        } catch (bookmarkError) {
+          console.error(`Failed to auto-bookmark scenario ${result.scenarioId}:`, bookmarkError);
+          // Decide how to handle bookmarking error - maybe inform user?
+          // For now, just log it, the scenario was still created.
+        }
+      } else {
+        console.warn('Scenario creation success response did not include scenarioId.');
+      }
+      // --- End Auto-Bookmark Logic ---
+
       resetFormFields();
     } else if (result.status === 'revision_needed') {
       submissionStatus.value = 'revision_needed';
@@ -471,6 +547,22 @@ async function acceptRevision() {
       submissionStatus.value = 'success';
       submissionMessage.value = result.message || 'Revised request accepted!';
       emit('submitted', submissionMessage.value); 
+
+      // --- New Auto-Bookmark Logic (also for accepted revisions) ---
+      if (result.scenarioId) {
+        console.log(`Revised scenario accepted, ID: ${result.scenarioId}. Attempting to bookmark.`);
+         try {
+           await bookmarkStore.toggleBookmark(result.scenarioId, 'scenario', true); // Force add
+           console.log(`Scenario ${result.scenarioId} bookmarked.`);
+           emit('scenario-created', result.scenarioId);
+         } catch (bookmarkError) {
+           console.error(`Failed to auto-bookmark revised scenario ${result.scenarioId}:`, bookmarkError);
+         }
+      } else {
+        console.warn('Revised scenario acceptance response did not include scenarioId.');
+      }
+      // --- End Auto-Bookmark Logic ---
+
       resetFormFields(); 
     } else {
       submissionStatus.value = 'error';
@@ -489,7 +581,7 @@ async function acceptRevision() {
 
 // Reset function - reset selectedArticle to placeholder or initial
 function resetFormFields() {
-  formData.value = { question: '', description: '', resolutionCriteria: '', resolutionDate: '' };
+  formData.value = { question: '', description: '', resolutionCriteria: '', resolutionDate: '', visibility: 'public' };
   const initialArticle = props.articleId 
       ? articleTitlesList.value.find(a => a._id === props.articleId) 
       : null;

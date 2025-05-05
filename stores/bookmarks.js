@@ -68,11 +68,10 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
        });
        if (!response.success) throw new Error('API indicated failure adding bookmark');
        
-       // Optimistically add the scenario placeholder
-       if (!bookmarkedScenarios.value.some(s => s._id === itemId)) {
-            // Add placeholder with just the ID
-            bookmarkedScenarios.value.push({ _id: itemId });
-       }
+       // --- MODIFIED: Refetch bookmarks instead of optimistic placeholder add ---
+       console.log('Bookmark added via API, refetching bookmarks...');
+       await fetchBookmarks();
+       // --- END MODIFICATION ---
 
      } catch (error) {
        console.error('[BookmarkStore] Error adding bookmark via API:', error);

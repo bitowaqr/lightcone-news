@@ -88,3 +88,4 @@ const createNewsfeed = async (updateScenarios = true, maxNewStories = 10) => {
 }
 
 export { createNewsfeed };
+

@@ -9,4 +9,9 @@ export default {
   Scenario,
   SourceDocument,
   User
-}; 
+};
+
+export { default as Lineup } from './Lineup.model.js';
+export { default as StoryIdeas } from './StoryIdeas.model.js';
+export { default as WaitlistEntry } from './WaitlistEntry.model.js';
+export { default as Forecaster } from './Forecaster.model.js'; 
