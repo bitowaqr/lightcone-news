@@ -11,7 +11,7 @@ const requireAdmin = (event) => {
 // Basic validation for collection names
 const isValidCollection = (collectionName) => {
   // Add all models managed by the admin panel
-  const allowedCollections = ['Article', 'Scenario', 'SourceDocument', 'User', 'StoryIdeas'];
+  const allowedCollections = ['Article', 'Scenario', 'SourceDocument', 'User', 'StoryIdeas', 'Forecaster'];
   return allowedCollections.includes(collectionName);
 }
 

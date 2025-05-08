@@ -27,16 +27,24 @@ export default defineEventHandler(async (event) => {
     '/api/auth/logout',
     '/api/chat',
     '/api/newsfeed',
-    '/api/articles',
-    '/api/scenarios',
-    '/api/articles/*',
-    '/api/scenarios/*',
+    '/api/articles', // For listing all articles
+    '/api/scenarios', // For listing all scenarios
+    '/api/articles/', // Note the trailing slash for startsWith to catch /api/articles/some-slug
+    '/api/scenarios/', // Note the trailing slash for startsWith to catch /api/scenarios/some-id or /api/scenarios/chance
+    '/api/_nuxt_icon/', // Add nuxt_icon path as public
     // Add other public API endpoints here (e.g., '/api/newsfeed/public')
   ];
   const privateSubPaths = [
     '/api/scenarios/request',
   ]
-  let isPublicApiPath = publicApiPaths.some(p => path.startsWith(p) && !privateSubPaths.some(sp => path.startsWith(sp)));
+  // Adjusted logic for checking public paths, especially for paths with parameters
+  let isPublicApiPath = publicApiPaths.some(p => {
+    if (p.endsWith('/')) { // If the public path pattern ends with a slash, use startsWith
+      return path.startsWith(p);
+    } else { // Otherwise, require an exact match (e.g., /api/newsfeed)
+      return path === p;
+    }
+  }) && !privateSubPaths.some(sp => path.startsWith(sp));
 
 
 
@@ -66,17 +74,20 @@ export default defineEventHandler(async (event) => {
     const decoded = jwt.verify(token, config.jwtSecret);
 
     // Fetch the full user object from DB using the decoded ID
-    // Ensure 'role' is selected (it should be by default unless explicitly excluded)
-    const user = await User.findById(decoded.userId).select('+password'); // Select password temporarily if needed for checks, but don't attach it below
+    // This is good to ensure the user still exists and is active
+    const userFromDb = await User.findById(decoded.userId);
 
-    if (user) {
-      // Attach user info *without* sensitive data like password hash
-      // Make sure 'role' is included
+    if (userFromDb) {
+      // Attach user info using fields from the DECODED JWT PAYLOAD
+      // and supplement with any fresh DB info if needed (but JWT is the primary source for its claims)
       event.context.user = {
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role, // <-- Crucial: include the role
-        // Add other non-sensitive fields if needed by the frontend/API
+        id: decoded.userId, // Use userId from token as it's the subject
+        userId: decoded.userId, // Consistent key
+        email: decoded.email,
+        role: decoded.role,
+        joinDate: decoded.joinDate,     // Get from decoded token
+        lastLogin: decoded.lastLogin,   // Get from decoded token
+        // Any other fields from decoded token can be added here
       };
     } else {
       // User ID in token not found in DB (maybe deleted?)

@@ -46,6 +46,13 @@ const UserSchema = new Schema({
   },
   lastLogin: {
     type: Date
+  },
+  loginHistory: [{
+    type: Date
+  }],
+  joinDate: {
+    type: Date,
+    default: Date.now
   }
 }, {
   // Automatically add createdAt and updatedAt fields

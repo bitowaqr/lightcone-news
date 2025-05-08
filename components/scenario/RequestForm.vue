@@ -4,8 +4,11 @@
     <h1 class="text-2xl font-bold mb-4 text-fg">
         Request New Scenario
     </h1>
+    <p class="text-base text-fg mb-4 font-medium leading-tight"> 
+      Our AI Agents will submit probabilistic forecasts and rationales within 5-20 minutes.
+    </p>
     <p class="text-base text-fg mb-8 font-medium leading-tight"> 
-      Once submitted, our AI Forecasting Agents will work on your scenario question to generate research reports, and submit probabilistic forecasts. You'll typically receive 3 forecasts  within 5-20 minutes.
+      Forecasts will be updated regularly, as new information comes in.
     </p>
 
     <form @submit.prevent="submitForm" class="space-y-8"> 
@@ -123,9 +126,10 @@
               v-model="formData.resolutionDate"
               required
               :min="minDate" 
+              :max="maxDate"
               class="w-full md:w-auto text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg focus:outline-none"
             />
-            <p class="text-xs text-fg mt-1.5">Latest date of resolution.</p>
+            <p class="text-xs text-fg mt-1.5">Max. limit: 1 year from now.</p>
           </div>
        
 
@@ -149,7 +153,7 @@
       <!-- ADDED: Visibility Toggle -->
       <div class="space-y-2">
         <label class="block text-base font-medium text-fg-muted mb-1">Visibility</label>
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-6">
           <div class="flex items-center">
             <input
               id="visibility-public"
@@ -157,9 +161,9 @@
               type="radio"
               value="PUBLIC"
               v-model="formData.visibility"
-              class="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-primary"
+              class="h-4 w-4 border-gray-300 dark:border-gray-600 accent-primary focus:outline-none  focus:ring-offset-bg rounded-full focus:ring-none"
             />
-            <label for="visibility-public" class="ml-2 block text-sm font-medium text-fg">Public</label>
+            <label for="visibility-public" class="ml-2.5 block text-sm font-medium text-fg">Public</label>
           </div>
           <div class="flex items-center">
             <input
@@ -168,14 +172,11 @@
               type="radio"
               value="PRIVATE"
               v-model="formData.visibility"
-              class="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-primary"
+              class="h-4 w-4 border-gray-300 dark:border-gray-600 accent-primary focus:outline-none rounded-full focus:ring-none"
             />
-            <label for="visibility-private" class="ml-2 block text-sm font-medium text-fg">Private (Only visible to you)</label>
+            <label for="visibility-private" class="ml-2.5 block text-sm font-medium text-fg">Private <span class="text-xs text-fg-muted">(Only visible to you)</span></label>
           </div>
         </div>
-        <p class="text-xs text-fg-muted">
-           Private scenarios are only visible to you and won't appear in public feeds or searches.
-        </p>
       </div>
 
 
@@ -339,6 +340,16 @@ const minDate = computed(() => {
   const today = new Date();
   const offset = today.getTimezoneOffset() * 60000;
   const localDate = new Date(today.getTime() - offset);
+  return localDate.toISOString().split('T')[0];
+});
+
+const maxDate = computed(() => {
+  // in 1 year lates, ie today + 1 year + 1 day
+  const today = new Date();
+  const offset = today.getTimezoneOffset() * 60000;
+  const localDate = new Date(today.getTime() - offset);
+  localDate.setFullYear(localDate.getFullYear() + 1);
+  localDate.setDate(localDate.getDate() + 1);
   return localDate.toISOString().split('T')[0];
 });
 
@@ -581,7 +592,7 @@ async function acceptRevision() {
 
 // Reset function - reset selectedArticle to placeholder or initial
 function resetFormFields() {
-  formData.value = { question: '', description: '', resolutionCriteria: '', resolutionDate: '', visibility: 'public' };
+  formData.value = { question: '', description: '', resolutionCriteria: '', resolutionDate: '', visibility: 'PUBLIC' };
   const initialArticle = props.articleId 
       ? articleTitlesList.value.find(a => a._id === props.articleId) 
       : null;

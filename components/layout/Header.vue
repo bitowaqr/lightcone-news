@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { useDarkMode } from '~/composables/useDarkMode';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -81,6 +82,14 @@ async function handleLogout() {
         router.push('/login');
     }
 }
+
+// Helper for dropdown navigation
+function handleDropdownNav(close, path) {
+  close();
+  setTimeout(() => {
+    router.push(path);
+  }, 0);
+}
 </script>
 
 <template>
@@ -96,13 +105,16 @@ async function handleLogout() {
         <div class="flex items-center space-x-4">
           <NuxtLink 
             to="/" 
-            class="flex items-center p-1 rounded-full hover:bg-bg-muted transition-colors duration-150"
+            class="flex items-center"
           >
+          <div class="p-1 rounded-full hover:bg-bg-muted transition-colors duration-150">
             <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-8 h-8 dark:invert" />
+          </div>
+            <span class="ml-2 pt-0.5 text-fg text-lg font-medium font-serif block md:hidden whitespace-nowrap">Lightcone News</span>
           </NuxtLink>
           <!-- Desktop Main Navigation Links -->
           <div class="hidden md:flex space-x-4 items-center text-base">
-            <NuxtLink to="/" class="text-fg hover:text-primary transition-colors duration-100">Newsfeed</NuxtLink>
+            <NuxtLink to="/" class="text-fg hover:text-primary transition-colors duration-100">News</NuxtLink>
             <NuxtLink to="/scenarios" class="text-fg hover:text-primary transition-colors duration-100">Scenarios</NuxtLink>
             <NuxtLink to="/about" class="text-fg hover:text-primary transition-colors duration-100">About</NuxtLink>
           </div>
@@ -134,18 +146,72 @@ async function handleLogout() {
 
             <!-- Authenticated State -->
             <template v-else-if="authStore.isAuthenticated">
-              <!-- **** ADMIN LINK **** -->
-              <NuxtLink
-                v-if="isAdmin"
-                to="/admin"
-                class="font-mono text-xs bg-yellow-200 text-black dark:bg-yellow-700 dark:text-white px-2 py-1 rounded hover:opacity-80"
-              >
-                &lt;Admin/&gt;
-              </NuxtLink>
-              <!-- ******************* -->
-              <button @click="handleLogout" :disabled="authStore.isLoading" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50">
-                Logout
-              </button>
+              <!-- User Dropdown Menu -->
+              <Menu as="div" class="relative inline-block text-left">
+                <div>
+                  <MenuButton 
+                    class="flex items-center justify-center w-8 h-8 rounded-full bg-bg-muted hover:bg-bg-subtle text-fg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-dark focus:ring-primary"
+                  >
+                    <Icon icon="heroicons:user-circle-20-solid" class="w-5 h-5" />
+                  </MenuButton>
+                </div>
+
+                <transition
+                  enter-active-class="transition duration-100 ease-out"
+                  enter-from-class="transform scale-95 opacity-0"
+                  enter-to-class="transform scale-100 opacity-100"
+                  leave-active-class="transition duration-75 ease-in"
+                  leave-from-class="transform scale-100 opacity-100"
+                  leave-to-class="transform scale-95 opacity-0"
+                >
+                  <MenuItems class="absolute right-0 mt-2 w-48 origin-top-right divide-y divide-bg-muted rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div class="px-1 py-1">
+                      <MenuItem v-slot="{ active, close }">
+                        <button
+                          type="button"
+                          @click="() => handleDropdownNav(close, '/profile')"
+                          :class="[
+                            active ? 'bg-primary text-white' : 'text-fg',
+                            'group flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors',
+                          ]"
+                        >
+                          <Icon icon="heroicons:user-circle-20-solid" :active="active" class="mr-2 h-5 w-5" aria-hidden="true" />
+                          Profile
+                        </button>
+                      </MenuItem>
+                      <MenuItem v-if="isAdmin" v-slot="{ active, close }">
+                        <button
+                          type="button"
+                          @click="() => handleDropdownNav(close, '/admin')"
+                          :class="[
+                            active ? 'bg-primary text-white' : 'text-fg',
+                            'group flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors',
+                          ]"
+                        >
+                          <Icon icon="heroicons:shield-check-20-solid" :active="active" class="mr-2 h-5 w-5" aria-hidden="true" />
+                          Admin
+                        </button>
+                      </MenuItem>
+                    </div>
+                    <div class="px-1 py-1">
+                      <MenuItem v-slot="{ active, close }">
+                        <button
+                          @click="() => { handleLogout(); close(); }"
+                          :disabled="authStore.isLoading"
+                          :class="[
+                            active ? 'bg-red-500 text-white' : 'text-red-500 dark:text-red-400',
+                            'group flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors disabled:opacity-50',
+                          ]"
+                        >
+                          <Icon icon="heroicons:arrow-left-on-rectangle-20-solid" :active="active" class="mr-2 h-5 w-5" aria-hidden="true" />
+                          Logout
+                        </button>
+                      </MenuItem>
+                    </div>
+                  </MenuItems>
+                </transition>
+              </Menu>
+              <!-- END: User Dropdown Menu -->
             </template>
 
             <!-- Unauthenticated State -->
@@ -178,13 +244,13 @@ async function handleLogout() {
           v-show="mobileMenuOpen"
           class="md:hidden absolute top-full left-0 right-0 bg-bg z-50 shadow-lg border-t border-bg-muted"
         >
-          <div class="container mx-auto px-4 py-4 flex flex-col space-y-2">
+          <div class="container mx-auto px-4 py-4 flex flex-col space-y-1">
             <NuxtLink
               to="/"
               class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
               @click="mobileMenuOpen = false"
             >
-              Newsfeed
+              News
             </NuxtLink>
              <NuxtLink
               to="/scenarios"
@@ -218,14 +284,25 @@ async function handleLogout() {
               Terms
             </NuxtLink>
 
+            <!-- **** ADDED: PROFILE LINK (Mobile) **** -->
+            <NuxtLink
+              v-if="authStore.isAuthenticated"
+              to="/profile"
+              class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
+              @click="mobileMenuOpen = false"
+            >
+              Profile
+            </NuxtLink>
+            <!-- *********************************** -->
+
             <!-- **** ADMIN LINK (Mobile) **** -->
              <NuxtLink
                 v-if="isAdmin"
                 to="/admin"
-                class="font-mono text-sm bg-yellow-200 text-black dark:bg-yellow-700 dark:text-white px-2 py-2 rounded hover:opacity-80 text-center"
+                class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
                  @click="mobileMenuOpen = false"
               >
-                &lt;Admin Dashboard/&gt;
+                Admin
               </NuxtLink>
             <!-- ************************** -->
 
@@ -244,8 +321,9 @@ async function handleLogout() {
                   v-if="authStore.isAuthenticated"
                   @click="handleLogout"
                   :disabled="authStore.isLoading"
-                  class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                  class="flex items-center px-3 py-1.5 rounded-md text-sm disabled:opacity-50 text-fg bg-bg hover:bg-bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200"
                 >
+                  <Icon icon="heroicons:arrow-right-on-rectangle-20-solid" class="w-4 h-4 mr-1" />
                   Logout
                 </button>
 

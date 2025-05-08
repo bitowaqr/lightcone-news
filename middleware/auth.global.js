@@ -7,9 +7,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
   if (process.server && authStore.status === 'idle' && !serverFetchInitiated.value) {
     serverFetchInitiated.value = true;
-    console.log('Global Auth Middleware (Server): Auth idle, awaiting fetchUser...');
     await authStore.fetchUser();
-    console.log('Global Auth Middleware (Server): fetchUser complete. Status:', authStore.status);
   }
 
   const publicPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*','/welcome'];
@@ -35,15 +33,15 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const isGuestPage = guestPages.includes(to.path);
   const isAdminRoute = to.path.startsWith('/admin');
 
-  console.log(`Global Auth Middleware (${process.server ? 'Server' : 'Client'}): Path: ${to.path}, IsAuth: ${isAuthenticated}, IsAdminRoute: ${isAdminRoute}, IsPublicPage: ${isPublicPage}, Status: ${authStore.status}`);
+  // console.log(`Global Auth Middleware (${process.server ? 'Server' : 'Client'}): Path: ${to.path}, IsAuth: ${isAuthenticated}, IsAdminRoute: ${isAdminRoute}, IsPublicPage: ${isPublicPage}, Status: ${authStore.status}`);
 
   if (!isPublicPage && !isAdminRoute && !isAuthenticated) {
-      console.log(`Global Auth Middleware: Protected page ${to.path} requires auth, redirecting to login.`);
+      // console.log(`Global Auth Middleware: Protected page ${to.path} requires auth, redirecting to login.`);
       return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`, { replace: true });
   }
 
   if (isAdminRoute && !isAuthenticated) {
-       console.log(`Global Auth Middleware: Admin page ${to.path} requires auth, redirecting to login.`);
+       // console.log(`Global Auth Middleware: Admin page ${to.path} requires auth, redirecting to login.`);
        return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`, { replace: true });
   }
 
@@ -53,14 +51,14 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   // }
 
   if (to.path === '/' ) {
-       console.log('Global Auth Middleware: Authenticated user accessing /, redirecting to /newsfeed');
+       // console.log('Global Auth Middleware: Authenticated user accessing /, redirecting to /newsfeed');
        return navigateTo('/newsfeed', { replace: true });
   }
 
   if (isAdminRoute && isAuthenticated) {
-       console.log('Global Auth Middleware: Authenticated user accessing /admin, allowing admin middleware to check role.');
+       // console.log('Global Auth Middleware: Authenticated user accessing /admin, allowing admin middleware to check role.');
        return;
   }
 
-  console.log(`Global Auth Middleware: Allowing navigation to ${to.path}`);
+  // console.log(`Global Auth Middleware: Allowing navigation to ${to.path}`);
 }); 

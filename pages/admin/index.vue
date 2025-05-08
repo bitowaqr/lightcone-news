@@ -121,8 +121,8 @@
                 class="p-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150"
                 :class="{ 'bg-indigo-50 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-700': selectedDocumentId === doc._id }"
                 @click="selectDocument(doc._id)">
-              <div class="text-sm font-medium truncate" :title="doc.title || doc.question || doc.email || doc.url || doc._id">
-                  {{ doc.title || doc.question || doc.email || doc.url || 'Document' }}
+              <div class="text-sm font-medium truncate" :title="doc.title || doc.question || doc.email || doc.url || doc.name || 'Document'">
+                  {{ doc.title || doc.question || doc.email || doc.url || doc.name || 'Document' }}
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
                 ID: {{ doc._id }}
@@ -232,6 +232,7 @@ import SourceDocumentEditor from '../../components/admin/editors/SourceDocumentE
 import GenericJsonEditor from '../../components/admin/editors/GenericJsonEditor.vue';
 import StoryIdeasEditor from '../../components/admin/editors/StoryIdeasEditor.vue';
 import ArticleCreator from '../../components/admin/editors/ArticleCreator.vue';
+import ForecasterEditor from '../../components/admin/editors/ForecasterEditor.vue';
 
 // Apply Admin Middleware
 definePageMeta({
@@ -279,23 +280,34 @@ const route = useRoute();
 const router = useRouter();
 
 // Determine which editor component to use based on selectedCollection
+const editorComponents = {
+    Article: ArticleEditor,
+    Scenario: ScenarioEditor,
+    SourceDocument: SourceDocumentEditor,
+    StoryIdeas: StoryIdeasEditor,
+    User: GenericJsonEditor, // Default for User, or create UserEditor
+    Forecaster: ForecasterEditor,
+    // Add other collection-specific editors here
+    // Default/fallback is handled in currentEditorComponent
+};
+
+// Determine which creator component to use
+const creatorComponents = {
+  Article: ArticleCreator,
+  // Add other collection-specific creators here if needed
+  // Forecaster: ForecasterCreator, // Example if we add one
+};
+
+// Determine which editor component to use based on selectedCollection
 const currentEditorComponent = computed(() => {
   if (!selectedCollection.value) return null;
-  
-  const editorMap = {
-    'Article': ArticleEditor,
-    'Scenario': ScenarioEditor,
-    'SourceDocument': SourceDocumentEditor,
-    'StoryIdeas': StoryIdeasEditor
-  };
-  
-  return editorMap[selectedCollection.value] || GenericJsonEditor;
+  return editorComponents[selectedCollection.value] || GenericJsonEditor;
 });
 
-// Determine which creator component to use (only Article for now)
+// Determine which creator component to use
 const currentCreatorComponent = computed(() => {
-  if (!selectedCollection.value || selectedCollection.value !== 'Article') return null;
-  return ArticleCreator;
+  if (!selectedCollection.value || !showCreator.value) return null;
+  return creatorComponents[selectedCollection.value]; // Returns undefined if no specific creator, which is fine
 });
 
 // Common statuses for quick filtering

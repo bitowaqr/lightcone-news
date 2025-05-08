@@ -373,9 +373,9 @@ async function scrapePolymarketData(options = {}) {
   }
 
   if (config.maxItems !== undefined && processedCount >= config.maxItems) {
-    console.log(
-      `[Polymarket] (Processing stopped early due to maxItems limit: ${config.maxItems})`
-    );
+    // console.log(
+    //   `[Polymarket] (Processing stopped early due to maxItems limit: ${config.maxItems})`
+    // );
   }
 
   return formattedScenarios;
@@ -547,7 +547,7 @@ async function getPolymarketPriceHistory(
   });
 
   const url = `${POLYMARKET_CLOB_API_URL}/prices-history?${params.toString()}`;
-  console.log(`Fetching price history from: ${url}`); // Log includes fidelity now
+  // console.log(`Fetching price history from: ${url}`); // Log includes fidelity now
 
   try {
     const response = await fetch(url);
@@ -613,7 +613,7 @@ async function getPrice24hAgo(tokenId) {
   });
 
   const url = `${POLYMARKET_CLOB_API_URL}/prices-history?${params.toString()}`;
-  console.log(`Fetching 24h ago price from: ${url}`);
+  // console.log(`Fetching 24h ago price from: ${url}`);
 
   try {
     const response = await fetch(url);

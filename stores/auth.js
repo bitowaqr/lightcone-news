@@ -54,7 +54,6 @@ export const useAuthStore = defineStore('auth', {
              this.user = null;
            }
          } else if (data.value && data.value.user) {
-           // console.log('fetchUser: Success, user data received:', data.value.user);
            this.user = data.value.user;
            this.status = 'authenticated';
          } else {
@@ -78,34 +77,33 @@ export const useAuthStore = defineStore('auth', {
         this.status = 'loading';
         this.error = null;
         try {
-            const { data, error } = await useFetch('/api/auth/login', {
+            const { data, error } = await $fetch('/api/auth/login', { // USE $fetch instead of useFetch
                 method: 'POST',
                 body: credentials,
-                key: 'auth-login' // Unique key
+                // No key needed for $fetch
             });
 
-            if (error.value) {
-                console.error('Login Error (useFetch):', error.value.data?.message || error.value);
-                this.status = 'error';
-                this.error = error.value.data?.message || 'Login failed.';
-                this.user = null;
-                return false;
-            } else if (data.value && data.value.user) {
+            // $fetch throws an error on 4xx/5xx, so error handling needs adjustment
+            // If the request is successful, 'data' will contain the response body.
+            // If there's an HTTP error, it will be caught in the catch block.
+
+            if (data && data.user) { // Check if data and data.user exist
                 // console.log('Login Success:', data.value.user);
-                this.user = data.value.user;
+                this.user = data.user;
                 this.status = 'authenticated';
                 return true;
             } else {
-                 console.warn('Login: Received response but no user data.')
+                 console.warn('Login: Received response but no user data or unexpected structure.')
                  this.status = 'error';
-                 this.error = 'Login response was invalid.';
+                 this.error = data?.message || 'Login response was invalid.'; // Use data.message if available
                  this.user = null;
                  return false;
             }
         } catch (err) {
-            console.error('Login Error (catch block):', err);
+            // console.error('Login Error ($fetch):', err.data?.message || err.message || err);
             this.status = 'error';
-            this.error = 'An unexpected login error occurred.';
+            // err.data often contains the structured error response from the server
+            this.error = err.data?.message || err.message || 'An unexpected login error occurred.';
             this.user = null;
             return false;
         }
@@ -145,9 +143,8 @@ export const useAuthStore = defineStore('auth', {
         this.status = 'loading';
         this.error = null;
         try {
-            await useFetch('/api/auth/logout', {
+            await $fetch('/api/auth/logout', {
                 method: 'POST',
-                key: 'auth-logout' // Unique key
             });
             // console.log('Logout successful on server.');
         } catch (err) {

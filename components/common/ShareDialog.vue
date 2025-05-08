@@ -1,6 +1,6 @@
 <template>
   <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="closeDialog">
-    <div class="bg-article rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+    <div class="bg-bg rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-medium text-fg">{{ dialogTitle }}</h3>
         <button @click="closeDialog" class="text-fg-muted hover:text-fg">
@@ -32,19 +32,21 @@
         </div>
 
         <!-- Social Buttons -->
-        <div class="flex space-x-2">
-           <a :href="`https://www.linkedin.com/sharing/share-offsite/?url=${encodedShareUrl}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#0077b5] hover:bg-[#005e90]" title="Share on LinkedIn">
-              <Icon name="mdi:linkedin" class="w-5 h-5" />
-           </a>
+        <div class="flex space-x-4 flex-wrap justify-center">
            <a :href="`https://twitter.com/intent/tweet?url=${encodedShareUrl}&text=${encodedShareTitle}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#1DA1F2] hover:bg-[#0c85d0]" title="Share on X (Twitter)">
               <Icon name="mdi:twitter" class="w-5 h-5" />
            </a>
-           <!-- Facebook removed -->
+           <a :href="`https://bsky.app/intent/compose?text=${encodedShareTitle}%0A${encodedShareUrl}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#0085FF] hover:bg-[#006acc]" title="Share on Bluesky">
+              <Icon name="simple-icons:bluesky" class="w-5 h-5" /> 
+           </a>
+           <a :href="`https://mastodon.social/share?text=${encodedShareTitle}&url=${encodedShareUrl}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#6364FF] hover:bg-[#4d4eclc]" title="Share on Mastodon">
+            <Icon name="mdi:mastodon" class="w-5 h-5" />
+           </a>
            <a :href="`https://reddit.com/submit?url=${encodedShareUrl}&title=${encodedShareTitle}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#FF4500] hover:bg-[#cc3700]" title="Share on Reddit">
               <Icon name="mdi:reddit" class="w-5 h-5" />
            </a>
-           <a :href="`https://bsky.app/intent/compose?text=${encodedShareTitle}%0A${encodedShareUrl}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#0085FF] hover:bg-[#006acc]" title="Share on Bluesky">
-              <Icon name="simple-icons:bluesky" class="w-5 h-5" /> 
+           <a :href="`https://www.linkedin.com/sharing/share-offsite/?url=${encodedShareUrl}`" target="_blank" rel="noopener noreferrer" class="social-button bg-[#0077b5] hover:bg-[#005e90]" title="Share on LinkedIn">
+              <Icon name="mdi:linkedin" class="w-5 h-5" />
            </a>
            <a :href="`mailto:?subject=${encodedShareTitle}&body=Check out this link: ${encodedShareUrl}`" class="social-button bg-gray-500 hover:bg-gray-600" title="Share via Email">
               <Icon name="mdi:email-outline" class="w-5 h-5" />
@@ -132,6 +134,6 @@ watch(shareUrl, () => {
 
 <style scoped>
 .social-button {
-  @apply inline-flex items-center justify-center w-10 h-10 rounded-full text-white transition-colors duration-150;
+  @apply inline-flex items-center justify-center w-10 h-10 rounded-full text-white transition-colors duration-150 mb-2;
 }
 </style> 

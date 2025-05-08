@@ -10,7 +10,7 @@ const requireAdmin = (event) => {
 
 // Basic validation for collection names
 const isValidCollection = (collectionName) => {
-  const allowedCollections = ['Article', 'Scenario', 'SourceDocument', 'User', 'Lineup'];
+  const allowedCollections = ['Article', 'Scenario', 'SourceDocument', 'User', 'Lineup', 'Forecaster'];
   return allowedCollections.includes(collectionName);
 }
 

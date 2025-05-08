@@ -21,22 +21,19 @@
           <!-- Group for left-aligned items -->
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-start">
              <!-- ADDED: Resolved/Unresolved Status -->
-             <span :class="[
-                'inline-flex items-center text-xs font-medium px-1.5 py-0.5 rounded-full border',
-                isResolvedStatus 
-                  ? 'border-green-600/50 bg-green-500/10 text-green-700 dark:text-green-400 dark:border-green-500/50 dark:bg-green-500/10'
-                  : 'border-orange-600/50 bg-orange-500/10 text-orange-700 dark:text-orange-400 dark:border-orange-500/50 dark:bg-orange-500/10'
-             ]">
+             <span class="inline-flex items-center text-sm font-medium py-0.5">
                 <Icon 
                   :name="isResolvedStatus ? 'heroicons:check-badge-solid' : 'heroicons:clock-solid'" 
                   class="w-3 h-3 mr-1"
                 />
-                {{ isResolvedStatus ? 'Resolved' : 'Unresolved' }}
+                {{ isResolvedStatus ? 'Resolved:' : 'Deadline:' }}
+                <span v-if="scenario.closeDate" class="ps-1 font-medium text-fg"
+                >{{ scenario.closeDate }}</span>
              </span>
              <!-- MOVED BACK: Close Date -->
              <span v-if="scenario.closeDate" class="inline-flex items-center">
-                <Icon name="mdi:calendar-clock" class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />
-               <span class="ps-0.5 font-medium text-fg">{{ scenario.closeDate }}</span>
+                
+               
              </span>
              <!-- MOVED BACK: Platform Link -->
               <a :href="scenario.url" target="_blank" class="text-fg-muted hover:text-primary transition-colors items-center inline-flex group" v-if="scenario.url">
@@ -115,13 +112,55 @@
       </div>
       <!-- *************************** -->
 
+      
+
+      <!-- Resolution Section (Updated) -->
+      <div class="">
+        <button 
+          @click="isResolutionVisible = !isResolutionVisible"
+          class="flex items-center text-base font-semibold text-fg mt-6 focus:outline-none w-full justify-start pt-2"
+        >
+          <Icon :name="isResolutionVisible ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="w-5 h-5 mr-1" />
+          <span>Resolution</span>
+        </button>
+        <div v-if="isResolutionVisible" class="mt-2 text-sm text-fg-muted bg-bg-muted p-4 rounded border border-accent-bg space-y-3">
+          <div>
+            <span class="block text-xs text-fg-muted mb-1">
+              <template v-if="scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate">
+                Resolved Date
+              </template>
+              <template v-else>
+                Expected Resolution Date
+              </template>
+            </span>
+            <span class="block text-fg">
+              <template v-if="scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate">
+                {{ formatDate(scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate) }}
+              </template>
+              <template v-else-if="scenario.resolutionData?.expectedResolutionDate || scenario.expectedResolutionDate">
+                {{ formatDate(scenario.resolutionData?.expectedResolutionDate || scenario.expectedResolutionDate) }}
+              </template>
+              <template v-else>
+                <span class="text-fg-muted italic">Not yet resolved</span>
+              </template>
+            </span>
+          </div>
+          <div>
+            <span class="block text-xs text-fg-muted mb-1">Resolution Criteria</span>
+            <span class="block text-fg" v-html="resolutionCriteriaHtml"></span>
+          </div>
+        </div>
+      </div>
+      <!-- END Resolution -->
+
+
       <!-- ADDED: Details (Collapsible) -->
-      <div class="mb-8">
+      <div class="">
         <button 
           @click="isDetailsVisible = !isDetailsVisible"
-          class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
+          class="flex items-center text-base font-semibold text-fg mb-2 mt-2 focus:outline-none w-full justify-start border-bg-muted pt-4"
         >
-          <Icon :name="isDetailsVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+          <Icon :name="isDetailsVisible ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="w-5 h-5 mr-1" />
           <span>Details</span>
         </button>
         <div v-if="isDetailsVisible" class="mt-2 space-y-2 text-sm text-fg-muted bg-bg-muted p-4 rounded border border-accent-bg">
@@ -151,53 +190,14 @@
       </div>
       <!-- END Details -->
 
-      <!-- Resolution Section (Updated) -->
-      <div class="mb-8">
-        <button 
-          @click="isResolutionVisible = !isResolutionVisible"
-          class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
-        >
-          <Icon :name="isResolutionVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
-          <span>Resolution</span>
-        </button>
-        <div v-if="isResolutionVisible" class="mt-2 text-sm text-fg-muted bg-bg-muted p-4 rounded border border-accent-bg space-y-3">
-          <div>
-            <span class="block text-xs text-fg-muted mb-1">
-              <template v-if="scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate">
-                Resolved Date
-              </template>
-              <template v-else>
-                Expected Resolution Date
-              </template>
-            </span>
-            <span class="block text-fg">
-              <template v-if="scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate">
-                {{ formatDate(scenario.resolutionData?.resolutionCloseDate || scenario.resolutionCloseDate) }}
-              </template>
-              <template v-else-if="scenario.resolutionData?.expectedResolutionDate || scenario.expectedResolutionDate">
-                {{ formatDate(scenario.resolutionData?.expectedResolutionDate || scenario.expectedResolutionDate) }}
-              </template>
-              <template v-else>
-                <span class="text-fg-muted italic">Not yet resolved</span>
-              </template>
-            </span>
-          </div>
-          <div>
-            <span class="block text-xs text-fg-muted mb-1">Resolution Criteria</span>
-            <span class="block text-fg">{{ scenario.resolutionData?.resolutionCriteria || scenario.resolutionCriteria || 'No criteria provided.' }}</span>
-          </div>
-        </div>
-      </div>
-      <!-- END Resolution -->
-
       <!-- ADDED: Forecast Details Section (Collapsible) -->
       <div v-if="showForecastDetailsSection" class="mb-8">
         <button 
           @click="isForecastsVisible = !isForecastsVisible"
           class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
         >
-          <Icon :name="isForecastsVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
-          <span>Forecast Details ({{ latestForecastsByForecaster.length }})</span>
+          <Icon :name="isForecastsVisible ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="w-5 h-5 mr-1" />
+          <span>Active Forecasts ({{ latestForecastsByForecaster.length }})</span>
         </button>
         <div v-if="isForecastsVisible" class="mt-2 space-y-4">
           <!-- Iterate through stats object which contains latestForecast and totalCount -->
@@ -207,14 +207,16 @@
             <!-- Forecaster Header -->
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center">
-                   <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 mr-3 flex-shrink-0">
-                       <Icon :name="stats.latestForecast.forecasterId.avatar || 'mdi:account-circle'" class="h-5 w-5 text-primary" />
-                   </span>
-                   <div>
-                     <span class="font-semibold text-fg text-base block leading-tight">{{ stats.latestForecast.forecasterId.name || 'Unknown Forecaster' }}</span>
-                     <!-- Added: Total Forecast Count -->
-                     <span class="text-xs text-fg-muted leading-tight">{{ stats.totalCount }} forecast{{ stats.totalCount === 1 ? '' : 's' }}</span>
-                   </div>
+                   <NuxtLink :to="`/forecaster/${stats.latestForecast.forecasterId._id}`" class="flex items-start group hover:no-underline">
+                     <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 mr-3 flex-shrink-0 -mt-0.5">
+                         <Icon :name="stats.latestForecast.forecasterId.avatar || 'mdi:account-circle'" class="h-5 w-5 text-primary" />
+                     </span>
+                     <div>
+                       <span class="font-semibold text-fg text-base block leading-tight group-hover:text-primary transition-colors duration-100">{{ stats.latestForecast.forecasterId.name || 'Unknown Forecaster' }}</span>
+                       <!-- Added: Total Forecast Count -->
+                       <span class="text-xs text-fg-muted leading-tight">{{ stats.totalCount }} forecast{{ stats.totalCount === 1 ? '' : 's' }}</span>
+                     </div>
+                   </NuxtLink>
                 </div>
                 <div class="text-right">
                     <span class="text-xl font-bold text-primary">{{ formatProbability(stats.latestForecast.probability) }}</span>
@@ -236,11 +238,11 @@
                 @click="toggleDetails(stats.latestForecast.forecasterId._id)"
                 class="text-xs font-medium text-primary-600 hover:text-primary flex items-center mb-1"
               >
-                 <Icon :name="expandedDetails[stats.latestForecast.forecasterId._id] ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-4 h-4 mr-0.5" />
+                 <Icon :name="expandedDetails[stats.latestForecast.forecasterId._id] ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="w-4 h-4 mr-0.5" />
                  {{ expandedDetails[stats.latestForecast.forecasterId._id] ? 'Hide Details' : 'Show Details & Evidence' }}
               </button>
               <div v-if="expandedDetails[stats.latestForecast.forecasterId._id]" class="text-sm text-fg-muted space-y-2 border-l-2 border-primary/20 pl-3 pt-2 pb-1">
-                  <p v-if="stats.latestForecast.rationalDetails">{{ stats.latestForecast.rationalDetails }}</p>
+                  <div v-if="stats.latestForecast.rationalDetails" v-html="renderMarkdown(stats.latestForecast.rationalDetails).value" class="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1"></div>
                   <div v-if="stats.latestForecast.dossier && stats.latestForecast.dossier.length > 0">
                       <h5 class="text-xs font-semibold text-fg mt-2 mb-1">Evidence:</h5>
                       <ul class="list-disc list-inside space-y-1">
@@ -274,15 +276,11 @@
 
       <!-- ADDED: Related Articles Section (Collapsible) -->
       <div v-if="scenario.relatedArticles && scenario.relatedArticles.length > 0" class="mb-6">
-        <button 
-          @click="isRelatedArticlesVisible = !isRelatedArticlesVisible"
-          class="flex items-center text-sm text-fg-muted hover:text-fg transition-colors focus:outline-none w-full justify-start border-t border-bg-muted pt-3 mt-3"
-        >
-          <Icon :name="isRelatedArticlesVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="w-5 h-5 mr-1" />
+        <div class="flex items-center text-base font-semibold text-fg mb-2 mt-6 w-full justify-start border-t border-bg-muted pt-4">
           <span class="text-base font-medium">Related Articles ({{ scenario.relatedArticles.length }})</span>
-        </button>
-        <div v-if="isRelatedArticlesVisible" class="mt-3 space-y-3">
-          <div v-for="article in scenario.relatedArticles" :key="article._id" 
+        </div>
+        <div class="mt-3 space-y-3">
+          <div v-for="article in scenario.relatedArticles" :key="article._id"
                class="border border-bg-muted rounded bg-bg-muted/30 p-3 transition-colors hover:border-primary/50">
              <NuxtLink :to="`/articles/${article.slug}`" class="block hover:no-underline">
                <h4 class="font-medium text-fg text-base mb-1 hover:text-primary">{{ article.title }}</h4>
@@ -295,6 +293,8 @@
         </div>
       </div>
       <!-- END ADDED -->
+
+      <div class=""></div>
 
       <!-- Related Scenarios Section -->
       <div class="mt-6 pt-6 border-t border-bg-muted" v-if="scenario.scenarios && scenario.scenarios.length > 0">
@@ -337,6 +337,7 @@ import ScenarioTeaser from '~/components/scenario/Teaser.vue';
 import HistoryChart from '~/components/scenario/HistoryChart.vue'; // Import history chart component
 import { useAuthStore } from '~/stores/auth';
 import { useBookmarkStore } from '~/stores/bookmarks';
+import { renderMarkdown } from '~/composables/useMarkdown'; // ADDED
 
 const props = defineProps({
   scenario: {
@@ -387,7 +388,6 @@ const { detailsHistoryData, chartHistoryData, loading: loadingHistory, error: er
 const isCriteriaVisible = ref(false);
 const isDetailsVisible = ref(false);
 const isResolutionVisible = ref(true);
-const isRelatedArticlesVisible = ref(true); // Default to visible
 const isForecastsVisible = ref(true); // Default to visible for the new section
 
 // Formatting Functions
@@ -434,6 +434,12 @@ const statusClass = computed(() => {
   }
 });
 
+const resolutionCriteriaHtml = computed(() => {
+  
+  const md = renderMarkdown(props.scenario.resolutionCriteria).value;
+  return md ? md : 'No criteria provided.';
+});
+
 // --- ADDED: Bookmark & Share Logic ---
 const isBookmarked = computed(() => {
     // Note: The scenario object passed as prop might have scenarioId or _id depending on source
@@ -463,6 +469,9 @@ const handleShare = () => {
 
 // --- ADDED: Computed property for resolved status ---
 const isResolvedStatus = computed(() => {
+  if( props.scenario?.status?.toLowerCase() === 'resolved') {
+  return true;
+  }
   return !!(props.scenario.resolutionData?.resolutionCloseDate || props.scenario.resolutionCloseDate);
 });
 // --- END ADDED ---

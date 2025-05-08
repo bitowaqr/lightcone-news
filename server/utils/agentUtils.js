@@ -14,23 +14,44 @@ import { zodToJsonSchema } from "zod-to-json-schema";
  * @throws {Error} If the operation fails.
  */
 export async function findOrCreateForecaster(name, metadata = {}) {
+    
     if (!name) {
         throw new Error('Forecaster name is required.');
     }
     await mongoService.connect(); // Ensure connection
 
     try {
+        const determinedType = metadata.type || 'AI'; // Default to AI if not specified
+
+        const insertData = {
+            name: name,
+            avatar: metadata.avatar || 'mdi:robot',
+            description: metadata.description || '',
+            type: determinedType,
+            status: metadata.status || 'ACTIVE',
+        };
+
+        if (determinedType === 'AI') {
+            if (typeof metadata.modelDetails !== 'undefined') {
+                insertData.modelDetails = metadata.modelDetails;
+            }
+            // If metadata.modelDetails is not provided, schema default (empty object for AI)
+            // will be applied upon new document creation.
+            // userId should be null/undefined for AI type as per schema validation.
+            // By not adding metadata.userId to insertData here, it remains unset,
+            // which should satisfy the schema validator `v == null` for AI type if userId was undefined.
+        } else if (determinedType === 'HUMAN') {
+            if (typeof metadata.userId !== 'undefined') {
+                insertData.userId = metadata.userId;
+            }
+            // If metadata.userId is not provided for a HUMAN forecaster,
+            // schema validation (userId is required for HUMAN) will trigger an error.
+            // modelDetails is not applicable/required for HUMAN type and defaults to undefined by schema.
+        }
+
         const forecasterDoc = await Forecaster.findOneAndUpdate(
             { name: name },
-            {
-                $setOnInsert: {
-                    name: name,
-                    avatar: metadata.avatar || 'mdi:robot', // Default avatar
-                    description: metadata.description || '',
-                    type: metadata.type || 'AI', // Default to AI
-                    status: metadata.status || 'ACTIVE',
-                }
-            },
+            { $setOnInsert: insertData },
             { upsert: true, new: true, runValidators: true }
         ).lean();
 
@@ -155,3 +176,8 @@ export const defaultPredictionOutputSchema = z.object({
 export const predictionOutputSchema = zodToJsonSchema(defaultPredictionOutputSchema);
 
 export const predictionOutputSchemaString = JSON.stringify(predictionOutputSchema);
+
+
+export const closeMongoConnection = async () => {
+    await mongoService.disconnect();
+}

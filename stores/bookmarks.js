@@ -30,7 +30,7 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
 
   // Fetches bookmarks from API
   async function fetchBookmarks() {    
-    console.log('Fetching bookmarks (scenarios only)...');
+    if(isLoading.value) return;
     isLoading.value = true;
     try {
       const data = await $fetch('/api/bookmarks'); // Calls the GET endpoint
@@ -44,6 +44,11 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // Clears bookmarks
+  async function clearBookmarks() {
+    bookmarkedScenarios.value = [];
   }
 
   // Adds a scenario bookmark via API
@@ -146,6 +151,7 @@ export const useBookmarkStore = defineStore('bookmarks', () => {
     allBookmarks,
     // Actions
     fetchBookmarks,
+    clearBookmarks,
     addBookmark,
     removeBookmark,
     toggleBookmark

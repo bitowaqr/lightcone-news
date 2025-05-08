@@ -66,8 +66,8 @@ export function useScenarioChance(scenarioRef) {
         status.value = data.status;
         liquidity.value = data.liquidity;
       } else {
-          // Should ideally not happen if proxy behaves, but handle defensively
-          console.warn('Received unexpected data structure from /api/scenarios/chance:', data);
+        // Should ideally not happen if proxy behaves, but handle defensively
+          console.warn('Received unexpected data from /api/scenarios/chance:', data);
         chance.value = null; // Treat as no data
         volume.value = null;
         status.value = null;

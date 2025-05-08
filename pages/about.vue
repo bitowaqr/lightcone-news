@@ -5,7 +5,7 @@
     <div class="bg-article p-6 md:p-8 rounded-lg shadow-sm mb-8 space-y-8 text-lg leading-relaxed">
 
       <blockquote class="text-xl font-semibold leading-relaxed mt-1">
-        Lightcone News is a curated news feed with additional context and probabilistic forecasts to help you make sense of the world.
+        Lightcone News is a curated news feed with  additional context and probabilistic forecasts to help you make sense of the world.
       </blockquote>
 
       <!-- Core Features Section -->
@@ -13,7 +13,7 @@
         <h2 class="text-xl font-semibold mb-4">Core Features</h2>
         <ol class="list-decimal space-y-2 pl-5">
           <li>
-            A <strong class="font-bold text-primary-700 dark:text-primary-300">Curated Feed</strong> focusing on important global developments.
+            A <strong class="font-bold text-primary-700 dark:text-primary-300">Curated Feed</strong> focusing on important news.
           </li>
           <li>
             <strong class="font-bold text-primary-700 dark:text-primary-300">Historical Timelines</strong> show the development of key events.

@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // --- Debug: log the final filter ---
-  console.log('Scenario API finalFilter:', JSON.stringify(finalFilter, null, 2));
+  // console.log('Scenario API finalFilter:', JSON.stringify(finalFilter, null, 2));
 
   // --- Sorting --- 
   let sort = { createdAt: -1 }; // Default: newest first

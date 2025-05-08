@@ -56,6 +56,8 @@ export default defineEventHandler(async (event) => {
       userId: user._id,
       email: user.email,
       role: user.role,
+      joinDate: user.joinDate,
+      lastLogin: user.lastLogin,
       // Add any other non-sensitive info needed frequently
     };
 
@@ -82,6 +84,8 @@ export default defineEventHandler(async (event) => {
         userId: user._id,
         email: user.email,
         role: user.role,
+        joinDate: user.joinDate,
+        lastLogin: user.lastLogin,
         // Add other fields needed by the frontend here
       },
       message: 'Login successful!',

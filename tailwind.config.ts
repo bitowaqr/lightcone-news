@@ -53,6 +53,7 @@ export default {
       fontFamily: {
         source: ['IBM Plex Sans', 'Inter', 'Source Sans 3', 'sans-serif'],
         plex: ['IBM Plex Sans', 'sans-serif'],
+        serif: ['Merriweather', 'Georgia', 'sans-serif'],
       },
     },
   },

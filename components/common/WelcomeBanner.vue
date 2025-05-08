@@ -13,22 +13,17 @@ onMounted(() => {
     const currentStatus = localStorage.getItem(consentKey);
     // Only show if status is null/undefined (first visit) or explicitly 'show'
     if (!currentStatus || currentStatus === 'show') {
-      console.log('WelcomeBanner: Status not set or is show, planning to show banner.');
       // Use setTimeout to delay the banner appearance
       setTimeout(() => {
         // Double-check status hasn't changed in the meantime (unlikely but safe)
         const latestStatus = localStorage.getItem(consentKey);
         if (!latestStatus || latestStatus === 'show') {
-             showBanner.value = true;
-             console.log('WelcomeBanner: Showing banner after delay.');
-             // Optionally set status to show if it was null, though not strictly necessary
-             if (!latestStatus) {
-                 localStorage.setItem(consentKey, 'show');
-             }
+          showBanner.value = true;
+          if (!latestStatus) {
+            localStorage.setItem(consentKey, 'show');
+          }
         }
       }, 100); // 1 second delay
-    } else {
-      console.log(`WelcomeBanner: Banner status is '${currentStatus}', not showing.`);
     }
   }
 });
@@ -40,8 +35,6 @@ function learnMore() {
 
 function dismiss() {
   showBanner.value = false;
-  console.log('WelcomeBanner: Dismissed for this session.');
-  // No localStorage change needed for temporary dismiss
 }
 
 function dismissPermanently() {
@@ -49,7 +42,6 @@ function dismissPermanently() {
   // Persist decision
   if (process.client) {
     localStorage.setItem(consentKey, 'never');
-    console.log('WelcomeBanner: Dismissed permanently.');
   }
 }
 </script>
@@ -63,42 +55,38 @@ function dismissPermanently() {
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
   >
-    <div
-      v-if="showBanner"
-      class="fixed top-0 left-0 right-0 z-[90] p-2 sm:p-4 pointer-events-none max-w-4xl mx-auto" 
-    >
-      <div class="w-full bg-bg dark:bg-bg sm:rounded shadow-lg py-2 lg:py-4 px-4 lg:px-5 border border-blue-200 dark:border-primary relative pointer-events-auto flex flex-col ">
-        <!-- Close Button (Top Right) - Made Larger -->
-        <button 
-          @click="dismiss"
-          class="absolute top-1 right-1 p-1 text-fg-muted hover:text-primary  rounded-full focus:outline-none"
-          aria-label="Close welcome banner"
+    <div v-if="showBanner" class="pointer-events-none md:px-2 lg:px-6">
+      <div
+        class="w-full bg-primary-600 dark:bg-primary-300 pointer-events-auto flex flex-col relative "
+      >
+        <div
+          class="flex flex-col items-center justify-between gap-1 max-w-4xl mx-auto p-4"
         >
-          <Icon icon="heroicons:x-mark-20-solid" class="w-8 h-8" /> 
-        </button>
+          <div class="flex items-start justify-center">
+            <p class="text-base text-white text-left grow dark:text-primary-900">
+              Visiting this page for the first time? Follow the link below to
+              learn more about Lightcone News and how to read our forecasts.
+            </p>
+            <button title="Don't show this again"
+            aria-label="Close welcome banner"
+            class="p-1 hover:text-primary -mt-2 rounded-full "
+            >
 
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 max-w-4xl mx-auto p-4">
-          <p class="text-base text-fg text-center sm:text-left grow">
-            ✨ Welcome to Lightcone News! If this is your first time here, click 'Learn More' to see what lightcone news is all about and how the predictions work.
-          </p>
-          <!-- Button Container - Swapped Order -->
-          <div class="flex-shrink-0 flex flex-col xs:flex-row sm:flex-row gap-3  w-full xs:w-auto sm:w-auto mt-4 items-end">
-             <!-- Never Show Again - Changed Style -->
-            <button
+            <Icon
+              icon="heroicons:x-mark-20-solid"
+              class="w-6 h-6 text-white hover:opacity-70 dark:text-primary-900"
               @click="dismissPermanently"
-              class="text-xs text-fg-muted hover:text-primary hover:underline focus:outline-none focus:underline whitespace-nowrap my-auto mx-auto"
-              title="Don't show this banner again"
-            >
-              Don't Show Again
+            />
             </button>
-            <!-- Learn More - Now on Right -->
-            <button
-              @click="learnMore"
-              class="w-full xs:w-auto px-4 py-2 bg-primary hover:bg-primary-600 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-secondary-bg"
-            >
-              Learn More
-            </button>
-           
+          </div>
+
+          <div
+            class="flex items-center justify-center text-white italic text-base me-auto gap-1 py-1 dark:text-primary-900"
+            @click="learnMore"
+            role="button"
+          >
+            About Us
+            <Icon icon="heroicons:chevron-right" class="w-4 h-4 text-white dark:text-primary-900" />
           </div>
         </div>
       </div>
@@ -111,4 +99,4 @@ function dismissPermanently() {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
-</style> 
+</style>

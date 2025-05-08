@@ -17,8 +17,8 @@
               class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
             >
           </div>
-          <div>
-            <label for="password" class="block text-sm font-medium text-fg-muted">Password 
+          <div class="">
+            <label for="password" class="block text-sm font-medium text-fg-muted flex justify-between">Password 
               <NuxtLink to="/forgot-password" class="underline text-fg-muted hover:text-primary dark:hover:text-primary-400 transition-colors">
                 Forgot password?
               </NuxtLink>

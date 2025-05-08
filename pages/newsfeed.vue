@@ -5,6 +5,7 @@
     <!-- Main Content Column (Articles) -->
     <div class="md:col-span-3">
       <!-- Loading State -->
+      <CommonWelcomeBanner />
       <div v-if="pending && !newsfeedData">Loading newsfeed...</div>
 
       <!-- Fetch Error State -->
@@ -12,11 +13,12 @@
         <p class="text-red-600">Error loading newsfeed: {{ error.data?.message || error.message }}. Please try again later.</p>
       </div>
 
+
       <!-- Success State - Article Teasers -->
       <div v-else-if="newsfeedData?.teaserGroups?.length > 0" class="">
           <!-- Start Inlined TeaserFeed -->
             <div class="flex flex-col space-y-4 pb-4 pt-2 md:pt-4">
-              <div v-for="(group,i) in newsfeedData.teaserGroups" :key="i" >
+              <template v-for="(group,i) in newsfeedData.teaserGroups" :key="i" >
                 <div :class="{
                   'border-b border-dotted border-fg-muted': i < newsfeedData.teaserGroups.length - 1, // Apply border always for separation
                   'pt-4': i > 0, // Add padding top except for the first item
@@ -28,7 +30,8 @@
                     class="" 
                   />
                 </div>
-              </div>
+                <WelcomeBannerInside v-if="i === 4" class="my-6 md:my-8" />
+              </template>
             </div>
           
           <!-- REMOVED: Old Scenarios Feed Section -->
@@ -90,11 +93,11 @@
               <Icon name="line-md:loading-twotone-loop" class="w-6 h-6 text-fg-muted animate-spin inline-block" />
           </div> 
           <!-- Content -->
-          <div v-else-if="aggregatedScenarios.length > 0">
+          <div v-else-if="newsfeedData?.featuredScenarios?.length > 0">
            <h2 class="text-base font-semibold text-fg mb-3 pb-2 border-b border-bg-muted">Featured Scenarios</h2>
             <div class="flex flex-col gap-1">
                <ScenarioTeaser 
-                  v-for="scenario in aggregatedScenarios" 
+                  v-for="scenario in newsfeedData.featuredScenarios" 
                   :key="scenario.scenarioId" 
                   :scenario="scenario" 
                />
@@ -117,6 +120,7 @@ import { useBookmarkStore } from '~/stores/bookmarks'; // Import bookmark store
 // Import components used in the template
 import ArticleTeaser from '~/components/article/Teaser.vue';
 import ScenarioTeaser from '~/components/scenario/Teaser.vue';
+import WelcomeBannerInside from '~/components/common/WelcomeBannerInside.vue'; // Added import
 
 const authStore = useAuthStore();
 const bookmarkStore = useBookmarkStore(); // Initialize bookmark store
@@ -145,35 +149,35 @@ onMounted(() => {
 // });
 
 // Corrected: Compute aggregated scenarios from teaserGroups
-const aggregatedScenarios = computed(() => {
-  if (!newsfeedData.value?.teaserGroups) {
-    return [];
-  }
+// const aggregatedScenarios = computed(() => { // REMOVE THIS ENTIRE COMPUTED PROPERTY
+//   if (!newsfeedData.value?.teaserGroups) {
+//     return [];
+//   }
 
-  const allScenarios = newsfeedData.value.teaserGroups.reduce((acc, group) => {
-    if (group.scenarios) {
-      acc.push(...group.scenarios);
-    }
-    return acc;
-  }, []);
+//   const allScenarios = newsfeedData.value.teaserGroups.reduce((acc, group) => {
+//     if (group.scenarios) {
+//       acc.push(...group.scenarios);
+//     }
+//     return acc;
+//   }, []);
 
-  // Ensure uniqueness based on scenarioId
-  const uniqueScenarios = [];
-  const seenIds = new Set();
-  for (const scenario of allScenarios) {
-    if (scenario.scenarioId && !seenIds.has(scenario.scenarioId)) {
-      uniqueScenarios.push(scenario);
-      seenIds.add(scenario.scenarioId);
-    }
-  }
+//   // Ensure uniqueness based on scenarioId
+//   const uniqueScenarios = [];
+//   const seenIds = new Set();
+//   for (const scenario of allScenarios) {
+//     if (scenario.scenarioId && !seenIds.has(scenario.scenarioId)) {
+//       uniqueScenarios.push(scenario);
+//       seenIds.add(scenario.scenarioId);
+//     }
+//   }
   
-  // Optional: Sort the scenarios if needed (e.g., by platform, name?)
-  // uniqueScenarios.sort((a, b) => a.name.localeCompare(b.name));
+//   // Optional: Sort the scenarios if needed (e.g., by platform, name?)
+//   uniqueScenarios.sort((a, b) => a.name.localeCompare(b.name));
 
-  let randomOrder = Math.random();
-  // max 7 scenarios shown
-  return uniqueScenarios.sort((a, b) => randomOrder - 0.5).slice(0, 7);
-});
+//   // let randomOrder = Math.random(); // REMOVE THIS LINE - CAUSES HYDRATION MISMATCH
+//   // max 7 scenarios shown
+//   return uniqueScenarios.slice(0, 7); // REMOVE THE RANDOM SORT, use the deterministic sort from above
+// });
 
 // Watch for authentication changes to refresh data if needed
 // Note: This might be less relevant if this page requires auth via middleware

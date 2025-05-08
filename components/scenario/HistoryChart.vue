@@ -83,7 +83,7 @@ const chartData = computed(() => {
           borderColor: lineColors[colorIndex % lineColors.length],
           backgroundColor: lineColors[colorIndex % lineColors.length] + '33', // Add some transparency for area fill if needed
           tension: .2, // Smoother line
-          pointRadius: 0, // Hide points
+          pointRadius: dataPoints.length === 1 ? 3 : 0, // Show point if only one data point
           pointHoverRadius: 4, // Keep hover radius for interactivity
           borderWidth: 3, // Thicker line
         });
@@ -154,12 +154,15 @@ const chartOptions = computed(() => {
         time: {
             // Adjust time units and display formats as needed
             tooltipFormat: 'PP', // Requires date-fns adapter - locale aware format
-             displayFormats: {
-                 hour: 'HH:mm',
+          displayFormats: {
+            millisecond: 'MMM d HH:mm',
+            second: 'MMM d HH:mm',
+                 minute: 'MMM d HH:mm',
+                 hour: 'MMM d HH:mm',
                  day: 'MMM d',
                  week: 'MMM d yyyy',
                  month: 'MMM yyyy',
-                 year: 'yyyy'
+               year: 'yyyy',
              }
         },
         title: {

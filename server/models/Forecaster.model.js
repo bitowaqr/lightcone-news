@@ -2,6 +2,15 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
+
+const modelDetailsSchema = new Schema({
+  family: String,
+  version: String,
+  toolNotes: String,
+});
+
+
+
 const ForecasterSchema = new Schema({
   name: {
     type: String,
@@ -45,10 +54,22 @@ const ForecasterSchema = new Schema({
         sparse: true,
     }
   },
+  accuracyScore: {
+     type: Number,
+     min: 0,
+     max: 1 
+  },
+  calibrationScore: {
+     type: Number,
+     min: 0
+  },
+  modelDetails: { // Updated: Specific details for AI forecasters, now a flat object
+    type: modelDetailsSchema,
+    default: {}
+  },
   // Potential future fields:
-  // accuracyScore: { type: Number },
-  // calibrationScore: { type: Number },
-  // areasOfExpertise: [String],
+  numberOfForecasts: { type: Number, default: 0 },
+  lastForecastDate: { type: Date },
 
 }, {
   timestamps: true // Adds createdAt and updatedAt

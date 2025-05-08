@@ -7,6 +7,7 @@ import Scenario from '~/server/models/Scenario.model.js';
 import SourceDocument from '~/server/models/SourceDocument.model.js';
 import User from '~/server/models/User.model.js';
 import StoryIdeas from '~/server/models/StoryIdeas.model.js';
+import Forecaster from '~/server/models/Forecaster.model.js';
 // --- End model imports ---
 
 // Create a mapping from model name (string) to the imported Mongoose model object
@@ -15,7 +16,8 @@ const modelMap = {
     Scenario,
     SourceDocument,
     User,
-    StoryIdeas
+    StoryIdeas,
+    Forecaster
 };
 
 // Helper to check for admin role
@@ -30,7 +32,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     // Define the models managed by the admin panel by their name
-    const manageableModelNames = ['Article', 'Scenario', 'SourceDocument', 'User', 'StoryIdeas'];
+    const manageableModelNames = ['Article', 'Scenario', 'SourceDocument', 'User', 'StoryIdeas', 'Forecaster'];
 
     // Get the list of actual collection names from the database
     const existingCollections = (await mongoose.connection.db.listCollections().toArray()).map(c => c.name);

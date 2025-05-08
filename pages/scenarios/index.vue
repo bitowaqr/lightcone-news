@@ -199,7 +199,7 @@
           </button>
            <!-- Title reflecting current view -->
            <span class="text-sm font-medium text-fg-muted">
-               {{ rightColumnMode === 'detail' ? 'Scenario Details' : (rightColumnMode === 'requestForm' ? 'Request Scenario' : 'Request Submitted') }}
+               {{ rightColumnMode === 'detail' ? 'Scenario Details' : (rightColumnMode === 'requestForm' ? '' : 'Request Submitted') }}
            </span>
             <!-- Placeholder for potential actions -->
            <div class="w-16"></div> 

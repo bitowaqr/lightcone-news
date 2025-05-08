@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
     }
 
 
-    console.log('Scenario:', scenario);
+    
     // Optional: Check if scenario is 'OPEN' or meets other criteria for viewing
     // if (scenario.resolutionData.status !== 'OPEN' /* && !isAdmin(event.context.user) */) {
     //    throw createError({ statusCode: 403, statusMessage: 'Scenario not accessible' });

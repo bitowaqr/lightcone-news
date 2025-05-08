@@ -64,6 +64,7 @@
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.2",
     "fluid-tailwind": "^1.0.4",
     "markdown-it-link-attributes": "^4.0.1"
   }

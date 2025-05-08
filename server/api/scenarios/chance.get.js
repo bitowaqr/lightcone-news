@@ -219,8 +219,9 @@ export default defineEventHandler(async (event) => {
 
   const cacheKey = `${platform}:${id}`;
   const cachedItem = cache.get(cacheKey);
+  
 
-  if (cachedItem && (Date.now() - cachedItem.timestamp < CACHE_DURATION_MS)) {
+  if (cachedItem && (Date.now() - cachedItem.timestamp < CACHE_DURATION_MS) && cachedItem.data) {
     return { chance: cachedItem.data.chance, volume: cachedItem.data.volume, status: cachedItem.data.status, liquidity: cachedItem.data.liquidity };
   }
 
@@ -257,6 +258,18 @@ export default defineEventHandler(async (event) => {
 
       default:
         throw createError({ statusCode: 400, statusMessage: `Unsupported platform: ${platform}` });
+    }
+
+    if (result) {
+      if (result.chance === undefined) result.chance = null;
+      if (result.volume === undefined) result.volume = null;
+      if (result.status === undefined) result.status = null;
+      if (result.liquidity === undefined) result.liquidity = null;
+    }
+
+    if (result == null) {
+      console.log(`[Chance] No result found for ${platform}:${id}`);
+      return { chance: null, volume: null, status: null, liquidity: null };
     }
 
     cache.set(cacheKey, { data: result, timestamp: Date.now() });

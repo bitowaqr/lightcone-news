@@ -12,8 +12,8 @@
          <div class="font-semibold text-fg w-full text-sm leading-tight sm:leading-tight line-clamp-3 group-hover:" 
               
          >{{ scenario.name }}</div>
-         <div v-if="scenario.platform" class="text-[11px] text-primary-600 opacity-75 mt-0.5 truncate font-medium">
-           <span class="opacity-50">by</span>
+         <div v-if="scenario.platform" class="text-[11px] text-primary-600 opacity-75 mt-0.5 truncate font-medium dark:text-primary-400">
+           <span class="opacity-50 dark:opacity-75">by</span>
            {{ scenario.platform }}
          </div>
       </div>

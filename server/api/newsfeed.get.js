@@ -5,15 +5,29 @@ import { formatRelativeTime } from '../utils/formatRelativeTime';
 
 const ARTICLES_LIMIT = 20;
 const SCENARIOS_LIMIT = 5;
+const FEATURED_SCENARIOS_CACHE_DURATION_MS = 60 * 30 * 1000; // 30 minutes
+const newsfeedCache = new Map();
 
 export default defineEventHandler(async (event) => { // Make handler async
   
+  // Check cache for featuredScenarios first
+  const cachedFeaturedScenariosItem = newsfeedCache.get('featuredScenariosList');
+  let featuredScenarios;
+
+  if (cachedFeaturedScenariosItem && (Date.now() - cachedFeaturedScenariosItem.timestamp < FEATURED_SCENARIOS_CACHE_DURATION_MS)) {
+    featuredScenarios = cachedFeaturedScenariosItem.data;
+  } else {
+    // If not in cache or expired, generate and cache them (this will be done after fetching allScenarios)
+    featuredScenarios = null; // Mark as null, will be populated later
+  }
+
   try {
     // Fetch published articles, sorted by published date (newest first)
     const articles = await Article.find({ status: 'PUBLISHED' })
       .sort({ publishedDate: -1 })
       .limit(ARTICLES_LIMIT)
       .lean(); 
+    
     
     articles.sort((a, b) => {
       const aDate = new Date(a.publishedDate);
@@ -33,7 +47,7 @@ export default defineEventHandler(async (event) => { // Make handler async
       }
     });
 
-    console.log('articles', articles.map(a => a.title.slice(0, 15) + '... ' + a.publishedDate.toISOString().slice(0, 10)));
+    // console.log('articles', articles.map(a => a.title.slice(0, 45) + '... ' + a.publishedDate.toISOString().slice(0, 10)));
 
     // Fetch recent open scenarios (adjust criteria as needed)
     // Potential alternative: Fetch scenarios explicitly linked to the articles above
@@ -81,6 +95,16 @@ export default defineEventHandler(async (event) => { // Make handler async
     });
 
     const teaserGroups = await Promise.all(teaserGroupsPromises);
+    // unique scenarios
+    const allScenarios = [...new Set(teaserGroups.flatMap(group => group.scenarios).filter(s => s && s.scenarioId && s.chance > 0.05 && s.chance < 0.95))]; // Ensure scenarios are valid
+    
+    if (!featuredScenarios && allScenarios.length > 0) { // If not loaded from cache, generate and cache now
+      // TODO: GENERATE BETTER FEATURED SCENARIOS
+      const randomlySortedScenarios = [...allScenarios].sort(() => Math.random() - 0.5);
+      featuredScenarios = randomlySortedScenarios.slice(0, 7);
+      newsfeedCache.set('featuredScenariosList', { data: featuredScenarios, timestamp: Date.now() });
+    }
+
 
     // Prepare Scenarios Feed using fetched scenarios
     const scenariosFeed = scenarios.map(scenario => ({
@@ -97,7 +121,8 @@ export default defineEventHandler(async (event) => { // Make handler async
 
     return {
       teaserGroups,
-      scenariosFeed
+      scenariosFeed,
+      featuredScenarios
     };
 
   } catch (error) {
