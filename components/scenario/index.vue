@@ -23,8 +23,8 @@
              <!-- ADDED: Resolved/Unresolved Status -->
              <span class="inline-flex items-center text-sm font-medium py-0.5">
                 <Icon 
-                  :name="isResolvedStatus ? 'heroicons:check-badge-solid' : 'heroicons:clock-solid'" 
-                  class="w-3 h-3 mr-1"
+                  :name="isResolvedStatus ? 'heroicons:check-circle' : 'heroicons:clock-solid'" 
+                  class="w-5 h-5 mr-1"
                 />
                 {{ isResolvedStatus ? 'Resolved:' : 'Deadline:' }}
                 <span v-if="scenario.closeDate" class="ps-1 font-medium text-fg"
@@ -37,7 +37,7 @@
              </span>
              <!-- MOVED BACK: Platform Link -->
               <a :href="scenario.url" target="_blank" class="text-fg-muted hover:text-primary transition-colors items-center inline-flex group" v-if="scenario.url">
-               <Icon name="mdi:web" class="w-4 h-4 mr-1 inline-block align-text-bottom" />
+               <Icon name="mdi:web" class="w-5 h-5 mr-1 inline-block align-text-bottom" />
                <span class="group-hover:underline">{{ scenario.platform }}</span>
                <Icon name="mdi:open-in-new" class="w-3.5 h-3.5 ml-0.5 opacity-70 group-hover:opacity-100" />
              </a>
@@ -197,11 +197,21 @@
           class="flex items-center text-base font-semibold text-fg mb-2 mt-6 focus:outline-none w-full justify-start border-t border-bg-muted pt-4"
         >
           <Icon :name="isForecastsVisible ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="w-5 h-5 mr-1" />
-          <span>Active Forecasts ({{ latestForecastsByForecaster.length }})</span>
+          <span>Active Forecasts
+            {{ scenario?.platform === 'Lightcone' ? '(' + (latestForecastsByForecaster?.length || 0) + ')' : '' }}
+             </span>
         </button>
         <div v-if="isForecastsVisible" class="mt-2 space-y-4">
           <!-- Iterate through stats object which contains latestForecast and totalCount -->
-          <div v-for="(stats) in latestForecastsByForecaster" :key="stats.latestForecast.forecasterId._id"
+          <div v-if="!latestForecastsByForecaster || scenario?.platform !== 'Lightcone'">
+            <p class="text-sm text-fg-muted bg-bg-muted p-4 rounded border border-accent-bg transition-colors hover:border-primary/30">
+              For more information on this forecast, see scenario page on <a :href="scenario.url" target="_blank" class="text-primary font-medium" v-if="scenario.url">{{ scenario.platform }}</a>.
+            </p>
+          </div>
+          <div v-else-if="latestForecastsByForecaster.length === 0">
+            <p class="text-sm text-fg-muted">No active forecasts found.</p>
+          </div>
+          <div v-else v-for="(stats) in latestForecastsByForecaster" :key="stats.latestForecast.forecasterId._id"
                class="bg-bg-muted p-4 rounded border border-accent-bg transition-colors hover:border-primary/30"
           >
             <!-- Forecaster Header -->
@@ -388,7 +398,7 @@ const { detailsHistoryData, chartHistoryData, loading: loadingHistory, error: er
 const isCriteriaVisible = ref(false);
 const isDetailsVisible = ref(false);
 const isResolutionVisible = ref(true);
-const isForecastsVisible = ref(true); // Default to visible for the new section
+const isForecastsVisible = ref(props.scenario?.platform === 'Lightcone'); // Default to visible for the new section
 
 // Formatting Functions
 const formatProbability = (prob) => {
@@ -478,12 +488,13 @@ const isResolvedStatus = computed(() => {
 
 // --- ADDED: Logic for Forecast Details Section ---
 const showForecastDetailsSection = computed(() => {
+  return true;
     // Show section only if platform is Lightcone and we have raw history data
     return props.scenario?.platform === 'Lightcone' && detailsHistoryData.value && detailsHistoryData.value.length > 0;
 });
 
 const latestForecastsByForecaster = computed(() => {
-    if (!showForecastDetailsSection.value) {
+  if (!props.scenario?.platform === 'Lightcone' || !detailsHistoryData.value) {
         return [];
     }
 

@@ -39,11 +39,11 @@
          class="w-4 h-4 text-primary dark:text-primary-400 opacity-70 flex-shrink-0"
       /> 
       <!-- Not Loaded Sparkle (Not Initial Prompt Loading & Not Loaded) -->
-      <Icon 
-         v-else-if="!(isLoading && (props.type === 'prompt' || props.type === 'custom'))"
+      <!-- <Icon 
+         v-else-if="!(isLoading && (props.type === 'custom'))"
          name="mdi:sparkles" 
          class="w-4 h-4 text-fg-muted opacity-50 flex-shrink-0 transition-colors duration-150 group-hover:text-primary group-hover:opacity-100"
-      />
+      /> -->
     </button>
 
     <!-- Single Response Window (Attached directly below button) -->

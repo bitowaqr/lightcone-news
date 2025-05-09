@@ -2,10 +2,10 @@
   <!-- New wrapper div -->
   <div> 
     <div
-      class="h-full flex flex-col pt-2 pb-6 lg:px-4 lg:pb-8"
+      class="h-full flex flex-col pt-0 pb-4 lg:px-4 lg:pb-6"
     >
-      <!-- ARTICLE -->
-      <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`">
+      <!-- ARTICLE CLICKABLE PART -->
+      <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`" class="hover:opacity-80">
         <div class="flex flex-col" :class="{
           'flex-col': layoutOption === 'vertical' || !group.imageUrl,
           'lg:flex-row': layoutOption === 'horizontal' && group.imageUrl
@@ -15,43 +15,26 @@
           </div>
           
           <div class="w-full px-2 md:px-4">
-            <!-- META - Moved Up -->
-            <div id="article-meta" class="flex items-center justify-between space-x-2 py-1">
-              <div class="flex items-center space-x-2">
-                <div
-                  class="text-xs text-fg-muted leading-none border-r border-fg-muted pr-2"
-                  my-1
-                >
-                  {{ group.story.publishedDate }}
-                </div>
-                 <!-- Use NEW TeaserSources component -->
-                <TeaserSources v-if="group.story?.sources?.length > 0" :sources="group.story.sources" />
-                <div v-else class="text-xs text-fg-muted leading-none">
-                  0 sources
-                </div>
-              </div>
-              <!-- ADDED: Share/Bookmark Icons -->
-              <div class="flex items-center space-x-1">
-                  <!-- Share Icon -->
-                  <button @click.prevent="handleShare" class="p-1 rounded-md hover:bg-bg-subtle text-fg-muted">
-                      <Icon name="heroicons:share" class="w-4 h-4" />
-                  </button>
-              </div>
-              <!-- END ADDED -->
-            </div>
-  
             <h2 
             class="text-xl md:text-2xl leading-tight font-medium" id="article-title">
               {{ group.story.title }}
             </h2>
-            <div id="article-precis" class="text-fg mb-2 mt-2 md:mt-4">
-              <div class="line-clamp-4">{{ group.story.precis }}
-              </div>
+            <div id="article-precis" class="text-fg mt-2 md:mt-4 mb-1">
+              <span class="line-clamp-4">{{ group.story.precis }}</span> 
             </div>
           </div>
         </div>
       </NuxtLink>
   
+      <!-- SEPARATE ROW FOR SOURCES AND CONTINUE READING (outside the NuxtLink above) -->
+      <div class="w-full" v-if="group?.story?.slug">
+        <div class="flex items-start justify-between mt-2">
+          <TeaserSources :sources="group.story.sources" />
+          <NuxtLink :to="`/articles/${group.story.slug}`" class="text-fg-muted hover:opacity-80 font-medium text-xs inline-flex items-center gap-0.5 flex-shrink-0 mr-2 md:mr-4 pt-1.5">continue reading <Icon name="heroicons:chevron-right" class="w-3 h-3" />
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Fallback if slug is missing -->
       <div v-else class="opacity-50 cursor-not-allowed">
          <div class="flex" :class="{'flex-col': layoutOption === 'vertical'}">
@@ -78,7 +61,14 @@
           </div>
         </div>
       </div>
-  
+
+      <div class="px-1 md:px-4">
+        <div v-if="group.story?.sources?.length > 0" :sources="group.story.sources" />
+        <div v-else class="text-xs text-fg-muted leading-none">
+          0 sources
+        </div>
+      </div>
+
       <!-- SCENARIOS section wrapper -->
       <div class="">
         <!-- Section Title -->

@@ -7,21 +7,10 @@ import {
 import OpenAI from 'openai';
 import { extractJsonFromString } from '../utils/extractJson.js';
 
-const forecasterNate = async (scenarioId, save = false) => {
-  // 1. GET SCENARIO
-  if (!scenarioId) {
-    throw new Error('Scenario ID is required');
-  }
-
-    const scenario = await getScenarioForAgent(scenarioId);
-    
-    
-  if (!scenario) {
-    throw new Error('Scenario not found');
-  }
-
-  // 2. FIND OR CREATE FORECASTER
-  const nateMeta = {
+export const forecasterNate = async (scenarioId, save = false, log = false) => {
+  
+  // 1. FIND OR CREATE FORECASTER
+  const meta = {
     name: 'N473 Forecaster',
     description: 'A simple GPT-4o based forecaster using OpenAI\'s search API',
     type: 'AI',
@@ -33,7 +22,22 @@ const forecasterNate = async (scenarioId, save = false) => {
     },
   };
 
-  const forecasterId = await findOrCreateForecaster(nateMeta.name, nateMeta);
+  if(log) console.log(`[${meta.name}] starting...`);
+  
+  const forecasterId = await findOrCreateForecaster(meta.name, meta);
+  
+  // 2. GET SCENARIO
+  if (!scenarioId) {
+    throw new Error(`[${meta.name}] Scenario ID is required`);
+  }
+
+    const scenario = await getScenarioForAgent(scenarioId);
+    
+    
+  if (!scenario) {
+    throw new Error(`[${meta.name}] Scenario not found`);
+  }
+
 
   // 3. GET CLIENT
   const client = new OpenAI({
@@ -171,6 +175,7 @@ Please generate a forecast for the scenario.`;
   let retryCount = 0;
   while (retryCount < maxRetries) {
     try {
+      if(log) console.log(`[${meta.name}] invoking LLM...`);
       const completion = await client.chat.completions.create({
         model: 'gpt-4o-search-preview',
         web_search_options: {
@@ -181,37 +186,42 @@ Please generate a forecast for the scenario.`;
           { role: 'user', content: userPrompt },
         ],
       });
+      if(log) console.log(`[${meta.name}] parsing response...`);
       const parsed = extractJsonFromString(
         completion.choices[0].message.content
       );
         if(!parsed || !parsed.response) {
             throw new Error('Failed to parse JSON');
         }
-        if (save) {
+      if (save) {
+        if(log) console.log(`[${meta.name}] saving...`);
             await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response });
-        } 
+      } 
+      
+      if(log) console.log(`[${meta.name}] done!`);
 
       return {
+        forecaster: meta.name,
         scenarioId,
         forecasterId,
         predictionData: parsed.response,
       };
     } catch (error) {
-      console.error('Error parsing JSON:', error);
+      console.error(`[${meta.name}] error parsing JSON:`, error);
       retryCount++;
     }
   }
-  throw new Error('Failed to parse JSON after 3 retries');
+  throw new Error(`[${meta.name}] Failed after ${maxRetries} retries`);
 };
 
 // test
-(async () => {
-  const { closeMongoConnection } = await import('../utils/agentUtils.js');
-  const scenarioId = '6816f8069a446c44b935505e';
-  const result = await forecasterNate(scenarioId, true);
-  console.log(result);
-  await closeMongoConnection();
-})();
+// (async () => {
+//   const { closeMongoConnection } = await import('../utils/agentUtils.js');
+//   const scenarioId = '6816f8069a446c44b935505e';
+//   const result = await forecasterNate(scenarioId, true);
+//   console.log(result);
+//   await closeMongoConnection();
+// })();
 
 // TESTING
 // (async () => {

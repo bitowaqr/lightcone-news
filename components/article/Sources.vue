@@ -1,7 +1,7 @@
 <template>
   <!-- Desktop view: always expanded -->
   <div v-if="isDesktop" class="sources-desktop">
-    <h3 class="text-sm font-semibold text-fg-muted mb-2">Sources:</h3>
+    <h3 class="text-sm font-semibold text-fg-muted mb-1">Sources:</h3>
     <div class="">
       <a
         v-for="(source, index) in sources"

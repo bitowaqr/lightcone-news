@@ -21,7 +21,7 @@
               <template v-for="(group,i) in newsfeedData.teaserGroups" :key="i" >
                 <div :class="{
                   'border-b border-dotted border-fg-muted': i < newsfeedData.teaserGroups.length - 1, // Apply border always for separation
-                  'pt-4': i > 0, // Add padding top except for the first item
+                  'pt-2': true, // Add padding top except for the first item
                   }">
 
                   <ArticleTeaser 

@@ -63,13 +63,10 @@ const pageUrl = useRequestURL().href;
 // Fetch article data using the slug
 const { data: articleData, pending, error, refresh } = await useFetch(() => {
   const slug = route.params.slug;
-  console.log(`[Article Page useFetch] Factory invoked. route.params.slug: ${slug}`);
   if (!slug || slug === 'null' || slug === 'undefined') {
-    console.log('[Article Page useFetch] Slug invalid, not returning a URL.');
     return;
   }
   const url = `/api/articles/${slug}`;
-  console.log(`[Article Page useFetch] Intending to fetch: ${url}`);
   return url;
 }, {
   key: `article-${route.params.slug || 'initial'}`,
@@ -80,7 +77,6 @@ const { data: articleData, pending, error, refresh } = await useFetch(() => {
 // Watch for authentication changes to refresh data if needed
 watch(() => authStore.isAuthenticated, (isAuth) => {
   if (isAuth && error.value && error.value.statusCode === 401) {
-    console.log('Auth status changed to authenticated, attempting article refresh...');
     if (route.params.slug) {
         refresh();
     }
@@ -92,10 +88,8 @@ watch(
   () => route.params.slug,
   (newSlug) => {
     if (newSlug && (typeof newSlug === 'string')) {
-      console.log(`[Article Page] Watcher: route.params.slug changed to ${newSlug}, calling refresh()...`);
       refresh();
     } else {
-      console.log(`[Article Page] Watcher: route.params.slug changed to invalid (${newSlug}), NOT refreshing.`);
     }
   },
   { immediate: true }

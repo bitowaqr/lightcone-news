@@ -329,7 +329,7 @@ const closeRightColumn = () => {
     const { view, id, articleId, articleTitle, ...restQuery } = route.query; // Remove view/id/context
     rightColumnMode.value = 'placeholder'; // Set mode explicitly for desktop
     selectedScenarioId.value = null;
-    successMessageContent.value = ''; // Clear success message
+  successMessageContent.value = ''; // Clear success message
     router.push({ query: restQuery }); // Update URL for mobile/history
 };
 
@@ -669,11 +669,20 @@ const {
     pending: detailPending, 
     error: detailError, 
     execute: fetchScenarioDetail 
-} = useFetch(detailApiUrl, {
+} = useFetch(() => detailApiUrl.value, { 
     immediate: false, 
-    watch: [detailApiUrl], 
-    key: 'scenarioDetail' 
+    watch: false, // Turn off automatic watching
+    key: 'scenarioDetail'
 });
+
+// Manual watcher for detailApiUrl to control fetching
+watch(detailApiUrl, (newUrl) => {
+    if (newUrl) { // Only fetch if newUrl is a non-null string
+        fetchScenarioDetail();
+    }
+    // If newUrl is null, selectedScenarioData might persist or be handled by useFetch's state.
+    // Explicitly clearing it could be: else { selectedScenarioData.value = null; }
+}, { immediate: true }); // Fetch on initial load if URL is valid
 
 // --- Watch activeTab --- 
 watch(activeTab, (newTab) => {

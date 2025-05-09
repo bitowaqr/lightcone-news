@@ -26,7 +26,7 @@
           placeholder="e.g., Will the woolly mammoth be de-extincted before 2030?"
           style="resize: none;"
         ></textarea>
-        <p class="text-xs text-fg">Read <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">our guide</a> on how to ask good scenario questions.</p>
+        <p class="text-xs text-fg">Read <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">this guide</a> on how to ask good scenario questions.</p>
       </div>
 
 
@@ -114,7 +114,7 @@
               class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
               placeholder="Define exactly how the question will be answered (e.g., based on announcement from Agency X, data from Source Y)."
             ></textarea>
-            <p class="text-xs text-fg">Define clear, objective criteria for how the question will be resolved. See <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">our guide</a> for tips.</p>
+            <p class="text-xs text-fg">Define clear, objective criteria for how the question will be resolved. See <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">this guide</a> for tips.</p>
           </div>
 
           <!-- Date Input -->

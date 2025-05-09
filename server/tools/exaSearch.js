@@ -8,8 +8,6 @@ const exa = new Exa(process.env.EXA_API_KEY);
 
 export const exaSearch = tool(
     async ({ query, numResults = null, searchPrompt = null, fullText = true }, config) => {
-        console.log("exaSearch", query, numResults, searchPrompt, fullText)
-
 
         const params = {
             type: "keyword",

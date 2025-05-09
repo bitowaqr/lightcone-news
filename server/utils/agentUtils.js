@@ -4,6 +4,7 @@ import Scenario from '../models/Scenario.model.js';
 import { mongoService } from '../services/mongo.js'; 
 import { z } from 'zod';
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { tool } from "@langchain/core/tools";
 
 /**
  * Finds an existing Forecaster by name or creates a new one.
@@ -166,8 +167,8 @@ export async function saveForecast({ scenarioId, forecasterId, predictionData })
 export const defaultPredictionOutputSchema = z.object({
     response: z.object({
         probability: z.number().describe("The probability estimate. Minimum: 0.001; Maximum: 0.999"),
-        rationalSummary: z.string().describe("A brief rationale summary."),
-        rationalDetails: z.string().optional().describe("More detailed rationale."),
+        rationalSummary: z.string().describe("A brief rationale summary. Ideally 2-3 sentences. No formatting."),
+        rationalDetails: z.string().optional().describe("More detailed rationale. Consider using 'PRO:', 'CON:', 'INFO:', 'UNCERTAINTY:', and 'CONCLUSION:' as headings (deviate from this if needed). Use markdown formatting."),
         dossier: z.array(z.string()).optional().describe("Array of evidence URLs."),
         comment: z.string().optional().describe("Optional internal comment."),
     })
@@ -181,3 +182,14 @@ export const predictionOutputSchemaString = JSON.stringify(predictionOutputSchem
 export const closeMongoConnection = async () => {
     await mongoService.disconnect();
 }
+
+export const structureForecastOutputTool = tool(
+    async (inputArgs) => {
+        return inputArgs;
+    },
+    {
+        name: "structure_forecast_output",
+        description: "A tool for structuring a forecast's components (probability, rationale, dossier, comments) according to a predefined schema. This tool does not save or process the data further; it only returns the structured data. Use this tool to format the final forecast output before it's used by other processes or returned.",
+        schema: defaultPredictionOutputSchema,
+    }
+);

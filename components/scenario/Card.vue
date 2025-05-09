@@ -35,7 +35,7 @@
             <span class="text-[10px] text-fg-muted block leading-none"> Chance </span>
           </div>
           <div v-else class="flex flex-col items-end justify-center h-full opacity-60">
-            <Icon name="heroicons:question-mark-circle" class="w-4 h-4 text-fg-muted mb-0.5" />
+            <Icon name="heroicons:question-mark-circle" class="w-4 h-4 text-fg-muted mb-0.5 mx-auto" />
             <span class="text-[10px] leading-tight text-fg-muted">No Data</span>
           </div>
         </div>

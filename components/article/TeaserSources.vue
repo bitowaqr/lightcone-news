@@ -1,56 +1,86 @@
 <template>
-  <div 
-    v-if="sourcesCount > 0" 
-    class="flex items-center space-x-1.5"
-    :title="sourcesTeaserString"
-  >
-    <div class="flex items-center">
-      <div 
-        v-for="(source, idx) in displayedSources" 
-        :key="source.id || idx"  
-        class="w-5 h-5 overflow-hidden border border-gray-100 flex items-center justify-center bg-white rounded-full"
-        :style="{ 
-          marginLeft: idx === 1 ? '-8px' : idx > 1 ? '-10px' : '0', 
-          zIndex: 10 - idx 
-        }"
-      >
-        <!-- Favicon Image Wrapper -->
-        <div class="w-full h-full flex items-center justify-center rounded-full overflow-hidden">
-           <img
-              :src="getSourceFavicon(source.url)"
-              :alt="getSourceDomain(source.url)"
-              class="w-full h-full object-contain filter" 
-              @error="onFaviconError($event, source.id || idx)"
-              v-if="!faviconErrors[source.id || idx]"
-            />
+  <details v-if="sourcesCount > 0" class="group text-xs">
+    <summary class="list-none cursor-pointer flex items-center space-x-1.5 py-1" :title="sourcesTeaserString">
+      <div class="flex items-center flex-grow min-w-0"> <!-- Wrapper for icons and label -->
+        <div class="flex items-center">
+          <Icon name="heroicons:chevron-right-20-solid" class="w-4 h-4 text-fg-muted transition-transform duration-150 group-open:rotate-90 flex-shrink-0" />
+          <div 
+            v-for="(source, idx) in displayedSources" 
+            :key="source.id || idx"  
+            class="w-5 h-5 overflow-hidden border border-gray-100 flex items-center justify-center bg-white rounded-full"
+            :style="{ 
+              marginLeft: idx === 1 ? '-8px' : idx > 1 ? '-10px' : '0', 
+              zIndex: 10 - idx 
+            }"
+          >
+            <div class="w-full h-full flex items-center justify-center rounded-full overflow-hidden">
+               <img
+                  :src="getSourceFavicon(source.url)"
+                  :alt="getSourceDomain(source.url)"
+                  class="w-full h-full object-contain filter" 
+                  @error="onFaviconError($event, source.id || idx)"
+                  v-if="!faviconErrors[source.id || idx]"
+                />
+            </div>
+            <div
+              v-if="faviconErrors[source.id || idx]"
+              class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-full"
+            >
+              <span class="text-[10px] font-medium text-gray-600">
+                {{ getSourceInitial(source.url) }}
+              </span>
+            </div>
+          </div>
+          <div 
+              v-if="sourcesCount > maxDisplayedSources" 
+              class="w-5 h-5 overflow-hidden border border-gray-100 flex items-center justify-center bg-gray-200 rounded-full text-gray-600"
+               :style="{ marginLeft: '-10px', zIndex: 0 }"
+            >
+             <span class="text-[10px] font-medium">+{{ sourcesCount - maxDisplayedSources }}</span>
+           </div>
         </div>
-        <!-- Fallback Initial -->
-        <div
-          v-if="faviconErrors[source.id || idx]"
-          class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-full"
-        >
-          <span class="text-[10px] font-medium text-gray-600">
-            {{ getSourceInitial(source.url) }}
-          </span>
-        </div>
+        <span class="text-fg-muted leading-none ml-1.5 ">{{ sourcesCount }} {{ sourcesCount === 1 ? 'source' : 'sources' }}</span>
       </div>
-      <!-- More indicator (replaces 4th icon if sources > 4) -->
-       <div 
-          v-if="sourcesCount > maxDisplayedSources" 
-          class="w-5 h-5 overflow-hidden border border-gray-100 flex items-center justify-center bg-gray-200 rounded-full text-gray-600"
-           :style="{ marginLeft: '-10px', zIndex: 0 }"
-        >
-         <span class="text-[10px] font-medium">+{{ sourcesCount - maxDisplayedSources }}</span>
-       </div>
+      
+    </summary>
+
+    <div class="mt-1.5 ml-1 pl-0.5 space-y-1.5"> <!-- Indented list of sources -->
+      <a
+        v-for="(source, index) in sources"
+        :key="`expanded-${source.id || index}`"
+        :href="sanitizeUrl(source.url)"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center space-x-1.5 text-fg-muted hover:text-primary group/link"
+        :title="source.publisher || source.url"
+      >
+        <div class="flex-shrink-0 w-4 h-4 rounded-full overflow-hidden border border-bg-dark flex items-center justify-center bg-white">
+          <img
+            :src="getSourceFavicon(source.url)"
+            :alt="getSourceDomain(source.url)"
+            class="w-full h-full object-contain"
+            @error="onFaviconError($event, `expanded-${source.id || index}`)"
+            v-if="!faviconErrors[`expanded-${source.id || index}`]"
+          />
+          <div
+            v-if="faviconErrors[`expanded-${source.id || index}`]"
+            class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+          >
+            <span class="text-[8px] font-medium text-gray-500">{{ getSourceInitial(source.url) }}</span>
+          </div>
+        </div>
+        <span class="truncate group-hover/link:underline">{{ source.publisher || getSourceDomain(source.url) }}</span>
+      </a>
     </div>
-    <!-- Source Count Label -->
-    <span class="text-xs text-fg-muted leading-none">{{ sourcesCount }} {{ sourcesCount === 1 ? 'source' : 'sources' }}</span>
+  </details>
+  <div v-else class="text-xs text-fg-muted leading-none py-1">
+    0 sources
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
-import { getSourceFavicon, getSourceDomain, getSourceInitial } from '~/utils/sourceUtils';
+import { getSourceFavicon, getSourceDomain, getSourceInitial, sanitizeUrl } from '~/utils/sourceUtils';
 
 const props = defineProps({
   sources: {
@@ -97,5 +127,9 @@ const onFaviconError = (event, index) => {
 <style scoped>
 .filter {
   filter: grayscale(100%) brightness(105%);
+}
+/* Optional: hide default marker for details/summary if not already handled by list-none */
+details > summary::-webkit-details-marker {
+  display: none;
 }
 </style> 

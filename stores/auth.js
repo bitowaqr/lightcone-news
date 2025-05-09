@@ -77,25 +77,23 @@ export const useAuthStore = defineStore('auth', {
         this.status = 'loading';
         this.error = null;
         try {
-            const { data, error } = await $fetch('/api/auth/login', { // USE $fetch instead of useFetch
+            // $fetch returns the response body directly on success
+            const responseData = await $fetch('/api/auth/login', {
                 method: 'POST',
                 body: credentials,
                 // No key needed for $fetch
             });
 
-            // $fetch throws an error on 4xx/5xx, so error handling needs adjustment
-            // If the request is successful, 'data' will contain the response body.
-            // If there's an HTTP error, it will be caught in the catch block.
-
-            if (data && data.user) { // Check if data and data.user exist
-                // console.log('Login Success:', data.value.user);
-                this.user = data.user;
+            // If the request is successful, 'responseData' will contain the response body.
+            // If there's an HTTP error (4xx/5xx), $fetch throws an error, which will be caught in the catch block.
+            if (responseData && responseData.user) { // Check if responseData and responseData.user exist
+                this.user = responseData.user;
                 this.status = 'authenticated';
                 return true;
             } else {
-                 console.warn('Login: Received response but no user data or unexpected structure.')
+                 console.warn('Login: Received response but no user data or unexpected structure.', responseData)
                  this.status = 'error';
-                 this.error = data?.message || 'Login response was invalid.'; // Use data.message if available
+                 this.error = responseData?.message || 'Login response was invalid.'; // Use responseData.message if available
                  this.user = null;
                  return false;
             }

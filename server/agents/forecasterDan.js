@@ -4,30 +4,28 @@ import {
     predictionOutputSchemaString,
     saveForecast,
 } from '../utils/agentUtils.js';
-import { AzureChatOpenAI } from '@langchain/openai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { exaSearch } from '../tools/exaSearch.js';
 import { extractJsonFromString } from '../utils/extractJson.js';
 
-export const forecasterPhil = async (scenarioId, save = false, log = false) => {
+export const forecasterDan = async (scenarioId, save = false, log = false) => {
     
     // 1. FIND OR CREATE FORECASTER
     const meta = {
-        name: 'Phil 0.1',
-        description: 'o4-mini based forecaster with exaSearch tool, instructions loosely based on Phil Tetlock\'s Superforecasting approach',
+        name: 'Dan 0.1',
+        description: 'Perplexity-based deep research agent',
         type: 'AI',
         status: 'ACTIVE',
         modelDetails: {
-            family: 'OpenAI',
-            version: 'o4-mini',
-            toolNotes: "exa search tool",
+            family: 'Perplexity',
+            version: 'sonar-deep-research',
+            toolNotes: "Perplexity's internal tools, search_context_size: high",
         },
     };
+    
+    const forecasterId = await findOrCreateForecaster(meta.name, meta);
 
     if(log) console.log(`[${meta.name}] starting...`);
-
-    const forecasterId = await findOrCreateForecaster(meta.name, meta);
-    
-    
     
     // 2. GET SCENARIO
     if (!scenarioId) {
@@ -46,17 +44,11 @@ export const forecasterPhil = async (scenarioId, save = false, log = false) => {
     
     const tools = [exaSearch];
 
-    const client = new AzureChatOpenAI({
-        model: "o4-mini",
+    const client = new ChatGoogleGenerativeAI({
+        model: "gemini-2.5-pro-preview-05-06",
         temperature: 1,
-        maxTokens: undefined,
-        maxRetries: 2,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
-        azureOpenAIApiVersion: "2024-12-01-preview",
-        azureOpenAIApiInstanceName: "o4-mini",
-        azureOpenAIApiDeploymentName: "o4-mini",
-        azureOpenAIApiEndpoint: process.env.AZURE_GPT45_URL,
-    }).bindTools(tools);
+        apiKey: process.env.GEMINI_API_KEY,
+      }).bindTools(tools);
 
     // 4. SYSTEM PROMPT
     const SYSTEM_PROMPT = `# Role
@@ -92,21 +84,25 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 ## 1. Guiding Principles for Research:
 * **Iterative Process:** Research is not linear. Search, analyze findings, identify knowledge gaps or new questions, then refine and formulate new queries. Repeat this cycle until you are confident you have a robust understanding.
 * **Multiple Perspectives:** Actively seek information that represents different viewpoints, including arguments for and against the likelihood of the event.
-* **Recency and Historical Context:** Prioritize recent, relevant information (especially for evolving situations – remember the current date is May 2025), but also seek historical context that might inform current trends or decisions.
+* **Recency and Historical Context:** Prioritize recent, relevant information (especially for evolving situations – remember the current date is ${new Date().toLocaleDateString(
+        'en-US',
+        { year: 'numeric', month: 'long', day: 'numeric' }
+    )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.), but also seek historical context that might inform current trends or decisions.
 * **Evidence-Based:** Your rationale should be grounded in the information you discover.
 
 ## 2. Query Formulation Strategy:
-* **Initial Queries:** Start by formulating 2-3 broad queries based on the core elements of the \`question\`, \`description\`, and \`resolutionCriteria\`. Use key terms and entities.
+* **Initial Queries:** Start by formulating 2-3 broad queries based on the core elements of the \`question\`, \`description\`, and \`resolutionCriteria\`. The fewer words you use, the better. Long queries usually lead to poor results, unless you are searching for a very specific issue.
 * **Iterative & Specific Queries:**
-    * Based on initial findings, formulate more specific queries. Explore different facets of the problem.
+    * Based on initial findings, formulate more specific queries. Explore different facets of the problem, but keep queries short.
     * Think about synonyms, related concepts, key individuals, organizations, and their stated intentions or past behaviors.
     * Search for official statements, reports from reputable news organizations, analyses by credible experts or industry analysts, and significant criticisms or counter-arguments.
     * Consider queries that explore potential catalysts, inhibitors, timelines, and precedents.
     * Use time-related keywords (e.g., "developments in 2024", "outlook 2025", "recent announcements") to focus your search if appropriate.
 * **Comprehensive Coverage:** Aim to use a series of varied queries (e.g., 5-10+ for complex topics) to cover the topic from multiple angles. Do not stop if you feel critical information might still be discoverable.
+* **Be comprehensive:** You are searching for all relevant information. When you think you have found all relevant information, you are probably wrong and you should at least do two more queries - one of which should try to find evidence that supports the opposite of your current working hypothesis.
 
 ## 3. Source Selection and Evaluation:
-* **Prioritize Credibility:** Only consider official sources (e.g., company press releases, government publications), established and reputable news organizations (e.g., Reuters, Bloomberg, Associated Press, The Wall Street Journal, New York Times, The Economist), respected academic institutions, well-known industry experts, and other credible sources. Never rely on random blogs or websites.
+* **Prioritize Credibility:** Give more weight to official sources (e.g., company press releases, government publications), established and reputable news organizations (e.g., Reuters, Bloomberg, Associated Press, The Wall Street Journal, New York Times, The Economist), respected academic institutions, and well-known industry experts.
 * **Identify Bias:** Be aware that all sources may have some bias. Critically assess the information and try to corroborate findings from multiple independent sources. Distinguish factual reporting from opinion or speculation.
 * **Relevance to Resolution Criteria:** Constantly evaluate if the information found directly informs the \`question\` and its specific \`resolutionCriteria\`.
 * **Recency:** Prioritize recent information (today is ${new Date().toLocaleDateString(
@@ -205,62 +201,64 @@ ${scenario.resolutionCriteria}
 
 Please generate a forecast for the scenario.`;
 
+const messages = [
+    {
+        role: 'system',
+        content: SYSTEM_PROMPT,
+    },
+    {
+        role: 'user',
+        content: userPrompt,
+    },
+]
     
-    const messages = [
-        {
-            role: 'system',
-            content: SYSTEM_PROMPT,
-        },
-        {
-            role: 'user',
-            content: userPrompt,
-        },
-    ]
     
     let maxRetries = 3;
     let retryCount = 0;
 
     while (retryCount < maxRetries) {
         try {
-            let researchOngoing = true;
-            let lastLLMResponse;
+            
 
-            while (researchOngoing) {
-                if(log) console.log(`[${meta.name}] invoking LLM...`);
-                lastLLMResponse = await client.invoke(messages);
-
-                if (lastLLMResponse.tool_calls && lastLLMResponse.tool_calls.length > 0) {
-                    messages.push(lastLLMResponse);
-
-                    const toolCall = lastLLMResponse.tool_calls[0];
-
-                    if(log) console.log(`[${meta.name}] invoking exaSearch...`);
-                    const toolResp = await exaSearch.invoke(toolCall.args);
-                    const toolOutputDataObj = (toolResp && toolResp.messages && toolResp.messages.length > 0)
-                        ? { ...toolResp.messages[0] }
-                        : {};
-
-                    delete toolOutputDataObj.image;
-                    delete toolOutputDataObj.favicon;
-                    delete toolOutputDataObj.author;
-                    delete toolOutputDataObj.id;
-
-                    messages.push({
-                        role: 'tool',
-                        content: JSON.stringify(toolOutputDataObj),
-                        tool_call_id: toolCall.id || Math.random().toString(36).substring(2, 15)
-                    });
-                } else {
-                    messages.push(lastLLMResponse);
-                    researchOngoing = false;
-                }
-            }
-
+            const options = {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  model: 'sonar-deep-research',
+                  messages,
+                  return_related_questions: true,
+                  // max_tokens: 123,
+                  // temperature: 0.2,
+                  // top_p: 0.9,
+                  // search_domain_filter: ['<any>'],
+                  // return_images: false,
+                  // search_recency_filter: '<string>',
+                  // top_k: 0,
+                  // stream: false,
+                  // presence_penalty: 0,
+                  // frequency_penalty: 1,
+                  // response_format: {},
+                }),
+              };
+            
+            if(log) console.log(`[${meta.name}] invoking LLM...`);
+            const response = await fetch(
+                'https://api.perplexity.ai/chat/completions',
+                options
+              );
+            const data = await response.json();
+            const lastMsg = data.choices[0].message;
+            
             if(log) console.log(`[${meta.name}] parsing response...`);
-            const parsed = extractJsonFromString(lastLLMResponse.content);
+            const parsed = extractJsonFromString(lastMsg.content);
+            
             if (!parsed || !parsed.response) {
-                throw new Error('Failed to parse JSON from LLM final response');
+                throw new Error(`[${meta.name}] Failed to parse JSON from LLM final response`);
             }
+
             if (save) {
                 if(log) console.log(`[${meta.name}] saving...`);
                 await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response });
@@ -281,21 +279,11 @@ Please generate a forecast for the scenario.`;
 };
 
 
-// test
+// // test
 // (async () => {
 //   const { closeMongoConnection } = await import('../utils/agentUtils.js');
 //   const scenarioId = '6816f8069a446c44b935505e';
-//   const result = await forecasterPhil(scenarioId, false);
+//   const result = await forecasterDan(scenarioId, false, true);
 //   console.log(result);
 //   await closeMongoConnection();
-// })();
-
-// TESTING
-// (async () => {
-//     // dynmaic import mongoose
-//     const mongoose = await import('mongoose');
-//     const scenarioId = '6816f8069a446c44b935505e';
-//     forecasterNate.config.test = true;
-//     await forecasterNate.forecast(scenarioId);
-//     await mongoose.disconnect();
 // })();

@@ -75,8 +75,6 @@ export default defineEventHandler(async (event) => {
       path: '/',
     });
 
-    console.log(`User logged in: ${user.email}`);
-
     // Return user info (excluding password and other sensitive fields)
     return {
       user: {
