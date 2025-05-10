@@ -3,8 +3,8 @@
     <h1 class="text-4xl font-semibold mb-10 text-fg">About Lightcone News</h1>
 
     <article class="text-lg leading-relaxed text-fg">
-      <blockquote class="text-xl italic text-fg-muted border-l-4 border-primary pl-6 pr-2 py-3 my-8">
-        Lightcone News is a curated news feed with additional context and probabilistic forecasts to help you make sense of the world.
+      <blockquote class="text-xl italic text-fg-muted border-l-4 border-primary pl-4 pr-2 py-2 my-8">
+        Lightcone News uses AI to curate a feed of the most important global news stories, with additional context and probabilistic forecasts &ndash; to help you make better sense of the world.
       </blockquote>
 
       <!-- Core Features Section -->
