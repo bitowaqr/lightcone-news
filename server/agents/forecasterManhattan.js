@@ -4,15 +4,13 @@ import {
     predictionOutputSchemaString,
     saveForecast,
 } from '../utils/agentUtils.js';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { exaSearch } from '../tools/exaSearch.js';
 import { extractJsonFromString } from '../utils/extractJson.js';
 
-export const forecasterDan = async (scenarioId, save = false, log = false) => {
+export const forecasterManhattan = async (scenarioId, save = false, log = false) => {
     
     // 1. FIND OR CREATE FORECASTER
     const meta = {
-        name: 'Dan 0.1',
+        name: 'Manhattan-bot v0.1',
         description: 'Perplexity-based deep research agent',
         type: 'AI',
         status: 'ACTIVE',
@@ -40,19 +38,11 @@ export const forecasterDan = async (scenarioId, save = false, log = false) => {
     }
 
 
-    // 3. GET CLIENT and tools
     
-    const tools = [exaSearch];
-
-    const client = new ChatGoogleGenerativeAI({
-        model: "gemini-2.5-pro-preview-05-06",
-        temperature: 1,
-        apiKey: process.env.GEMINI_API_KEY,
-      }).bindTools(tools);
 
     // 4. SYSTEM PROMPT
     const SYSTEM_PROMPT = `# Role
-You are to adopt the persona of Nate Silver, a renowned forecaster known for his data-driven, analytical, and nuanced approach to predictions. Your expertise lies in synthesizing complex information, often gleaned from thorough research, into clear, justifiable probabilistic assessments.
+You are a professional superforecaster with a track record of accurate and well-calibrated probabilistic forecasts. You follow superforcasting best practices to the letter up to the point where it almost becomes rigid. You often think in terms of base rates and you like to consider many different sides: 'on the one hand', 'on the other hand', 'if this happens', 'if that happens', 'if this other thing happens', 'if this other thing doesn't happen', etc.
 
 # Context
 You are submitting a probabilistic forecast and rationale to Lightcone.news.
@@ -131,7 +121,7 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * Structure this string clearly. You might use:
     * Paragraphs for distinct lines of reasoning, referencing information discovered.
     * Bullet points (e.g., using "-", "*", or "•") to list factors.
-    * Clearly label arguments: For example, start lines with "PRO:", "CON:", "UNCERTAINTY:", "NOTE:", or "CONCLUSION:" to delineate factors supporting a 'yes' resolution, factors supporting a 'no' resolution, or neutral observations/assumptions/uncertainties  and the final conclusion emerging from your research.
+    * Clearly label arguments: For example, start lines with "**PRO:**", "**CON:**", "**UNCERTAINTY:**", "**NOTE:**", or "**CONCLUSION:**" to delineate factors supporting a 'yes' resolution, factors supporting a 'no' resolution, or neutral observations/assumptions/uncertainties  and the final conclusion emerging from your research.
 * **Content for \`rationalDetails\` (if provided):**
     * Be specific. Refer to information from the \`description\`, \`resolutionCriteria\`, and importantly, evidence and insights gathered through your web searches.
     * Explain the mechanism by which factors influence the likelihood.
@@ -283,7 +273,7 @@ const messages = [
 // (async () => {
 //   const { closeMongoConnection } = await import('../utils/agentUtils.js');
 //   const scenarioId = '6816f8069a446c44b935505e';
-//   const result = await forecasterDan(scenarioId, false, true);
+//   const result = await forecasterManhattan(scenarioId, false, true);
 //   console.log(result);
 //   await closeMongoConnection();
 // })();

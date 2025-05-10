@@ -3,6 +3,7 @@ import { useRuntimeConfig } from '#imports';
 import { fetchAndFormatSingleManifoldMarket } from '../../scraper-scenarios/manifold.js';
 import Scenario from '../../models/Scenario.model.js';
 import mongoose from 'mongoose';
+import { FUTUUR_API_BASE_URL } from '../../scraper-scenarios/futuur.js';
 
 const PLATFORM_API_URLS = {
   Polymarket: 'https://gamma-api.polymarket.com/markets/',
@@ -209,6 +210,69 @@ async function fetchLightconeChance(platformScenarioId) {
   }
 }
 
+async function fetchFutuurChance(platformScenarioId) {
+  if (!platformScenarioId) {
+    return null;
+  }
+  const marketDetailUrl = `${FUTUUR_API_BASE_URL}/markets/${platformScenarioId}/`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const marketDetail = await $fetch(marketDetailUrl, { signal: controller.signal, parseResponse: JSON.parse });
+    clearTimeout(timeoutId);
+
+    if (!marketDetail || marketDetail.outcomes_type !== 'yesno' || !marketDetail.is_binary) {
+      return null; // Not a binary yes/no market or invalid data
+    }
+
+    let chance = null;
+    const yesOutcome = marketDetail.outcomes?.find(o => o.title?.toLowerCase() === 'yes');
+    if (yesOutcome?.price) {
+      if (marketDetail.real_currency_available && typeof yesOutcome.price.BTC === 'number') {
+        chance = parseFloat(yesOutcome.price.BTC);
+      } else if (typeof yesOutcome.price.OOM === 'number') {
+        chance = parseFloat(yesOutcome.price.OOM);
+      }
+    }
+
+    let volume = null;
+    if (marketDetail.real_currency_available && typeof marketDetail.volume_real_money === 'number') {
+      volume = marketDetail.volume_real_money;
+    } else if (typeof marketDetail.volume_play_money === 'number') {
+      volume = marketDetail.volume_play_money;
+    }
+
+    let status = 'UNKNOWN';
+    switch (marketDetail.status?.toLowerCase()) {
+      case 'o': status = 'OPEN'; break;
+      case 'c': status = 'CLOSED'; break;
+      case 'r': status = 'RESOLVED'; break;
+      case 'f': status = 'RESOLVING'; break;
+    }
+    if (marketDetail.resolution) status = 'RESOLVED';
+
+
+    return {
+      chance: chance,
+      volume: volume,
+      status: status,
+      liquidity: null, // Futuur API doesn't provide this directly
+    };
+
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw createError({ statusCode: 504, statusMessage: `Timeout fetching data from Futuur after ${FETCH_TIMEOUT_MS / 1000}s` });
+    }
+    if (error.response && error.response.status === 404) {
+      return null; // Market not found
+    }
+    // console.error(`[Futuur Chance] Error fetching ${marketDetailUrl}:`, error);
+    throw createError({ statusCode: error.response?.status || 502, statusMessage: `Failed to fetch or parse data from Futuur: ${error.message}` });
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const { platform, id } = query;
@@ -254,6 +318,10 @@ export default defineEventHandler(async (event) => {
 
       case 'Lightcone':
         result = await fetchLightconeChance(id);
+        break;
+
+      case 'Futuur':
+        result = await fetchFutuurChance(id);
         break;
 
       default:

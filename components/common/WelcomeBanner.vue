@@ -57,37 +57,57 @@ function dismissPermanently() {
   >
     <div v-if="showBanner" class="pointer-events-none md:px-2 lg:px-6">
       <div
-        class="w-full bg-primary-600 dark:bg-primary-300 pointer-events-auto flex flex-col relative "
+        class="w-full bg-article pointer-events-auto flex flex-col relative"
       >
         <div
-          class="flex flex-col items-center justify-between gap-1 max-w-4xl mx-auto p-4"
+          class="flex flex-col items-center justify-between gap-1 max-w-4xl mx-auto px-4 pt-8 pb-6"
         >
           <div class="flex items-start justify-center">
-            <p class="text-base text-white text-left grow dark:text-primary-900">
-              Visiting this page for the first time? Follow the link below to
-              learn more about Lightcone News and how to read our forecasts.
+            <div class="flex flex-col gap-2 text-lg w-full text-center">
+
+              <img src="~/assets/logos/logo-naked.svg" alt="Lightcone News Logo" class="w-12 h-12 mx-auto dark:invert" />
+
+              <h3 class="text-lg font-semibold mb-1">
+                Lightcone News
+              </h3>
+            <p class="text-base text-fg text-center grow  font-medium">
+              Important news with useful context and probabilistic forecasts.
             </p>
+            <p class="text-base text-fg text-center grow  font-medium">
+              To help you make more sense of the world.
+            </p>
+            </div>
             <button title="Don't show this again"
             aria-label="Close welcome banner"
-            class="p-1 hover:text-primary -mt-2 rounded-full "
+            class="p-1 hover:text-primary -mt-2 rounded-full absolute right-4 top-4"
             >
 
             <Icon
               icon="heroicons:x-mark-20-solid"
-              class="w-6 h-6 text-white hover:opacity-70 dark:text-primary-900"
+              class="w-6 h-6 text-fg hover:opacity-70 dark:text-primary-900"
               @click="dismissPermanently"
             />
             </button>
           </div>
 
-          <div
+
+          <div class="flex justify-center mb-2 mt-4">
+          <button
+            @click="learnMore"
+            class="px-4 py-1.5 border bg-primary hover:bg-primary-dark  rounded text-sm font-medium transition-colors focus:outline-none focus:none focus:ring-none text-white "
+          >
+            About Us
+          </button>
+        </div>
+
+          <!-- <div
             class="flex items-center justify-center text-white italic text-base me-auto gap-1 py-1 dark:text-primary-900"
             @click="learnMore"
             role="button"
           >
             About Us
             <Icon icon="heroicons:chevron-right" class="w-4 h-4 text-white dark:text-primary-900" />
-          </div>
+          </div> -->
         </div>
       </div>
     </div>

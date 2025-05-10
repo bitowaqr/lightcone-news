@@ -5,33 +5,24 @@
 
       <!-- Scope Section -->
       <section class="mb-12">
-        <h2 class="text-2xl font-semibold mb-4 text-fg">Scope of Scenario Questions</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Scope</h2>
         <p class="mb-2 text-fg">
-          Lightcone accepts scenario questions that concern significant, real-world developments with measurable outcomes. We focus on topics relevant to global affairs, science, technology, policy, economics, and long-term trends. Questions should be about events or facts that can be resolved by a specific date, using public information.
+          Lightcone accepts scenario requests that concern significant, real-world developments with measurable outcomes. Questions should be about events or facts that can be resolved by a specific date, using public information.
         </p>
         <p class="text-fg">
-          We do not accept questions about personal matters, trivial events, or topics that cannot be objectively verified.
+          Questions about personal matters, trivial events, or topics that cannot be objectively verified are not accepted.
         </p>
       </section>
 
       <!-- Why Good Questions Matter -->
       <section class="mb-12">
-        <h2 class="text-2xl font-semibold mb-4 text-fg">Why Good Questions Matter</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Writing good scenario questions</h2>
         <p class="mb-2 text-fg">
-          The quality of a forecast depends on the clarity of the question. A well-formed scenario question is unambiguous, objective, and specific. Vague or subjective questions lead to unreliable results.
+          The quality of a forecast depends on the clarity of the question. A well-formed scenario question is unambiguous, objective, and specific. The outcome can be determined by public evidence, not opinion. The event, timeframe, and resolution method are all defined.
         </p>
-        <ul class="list-disc pl-6 text-fg mt-4">
-          <li>Unambiguous: The meaning is clear to any reader.</li>
-          <li>Objective: The outcome can be determined by public evidence, not opinion.</li>
-          <li>Specific: The event, timeframe, and resolution method are all defined.</li>
-        </ul>
-      </section>
-
-      <!-- Principles -->
-      <section class="mb-12">
-        <h2 class="text-2xl font-semibold mb-4 text-fg">Principles for Scenario Questions</h2>
+        
         <ul class="list-disc pl-6 text-fg space-y-2">
-          <li>Use plain, precise language. Define any technical terms.</li>
+          <li>Use plain, precise language. Avoid abbreviations. Define any technical terms.</li>
           <li>State the event and the deadline for resolution.</li>
           <li>Describe exactly how the outcome will be judged, including sources.</li>
           <li>Consider edge cases and clarify how they should be handled.</li>
@@ -40,7 +31,7 @@
 
       <!-- Good and Bad Examples Section -->
       <section class="mb-12">
-        <h2 class="text-2xl font-semibold mb-4 text-fg">Examples: Good and Bad Scenario Questions</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Examples</h2>
         <div class="mb-6">
           <div class="font-semibold mb-2">Good Questions</div>
           <ul class="list-disc pl-6 text-fg space-y-2">
@@ -68,10 +59,6 @@
           <li>
             <span class="font-semibold">Forecast Question</span><br>
             A single, clear question about a real-world event, answerable as yes/no or with a specific value by a set date.
-            <div class="mt-2 ml-2">
-              <div class="mb-1">Example (good): Will Colossal successfully produce a living woolly mammoth by December 31, 2030?</div>
-              <div>Example (needs work): Will Colossal make history soon?</div>
-            </div>
           </li>
           <li>
             <span class="font-semibold">Related Article (optional)</span><br>
@@ -79,49 +66,30 @@
           </li>
           <li>
             <span class="font-semibold">Resolution Criteria</span><br>
-            Define exactly how the question will be resolved. Specify the data source, official statement, or public evidence that will be used. Clarify any terms and address possible ambiguities.
-            <div class="mt-2 ml-2">
-              <div class="mb-1">Example: This question resolves as Yes if Colossal publicly announces the birth of a living woolly mammoth before 2030-12-31. "Living woolly mammoth" means an animal with at least 90% mammoth DNA, surviving at least 24 hours post-birth. Resolution is based on official Colossal press releases or peer-reviewed scientific publications. If unclear, consensus reporting from major science news outlets will be used.</div>
+            Define exactly how the question will be resolved. Specify the data source, official statement, or public evidence that will be used. Clarify any terms and address possible ambiguities. For example:
+            <div class="mt-1 ml-2 lg:ml-4 mb-1">
+                <span class="italic">This question resolves as Yes if Colossal publicly announces the birth of a living woolly mammoth before 2030-12-31. "Living woolly mammoth" means an animal with at least 90% mammoth DNA, surviving at least 24 hours post-birth. Resolution is based on official Colossal press releases or peer-reviewed scientific publications.</span>
             </div>
           </li>
           <li>
             <span class="font-semibold">Resolution Date</span><br>
-            The deadline by which the event must occur for the question to resolve.
+            The deadline by which the event must occur for the question to resolve. Currently, the maximum resolution time is 12 months.
           </li>
           <li>
-            <span class="font-semibold">Background & Context (optional)</span><br>
-            Briefly explain why the question matters. Add links to sources if helpful.
+            <span class="font-semibold">Background (optional)</span><br>
+            Provide any additional information to explain the context of the question and help the AI agents generate a better forecast. Add links to sources if helpful.
           </li>
         </ol>
-      </section>
-
-      <!-- Formatting and Tone -->
-      <section class="mb-12">
-        <h2 class="text-2xl font-semibold mb-4 text-fg">Formatting and Tone</h2>
-        <ul class="list-disc pl-6 text-fg space-y-2">
-          <li>Write in a neutral, factual style. Avoid loaded or emotive language.</li>
-          <li>Use short, direct sentences. Avoid unnecessary detail.</li>
-          <li>Proofread for clarity and consistency.</li>
-        </ul>
-      </section>
-
-      <!-- Content to Avoid -->
-      <section class="mb-12">
-        <h2 class="text-2xl font-semibold mb-4 text-fg">Content Not Accepted</h2>
-        <ul class="list-disc pl-6 text-fg space-y-2">
-          <li>Questions about private individuals or personal matters.</li>
-          <li>Questions of trivial or idiosyncratic interest.</li>
-          <li>Questions that cannot be resolved by public, objective evidence.</li>
-        </ul>
       </section>
 
       <!-- Forecasting Process -->
       <section class="mb-12">
         <h2 class="text-2xl font-semibold mb-4 text-fg">How Scenario Requests Are Processed</h2>
         <ol class="list-decimal pl-6 text-fg space-y-2">
-          <li>Initial review for clarity and adherence to guidelines.</li>
-          <li>AI agents research and generate forecasts based on your question.</li>
-          <li>Results are published, typically within 5–20 minutes.</li>
+          <li>Requests are automatically screened for clarity and adherence to guidelines.</li>
+          <li>Requests that pass screening are tentatively processed, but can be rejected afterwards, following human review.</li>
+          <li>Lightcone's AI forecasting agents research and generate multiple forecasts. Results are usually published within 5-20 minutes.</li>
+          <li>Forecasts are updated on a rolling basis, i.e. updates are not triggered by the publication of new information.</li>
         </ol>
       </section>
     </article>

@@ -73,12 +73,12 @@ export default defineEventHandler(async (event) => {
          // Default sort if input is invalid or not provided
          sanitizedSort['updatedAt'] = -1;
     }
-    console.log('Applying sort:', sanitizedSort);
+    
     // --- End Sort Sanitization ---
 
     const totalDocuments = await Model.countDocuments(sanitizedFilters);
     let documents;
-    console.log('collectionName', collectionName);
+    
     
       documents = await Model.find(sanitizedFilters)
         .sort(sanitizedSort) // Use sanitized sort object

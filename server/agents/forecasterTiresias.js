@@ -1,47 +1,45 @@
 import {
-  getScenarioForAgent,
-  findOrCreateForecaster,
-  predictionOutputSchemaString,
-  saveForecast,
+    getScenarioForAgent,
+    findOrCreateForecaster,
+    predictionOutputSchemaString,
+    saveForecast,
 } from '../utils/agentUtils.js';
-import { GoogleGenAI, Type } from '@google/genai';
 import { extractJsonFromString } from '../utils/extractJson.js';
 
-export const forecasterBarb = async (scenarioId, save = false, log = false) => {
-  // 1. FIND OR CREATE FORECASTER
-  const meta = {
-    name: 'Barb 0.1',
-    description: 'gemini-2.5-pro with grounding',
-    type: 'AI',
-    status: 'ACTIVE',
-    modelDetails: {
-      family: 'Gemini',
-      version: 'gemini-2.5-pro-preview-05-06',
-      toolNotes: 'grounding',
-    },
-  };
+export const forecasterTiresias = async (scenarioId, save = false, log = false) => {
+    
+    // 1. FIND OR CREATE FORECASTER
+    const meta = {
+        name: 'Tiresias-bot v0.1',
+        description: 'Perplexity-based reasoning agent',
+        type: 'AI',
+        status: 'ACTIVE',
+        modelDetails: {
+            family: 'Perplexity',
+            version: 'sonar-reasoning-pro',
+            toolNotes: "Perplexity's internal tools, search_context_size: high",
+        },
+    };
+    
+    const forecasterId = await findOrCreateForecaster(meta.name, meta);
 
-  const forecasterId = await findOrCreateForecaster(meta.name, meta);
+    if(log) console.log(`[${meta.name}] starting...`);
+    
+    // 2. GET SCENARIO
+    if (!scenarioId) {
+        throw new Error(`[${meta.name}] Scenario ID is required`);
+    }
 
-  if (log) console.log(`[${meta.name}] starting...`);
+    const scenario = await getScenarioForAgent(scenarioId);
+    
+    
+    if (!scenario) {
+        throw new Error(`[${meta.name}] Scenario not found`);
+    }
 
-  // 2. GET SCENARIO
-  if (!scenarioId) {
-    throw new Error(`[${meta.name}] Scenario ID is required`);
-  }
-
-  const scenario = await getScenarioForAgent(scenarioId);
-
-  if (!scenario) {
-    throw new Error(`[${meta.name}] Scenario not found`);
-  }
-
-  // 3. CLIENT
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-  // 4. SYSTEM PROMPT
-  const SYSTEM_PROMPT = `# Role
-You are to adopt the persona of Nate Silver, a renowned forecaster known for his data-driven, analytical, and nuanced approach to predictions. Your expertise lies in synthesizing complex information, often gleaned from thorough research, into clear, justifiable probabilistic assessments.
+    // 3. SYSTEM PROMPT
+    const SYSTEM_PROMPT = `# Role
+You are a professional superforecaster with a track record of accurate and well-calibrated probabilistic forecasts. Your tone and style is academic and analytical. You tend to stick to the facts and give references and links to support your forecasts. You mainly think in terms of base rates and the outside view.
 
 # Context
 You are submitting a probabilistic forecast and rationale to Lightcone.news.
@@ -74,11 +72,9 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * **Iterative Process:** Research is not linear. Search, analyze findings, identify knowledge gaps or new questions, then refine and formulate new queries. Repeat this cycle until you are confident you have a robust understanding.
 * **Multiple Perspectives:** Actively seek information that represents different viewpoints, including arguments for and against the likelihood of the event.
 * **Recency and Historical Context:** Prioritize recent, relevant information (especially for evolving situations – remember the current date is ${new Date().toLocaleDateString(
-    'en-US',
-    { year: 'numeric', month: 'long', day: 'numeric' }
-  )}, ${new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-  })}.), but also seek historical context that might inform current trends or decisions.
+        'en-US',
+        { year: 'numeric', month: 'long', day: 'numeric' }
+    )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.), but also seek historical context that might inform current trends or decisions.
 * **Evidence-Based:** Your rationale should be grounded in the information you discover.
 
 ## 2. Query Formulation Strategy:
@@ -97,9 +93,9 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * **Identify Bias:** Be aware that all sources may have some bias. Critically assess the information and try to corroborate findings from multiple independent sources. Distinguish factual reporting from opinion or speculation.
 * **Relevance to Resolution Criteria:** Constantly evaluate if the information found directly informs the \`question\` and its specific \`resolutionCriteria\`.
 * **Recency:** Prioritize recent information (today is ${new Date().toLocaleDateString(
-    'en-US',
-    { year: 'numeric', month: 'long', day: 'numeric' }
-  )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.
+        'en-US',
+        { year: 'numeric', month: 'long', day: 'numeric' }
+    )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.
 
 ## 4. Synthesizing Information and Ensuring Thoroughness:
 * **Connect the Dots:** Don't just collect facts. Synthesize the information to understand the narrative, the relationships between different factors, and the overall landscape.
@@ -122,14 +118,14 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * Structure this string clearly. You might use:
     * Paragraphs for distinct lines of reasoning, referencing information discovered.
     * Bullet points (e.g., using "-", "*", or "•") to list factors.
-    * Clearly label arguments: For example, start lines with "PRO:", "CON:", "UNCERTAINTY:", "NOTE:", or "CONCLUSION:" to delineate factors supporting a 'yes' resolution, factors supporting a 'no' resolution, or neutral observations/assumptions/uncertainties  and the final conclusion emerging from your research.
+    * Clearly label arguments: For example, start lines with "**PRO:**", "**CON:**", "**UNCERTAINTY:**", "**NOTE:**", or "**CONCLUSION:**" to delineate factors supporting a 'yes' resolution, factors supporting a 'no' resolution, or neutral observations/assumptions/uncertainties  and the final conclusion emerging from your research.
 * **Content for \`rationalDetails\` (if provided):**
     * Be specific. Refer to information from the \`description\`, \`resolutionCriteria\`, and importantly, evidence and insights gathered through your web searches.
     * Explain the mechanism by which factors influence the likelihood.
     * Discuss key drivers, inhibitors, potential catalysts, relevant trends, motivations of key actors, significant uncertainties, and any critical assumptions you are making, all informed by your research.
 
 ## 4. Dossier (\`dossier\`):
-* This is an optional array of strings, intended for URLs of key evidence found during your research. After using your internal search tool, include ALL the URLs you found in the \`dossier\` array.  If no specific, citable URLs are retrieved, provide an empty array \`[]\`.
+* This is an optional array of strings, intended for URLs of key evidence found during your research. After using exaSearch, include ALL the URLs you found in the \`dossier\` array.  If no specific, citable URLs are retrieved, provide an empty array \`[]\`.
 
 ## 5. Comment (\`comment\`):
 * This is an optional string for any internal comments about the forecasting process for this specific scenario.
@@ -163,7 +159,7 @@ Your final probability is not a guess; it's a reasoned judgment derived from you
 
 
 # Output Format
-Your response MUST be a single JSON object. The structure of this JSON object, which will be the value for a key named \`response\`, must be:
+Your entire response MUST be a single JSON object. The structure of this JSON object, which will be the value for a key named \`response\`, must be:
 \`\`\`json
 {
     "response": {
@@ -180,8 +176,8 @@ Ensure your output is valid JSON. Do NOT include any text before or after this J
 
 Carefully review the \`scenario\`, \`description\` (if provided), and \`resolutionCriteria\` before commencing your deep research and generating your forecast.`;
 
-  // 5. USER PROMPT
-  const userPrompt = `# Question: 
+    // 5. USER PROMPT
+    const userPrompt = `# Question: 
 ${scenario.questionNew || scenario.question}
 
 # Description:
@@ -192,90 +188,99 @@ ${scenario.resolutionCriteria}
 
 Please generate a forecast for the scenario.`;
 
-  const messages = [
+const messages = [
     {
-      role: 'user',
-      parts: [
-        {
-          text: userPrompt,
-        },
-      ],
+        role: 'system',
+        content: SYSTEM_PROMPT,
     },
-  ];
-
-  let maxRetries = 3;
-  let retryCount = 0;
-
-  while (retryCount < maxRetries) {
-    try {
-      
-      let lastMsg;
-            if (log) console.log(`[${meta.name}] invoking LLM...`);
-
-            lastMsg = await client.models.generateContent({
-                model: 'gemini-2.5-pro-preview-05-06',
-                contents: messages,
-                config: {
-                    systemInstruction: SYSTEM_PROMPT,
-                    tools: [{ googleSearch: {} }],
-                    thinkingConfig: {
-                        thinkingBudget: 1024,
-                        temperature: 0.3,
-                    },
-                },
-            });
-
-            // console.log(JSON.stringify(lastMsg, null, 2));
-            
+    {
+        role: 'user',
+        content: userPrompt,
+    },
+]
     
-        if (log) console.log(`[${meta.name}] parsing response...`);
-        let parts = lastMsg.candidates?.[0]?.content?.parts
-            if (!parts || !parts.length > 0) throw new Error('No parts found in lastMsg');
-          
-            const parsed = extractJsonFromString(parts[parts.length - 1].text);
+    
+// const {
+//     model = 'sonar-reasoning-pro',
+//     systemPrompt = 'You are a helpful AI assistant',
+//     contextSize = 'high',
+//     prompt,
+//   } = opts;
+    
+    let maxRetries = 3;
+    let retryCount = 0;
 
-      if (!parsed || !parsed.response) {
-        throw new Error(
-          `[${meta.name}] Failed to parse JSON from LLM final response`
-        );
-      }
+    while (retryCount < maxRetries) {
+        try {
+            
 
-      if (save) {
-        if (log) console.log(`[${meta.name}] saving...`);
-        await saveForecast({
-          scenarioId,
-          forecasterId,
-          predictionData: parsed.response,
-        });
-      }
-      if (log) console.log(`[${meta.name}] done!`);
-      return {
-        forecaster: meta.name,
-        scenarioId,
-        forecasterId,
-        predictionData: parsed.response,
-      };
-    } catch (error) {
-      if (log)
-        console.error(
-          `[${meta.name}] error during agent execution (attempt ${
-            retryCount + 1
-          }/${maxRetries}):`,
-          error
-        );
-      retryCount++;
+            const options = {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  // model: 'sonar-reasoning-pro',
+                  // model: 'sonar-deep-research',
+                  model: 'sonar-reasoning-pro',
+                  messages,
+                  return_related_questions: true,
+                  web_search_options: { search_context_size: 'high' },
+                  // max_tokens: 123,
+                  // temperature: 0.2,
+                  // top_p: 0.9,
+                  // search_domain_filter: ['<any>'],
+                  // return_images: false,
+                  // search_recency_filter: '<string>',
+                  // top_k: 0,
+                  // stream: false,
+                  // presence_penalty: 0,
+                  // frequency_penalty: 1,
+                  // response_format: {},
+                }),
+              };
+            
+            if(log) console.log(`[${meta.name}] invoking LLM...`);
+            const response = await fetch(
+                'https://api.perplexity.ai/chat/completions',
+                options
+              );
+            const data = await response.json();
+            const lastMsg = data.choices[0].message;
+            
+            if(log) console.log(`[${meta.name}] parsing response...`);
+            const parsed = extractJsonFromString(lastMsg.content);
+            
+            if (!parsed || !parsed.response) {
+                throw new Error(`[${meta.name}] Failed to parse JSON from LLM final response`);
+            }
+
+            if (save) {
+                if(log) console.log(`[${meta.name}] saving...`);
+                await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response });
+            }
+            if(log) console.log(`[${meta.name}] done!`);
+            return {
+                forecaster: meta.name,
+                scenarioId,
+                forecasterId,
+                predictionData: parsed.response,
+            };
+        } catch (error) {
+            if(log) console.error(`[${meta.name}] error during agent execution (attempt ${retryCount + 1}/${maxRetries}):`, error);
+            retryCount++;
+        }
     }
-  }
-  throw new Error(
-    `[${meta.name}] Failed to get a valid response after ${maxRetries} retries`
-  );
+    throw new Error(`[${meta.name}] Failed to get a valid response after ${maxRetries} retries`);
 };
 
-// // test
+
+// // // test
 // (async () => {
 //   const { closeMongoConnection } = await import('../utils/agentUtils.js');
 //   const scenarioId = '6816f8069a446c44b935505e';
-//   const result = await forecasterBarb(scenarioId, false, true);
+//   const result = await forecasterTiresias(scenarioId, false, true);
 //   console.log(result);
 //   await closeMongoConnection();
 // })();

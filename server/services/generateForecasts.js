@@ -1,20 +1,23 @@
-import { forecasterBilly } from '../agents/forecasterBilly.js';
-import { forecasterNate } from '../agents/forecasterNate.js';
-import { forecasterPhil } from '../agents/forecasterPhil.js';
-import { forecasterDan } from '../agents/forecasterDan.js';
-import { forecasterLea } from '../agents/forecasterLea.js';
-import { forecasterBarb } from '../agents/forecasterBarb.js';
-import { forecasterRobin } from '../agents/forecasterRobin.js';
-import fs from 'fs';
+import { forecasterStrange } from '../agents/forecasterStrange.js';
+import { forecasterOrunmila } from '../agents/forecasterOrunmila.js';
+import { forecasterSibyl } from '../agents/forecasterSibyl.js';
+import { forecasterManhattan } from '../agents/forecasterManhattan.js';
+import { forecasterTiresias } from '../agents/forecasterTiresias.js';
+import { forecasterMoirae } from '../agents/forecasterMoirae.js';
+import { forecasterSaruman } from '../agents/forecasterSaruman.js';
+import { forecasterGaladriel } from '../agents/forecasterJona.js';
+import { forecasterMuadib } from '../agents/forecasterMuaddib.js';
 
 const forecastAgents = {
-    'billy': forecasterBilly,
-    'nate': forecasterNate,
-    'phil': forecasterPhil,
-    'dan': forecasterDan,
-    'lea': forecasterLea,
-    'barb': forecasterBarb,
-    'robin': forecasterRobin
+    'galadriel': forecasterGaladriel,
+    'manhattan': forecasterManhattan,
+    'moirae': forecasterMoirae,
+    'muadib': forecasterMuadib,
+    'orunmila': forecasterOrunmila,
+    'saruman': forecasterSaruman,
+    'sibyl': forecasterSibyl,
+    'strange': forecasterStrange,
+    'tiresias': forecasterTiresias,
 }
 
 export const generateForecastsParallel = async (scenarioId, opts = {}) => {
@@ -51,13 +54,17 @@ export const generateForecastsSequential = async (scenarioId, opts = {}) => {
 
 
 
-// TESTING
+// // TESTING
 (async () => {
+    const fs = await import('fs');
   const { closeMongoConnection } = await import('../utils/agentUtils.js');
-  const scenarioId = '6816f8069a446c44b935505e';
-  const result = await generateForecastsSequential(scenarioId, { save: false, log: true, timeout: 5_000 });
-  fs.writeFileSync('forecasts2.json', JSON.stringify(result, null, 2));
-  console.log(JSON.stringify(result, null, 2));
+  const scenarioId = '681c1f33d173119b5f84b5d2';
+  // const result = await generateForecastsSequential(scenarioId, { save: true, log: true, timeout: 5_000 });
+  const result = await generateForecastsParallel(scenarioId, { save: false, log: true });
+  fs.writeFileSync('forecasts3.json', JSON.stringify(result, null, 2));
+  console.log("----------------");
+  console.log("Finished!");
+  console.log("----------------");
   await closeMongoConnection();
 })();
 

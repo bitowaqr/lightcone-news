@@ -23,7 +23,6 @@ export const writeArticle = async (story) => {
   // 1. Prepare the sources
   let sources = story.sources;
   if (SHUFFLE_SOURCES) {
-    console.log('Shuffling sources...');
     sources = sources.sort(() => Math.random() - 0.5);
   }
   if (sources.length > MAX_SOURCES) {

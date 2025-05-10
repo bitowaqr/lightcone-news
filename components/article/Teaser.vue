@@ -1,9 +1,28 @@
 <template>
   <!-- New wrapper div -->
-  <div> 
+  <div 
+    :class="{
+      'opacity-60': isArticleRead,
+      'transition-opacity duration-100': true
+    }"
+  > 
     <div
-      class="h-full flex flex-col pt-0 pb-4 lg:px-4 lg:pb-6"
+      class="h-full flex flex-col pt-0 pb-4 lg:px-4 lg:pb-6 relative" 
     >
+      <!-- Mark as Read Button -->
+      <button 
+        v-if="authStore.isAuthenticated && group?.story?.articleId"
+        :key="`read-status-btn-${group.story.articleId}-${isArticleRead}`" 
+        @click.stop.prevent="toggleReadStatus"
+        title="Mark as read/unread"
+        class="absolute -top-4 right-1 z-10 p-1 rounded-full text-fg-muted hover:text-primary hover:bg-bg-subtle transition-colors duration-150"
+      >
+        <Icon 
+          :name="isArticleRead ? 'mdi:check-box-outline' : 'mdi:check-box-outline-blank'" 
+          class="w-4 h-4"
+        />
+      </button>
+
       <!-- ARTICLE CLICKABLE PART -->
       <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`" class="hover:opacity-80">
         <div class="flex flex-col" :class="{
@@ -140,9 +159,12 @@ import ScenarioTeaser from '~/components/scenario/Teaser.vue'; // Ensure Scenari
 import { useAuthStore } from '~/stores/auth'; 
 // ADDED: Import bookmark store
 import { useBookmarkStore } from '~/stores/bookmarks';
+// ADDED: Import read articles store
+import { useReadArticlesStore } from '~/stores/readArticlesStore';
 
 const authStore = useAuthStore(); // ADDED: Initialize auth store
 const bookmarkStore = useBookmarkStore(); // ADDED: Initialize bookmark store
+const readArticlesStore = useReadArticlesStore(); // ADDED: Initialize read articles store
 
 const props = defineProps({
   group: {
@@ -155,7 +177,8 @@ const props = defineProps({
             title: 'Loading...', 
             precis: '', 
             publishedDate: '', 
-            sources: [] 
+            sources: [],
+            articleId: null // Ensure articleId is part of the default story object
         }, 
         imageUrl: null, 
         scenarios: [], 
@@ -190,6 +213,24 @@ const handleShare = () => {
   }
   articleToShare.value = story;
   showShareDialog.value = true;
+};
+
+// Computed property to check if the article is read
+const isArticleRead = computed(() => {
+  if (!props.group?.story?.articleId) return false;
+  return readArticlesStore.isRead(props.group.story.articleId);
+});
+
+// Method to toggle read status
+const toggleReadStatus = () => {
+  const articleId = props.group?.story?.articleId;
+  if (!articleId || !authStore.isAuthenticated) return;
+
+  if (readArticlesStore.isRead(articleId)) {
+    readArticlesStore.markAsUnread(articleId);
+  } else {
+    readArticlesStore.markAsRead(articleId);
+  }
 };
 
 </script>

@@ -223,42 +223,49 @@
                      </span>
                      <div>
                        <span class="font-semibold text-fg text-base block leading-tight group-hover:text-primary transition-colors duration-100">{{ stats.latestForecast.forecasterId.name || 'Unknown Forecaster' }}</span>
-                       <!-- Added: Total Forecast Count -->
-                       <span class="text-xs text-fg-muted leading-tight">{{ stats.totalCount }} forecast{{ stats.totalCount === 1 ? '' : 's' }}</span>
+                       
                      </div>
                    </NuxtLink>
                 </div>
-                <div class="text-right">
-                    <span class="text-xl font-bold text-primary">{{ formatProbability(stats.latestForecast.probability) }}</span>
-                    <!-- Added: Timestamp under latest forecast -->
-                    <span class="block text-xs text-fg-muted leading-tight mt-0.5">
-                        {{ formatDate(stats.latestForecast.timestamp, true) }}
-                    </span>
+                <div class="flex flex-col items-end text-right">
+                  <div class="flex flex-col items-center leading-none">
+
+                    <span class="text-2xl font-bold text-primary leading-none">{{ formatProbability(stats.latestForecast.probability) }}</span>
+                    <span class="text-[10px] text-fg-muted uppercase tracking-wider mt-0.5 mb-1 font-medium">Chance</span>
+                  </div>
+                    <div class="text-xs text-fg-muted">
+                        <span class="">{{ stats.totalCount }} forecast{{ stats.totalCount === 1 ? '' : 's' }}</span>
+                        <span class="before:content-['•'] before:mx-1.5">
+                          {{  stats.totalCount > 1 ? 'Latest:' : '' }}
+                          {{ formatDate(stats.latestForecast.timestamp, true) }}</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Rationale Summary -->
-            <p v-if="stats.latestForecast.rationalSummary" class="text-sm text-fg-muted mb-3 italic pl-11">
-                "{{ stats.latestForecast.rationalSummary }}"
+            <p v-if="stats.latestForecast.rationalSummary" class="text-sm text-fg mb-3 pl-4">
+                {{ stats.latestForecast.rationalSummary }}
             </p>
 
             <!-- Expandable Details -->
-            <div class="pl-11">
+            <div class="pl-5">
               <button 
                 @click="toggleDetails(stats.latestForecast.forecasterId._id)"
-                class="text-xs font-medium text-primary-600 hover:text-primary flex items-center mb-1"
+                class="text-xs font-medium text-primary-600 hover:text-primary flex items-center mb-1 -ms-1.5"
               >
                  <Icon :name="expandedDetails[stats.latestForecast.forecasterId._id] ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="w-4 h-4 mr-0.5" />
                  {{ expandedDetails[stats.latestForecast.forecasterId._id] ? 'Hide Details' : 'Show Details & Evidence' }}
               </button>
-              <div v-if="expandedDetails[stats.latestForecast.forecasterId._id]" class="text-sm text-fg-muted space-y-2 border-l-2 border-primary/20 pl-3 pt-2 pb-1">
-                  <div v-if="stats.latestForecast.rationalDetails" v-html="renderMarkdown(stats.latestForecast.rationalDetails).value" class="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1"></div>
+              <div v-if="expandedDetails[stats.latestForecast.forecasterId._id]" class="text-sm text-fg space-y-2 border-l-2 border-primary/20 pl-3 pt-2 pb-1">
+                  <div v-if="stats.latestForecast.rationalDetails" v-html="renderMarkdown(stats.latestForecast.rationalDetails).value" class="prose prose-sm max-w-none dark:prose-invert prose-p:my-1  prose-ol:my-1 prose-strong:text-primary"></div>
                   <div v-if="stats.latestForecast.dossier && stats.latestForecast.dossier.length > 0">
-                      <h5 class="text-xs font-semibold text-fg mt-2 mb-1">Evidence:</h5>
+                      <div class="text-sm font-semibold text-fg mt-4 mb-1">Dossier:</div>
                       <ul class="list-disc list-inside space-y-1">
                           <li v-for="(url, urlIndex) in stats.latestForecast.dossier" :key="urlIndex">
-                              <a :href="url" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline hover:text-primary break-all text-xs">
-                                {{ url }}
+                              <a :href="url" target="_blank" rel="noopener noreferrer" 
+                              :title="url"
+                              class="text-primary-600 hover:underline hover:text-primary break-all text-xs">
+                                {{ url?.length > 75 ? url.substring(0, 75) + '...' : url }}
                                 <Icon name="mdi:open-in-new" class="w-3 h-3 ml-0.5 inline-block align-baseline opacity-70" />
                               </a>
                           </li>
@@ -546,7 +553,18 @@ const toggleDetails = (forecasterId) => { // <-- Parameter is now forecasterId
 </script>
 
 <style scoped>
-/* Add any component-specific styles if needed */
+:deep(.prose p:has(strong)) {
+  @apply mb-1 mt-1;
+}
+
+:deep(.prose ul) {
+  @apply mb-4;
+}
+:deep(.prose ol) {
+  @apply mb-4;
+}
+
+
 </style>
 
 

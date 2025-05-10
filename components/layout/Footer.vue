@@ -1,12 +1,12 @@
 <template>
-  <footer class="bg-bg-muted text-fg-muted text-sm p-4 border-t border-accent-bg mt-auto">
+  <footer class="bg-bg-muted text-fg-muted text-sm py-6 px-4 border-t border-bg-muted mt-auto">
     <div class="container mx-auto">
       <div class="flex flex-col md:flex-row justify-between items-center">
         <div class="mb-4 md:mb-0">
-          <NuxtLink to="/" class="font-medium hover:text-fg">Lightcone News</NuxtLink>
+          <NuxtLink to="/" class="font-semibold text-fg hover:opacity-80">Lightcone News</NuxtLink>
         </div>
         
-        <div class="flex flex-wrap justify-center gap-6 mb-4 md:mb-0">
+        <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-4 md:mb-0">
           <NuxtLink to="/scenarios" class="hover:text-fg">Scenarios</NuxtLink>
           <NuxtLink to="/about" class="hover:text-fg">About</NuxtLink>
           <NuxtLink to="/terms" class="hover:text-fg">Terms</NuxtLink>

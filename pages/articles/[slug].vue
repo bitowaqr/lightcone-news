@@ -50,11 +50,13 @@
 
 <script setup>
 import { useAuthStore } from '~/stores/auth';
-import { computed, watch } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useHead, useRequestURL } from '#app';
+import { useReadArticlesStore } from '~/stores/readArticlesStore';
 
 const authStore = useAuthStore();
+const readArticlesStore = useReadArticlesStore();
 const route = useRoute();
 const articleSlug = computed(() => route.params.slug);
 const siteUrl = useRequestURL().origin;
@@ -72,6 +74,24 @@ const { data: articleData, pending, error, refresh } = await useFetch(() => {
   key: `article-${route.params.slug || 'initial'}`,
   watch: false,
   immediate: false
+});
+
+// Mark as read when articleData is loaded
+watch(articleData, (newData) => {
+  if (newData && newData._id && authStore.isAuthenticated) {
+    readArticlesStore.markAsRead(newData._id);
+  }
+});
+
+// Also try to mark as read on mount if data is already available (e.g. from cache)
+onMounted(() => {
+  if (articleData.value && articleData.value._id && authStore.isAuthenticated) {
+    readArticlesStore.markAsRead(articleData.value._id);
+  }
+  // Ensure read articles are loaded if navigating directly to article page
+  if (authStore.isAuthenticated && !readArticlesStore.hasLoadedFromStorage) {
+    readArticlesStore.loadFromLocalStorage();
+  }
 });
 
 // Watch for authentication changes to refresh data if needed

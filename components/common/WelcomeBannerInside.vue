@@ -68,7 +68,8 @@ function dismissPermanently() {
           <h3 class="text-lg font-bold mb-6">
             New to Lightcone News? 
           </h3>
-          <p class="leading-relaxed">Follow the link below to learn more about what we do and how to read our forecasts.</p>
+          <p class="leading-relaxed">Follow the link below to
+            learn more about how to read our forecasts.</p>
         </div>
 
         <div class="flex justify-center mb-6">

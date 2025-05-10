@@ -4,49 +4,63 @@ import {
     predictionOutputSchemaString,
     saveForecast,
 } from '../utils/agentUtils.js';
-import OpenAI from 'openai';
+import { AzureChatOpenAI } from '@langchain/openai';
+import { exaSearch } from '../tools/exaSearch.js';
 import { extractJsonFromString } from '../utils/extractJson.js';
 
-export const forecasterNate = async (scenarioId, save = false, log = false) => {
-  
-  // 1. FIND OR CREATE FORECASTER
-  const meta = {
-    name: 'N473 Forecaster',
-    description: 'A simple GPT-4o based forecaster using OpenAI\'s search API',
-    type: 'AI',
-    status: 'ACTIVE',
-    modelDetails: {
-      family: 'OpenAI',
-      version: 'gpt-4o-search-preview',
-      toolNotes: "OpenAI's search API",
-    },
-  };
+export const forecasterSibyl = async (scenarioId, save = false, log = false) => {
+    
+    // 1. FIND OR CREATE FORECASTER
+    const meta = {
+        name: 'Sibyl-bot v0.1',
+        description: 'o4-mini with exaSearch tool',
+        type: 'AI',
+        status: 'ACTIVE',
+        modelDetails: {
+            family: 'OpenAI',
+            version: 'o4-mini',
+            toolNotes: "exa search tool",
+        },
+    };
 
-  if(log) console.log(`[${meta.name}] starting...`);
-  
-  const forecasterId = await findOrCreateForecaster(meta.name, meta);
-  
-  // 2. GET SCENARIO
-  if (!scenarioId) {
-    throw new Error(`[${meta.name}] Scenario ID is required`);
-  }
+    if(log) console.log(`[${meta.name}] starting...`);
+
+    const forecasterId = await findOrCreateForecaster(meta.name, meta);
+    
+    
+    
+    // 2. GET SCENARIO
+    if (!scenarioId) {
+        throw new Error(`[${meta.name}] Scenario ID is required`);
+    }
 
     const scenario = await getScenarioForAgent(scenarioId);
     
     
-  if (!scenario) {
-    throw new Error(`[${meta.name}] Scenario not found`);
-  }
+    if (!scenario) {
+        throw new Error(`[${meta.name}] Scenario not found`);
+    }
 
 
-  // 3. GET CLIENT
-  const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+    // 3. GET CLIENT and tools
+    
+    const tools = [exaSearch];
 
-  // 4. SYSTEM PROMPT
-  const SYSTEM_PROMPT = `# Role
-You are to adopt the persona of Nate Silver, a renowned forecaster known for his data-driven, analytical, and nuanced approach to predictions. Your expertise lies in synthesizing complex information, often gleaned from thorough research, into clear, justifiable probabilistic assessments.
+    const client = new AzureChatOpenAI({
+        model: "o4-mini",
+        temperature: 1,
+        maxTokens: undefined,
+        maxRetries: 2,
+        azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
+        azureOpenAIApiVersion: "2024-12-01-preview",
+        azureOpenAIApiInstanceName: "o4-mini",
+        azureOpenAIApiDeploymentName: "o4-mini",
+        azureOpenAIApiEndpoint: process.env.AZURE_GPT45_URL,
+    }).bindTools(tools);
+
+    // 4. SYSTEM PROMPT
+    const SYSTEM_PROMPT = `# Role
+You are an AI Forecasting Agent. Your expertise lies in synthesizing complex information, often gleaned from thorough research, into clear, justifiable, extremely accurate probabilistic assessments.
 
 # Context
 You are submitting a probabilistic forecast and rationale to Lightcone.news.
@@ -92,13 +106,13 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * **Comprehensive Coverage:** Aim to use a series of varied queries (e.g., 5-10+ for complex topics) to cover the topic from multiple angles. Do not stop if you feel critical information might still be discoverable.
 
 ## 3. Source Selection and Evaluation:
-* **Prioritize Credibility:** Give more weight to official sources (e.g., company press releases, government publications), established and reputable news organizations (e.g., Reuters, Bloomberg, Associated Press, The Wall Street Journal, New York Times, The Economist), respected academic institutions, and well-known industry experts.
+* **Prioritize Credibility:** Only consider official sources (e.g., company press releases, government publications), established and reputable news organizations (e.g., Reuters, Bloomberg, Associated Press, The Wall Street Journal, New York Times, The Economist), respected academic institutions, well-known industry experts, and other credible sources. Never rely on random blogs or websites.
 * **Identify Bias:** Be aware that all sources may have some bias. Critically assess the information and try to corroborate findings from multiple independent sources. Distinguish factual reporting from opinion or speculation.
 * **Relevance to Resolution Criteria:** Constantly evaluate if the information found directly informs the \`question\` and its specific \`resolutionCriteria\`.
 * **Recency:** Prioritize recent information (today is ${new Date().toLocaleDateString(
-    'en-US',
-    { year: 'numeric', month: 'long', day: 'numeric' }
-  )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.
+        'en-US',
+        { year: 'numeric', month: 'long', day: 'numeric' }
+    )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.
 
 ## 4. Synthesizing Information and Ensuring Thoroughness:
 * **Connect the Dots:** Don't just collect facts. Synthesize the information to understand the narrative, the relationships between different factors, and the overall landscape.
@@ -121,15 +135,14 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * Structure this string clearly. You might use:
     * Paragraphs for distinct lines of reasoning, referencing information discovered.
     * Bullet points (e.g., using "-", "*", or "•") to list factors.
-    * Clearly label arguments: For example, start lines with "PRO:", "CON:", "UNCERTAINTY:", "NOTE:", or "CONCLUSION:" to delineate factors supporting a 'yes' resolution, factors supporting a 'no' resolution, or neutral observations/assumptions/uncertainties  and the final conclusion emerging from your research.
+    * Clearly label arguments: For example, start lines with "**PRO:**", "**CON:**", "**UNCERTAINTY:**", "**NOTE:**", or "**CONCLUSION:**" to delineate factors supporting a 'yes' resolution, factors supporting a 'no' resolution, or neutral observations/assumptions/uncertainties  and the final conclusion emerging from your research.
 * **Content for \`rationalDetails\` (if provided):**
     * Be specific. Refer to information from the \`description\`, \`resolutionCriteria\`, and importantly, evidence and insights gathered through your web searches.
     * Explain the mechanism by which factors influence the likelihood.
     * Discuss key drivers, inhibitors, potential catalysts, relevant trends, motivations of key actors, significant uncertainties, and any critical assumptions you are making, all informed by your research.
 
 ## 4. Dossier (\`dossier\`):
-* This is an optional array of strings, intended for URLs of key evidence found during your research.
-* If your search tool provides direct URLs to credible sources that significantly inform your forecast (especially for critical pieces of evidence), include them here. Prioritize primary sources or high-quality secondary reporting. Aim for 2-5 key URLs if available and highly relevant. If no specific, citable URLs for crucial evidence are retrieved or if the information is synthesized from multiple general sources, provide an empty array \`[]\`.
+* This is an optional array of strings, intended for URLs of key evidence found during your research. After using exaSearch, include ALL the URLs you found in the \`dossier\` array.  If no specific, citable URLs are retrieved, provide an empty array \`[]\`.
 
 ## 5. Comment (\`comment\`):
 * This is an optional string for any internal comments about the forecasting process for this specific scenario.
@@ -141,6 +154,27 @@ The quality of your forecast heavily depends on the thoroughness of your researc
 * **Objectivity:** Your rationale should be presented as objectively as possible, weighing evidence and arguments systematically.
 * **Nuance:** Acknowledge complexity and uncertainty, especially if your research reveals conflicting information or significant unknowns.
 
+## 7. Guiding Principles for Deriving a Probability from Your Research:
+
+Your final probability is not a guess; it's a reasoned judgment derived from your systematic application of Superforecasting principles and research. 
+
+* **Anchor with the Outside View:** Begin with the base rate probability established from your reference class forecasting. This is your initial anchor.
+* **Systematically Adjust with the Inside View:**
+    * Carefully weigh the "PRO" (factors increasing likelihood) and "CON" (factors decreasing likelihood) evidence gathered from your research.
+    * For each significant piece of evidence, consider its strength (e.g., source credibility, directness, recency, magnitude of impact) and its likely directional influence on the probability.
+    * The adjustment from your base rate should be proportional to the net weight and impact of the specific evidence for this case. Think in terms of "how much does this specific new information shift the odds from the general case?"
+* **Decompose and Synthesize:**
+    * If you've broken the problem into sub-questions, consider how their individual likelihoods contribute to the overall forecast. (If not formally decomposed, consider the distinct clusters of evidence and their combined effect).
+    * Your goal is to synthesize these various pieces of information, including their interactions, into a single, coherent probability.
+* **Embrace Granularity and Calibration:**
+    * Strive for precision in your probability. Use granular numbers (e.g., 0.35, 0.72) rather than broad ranges, reflecting a careful assessment. Stay within the 0.001 to 0.999 range.
+    * Think about calibration: if you assign a 70% probability, it implies that for every 10 events with similar evidential support, you'd expect roughly 7 to occur.
+* **Consider the Strength of Alternatives and Counterarguments:** If your research reveals strong evidence supporting alternative outcomes, or significant counterarguments to your main line of reasoning, this should temper your confidence and be reflected in a probability that is less extreme (i.e., further from 0.0 or 1.0). Actively consider reasons why your forecast might be wrong.
+* **Final Judgment as a Synthesis:** Your final probability should represent your best estimate after integrating all these considerations. Clearly articulate in your \`rationalDetails\` *how* you moved from your base rate to your final probability, explaining the impact of key evidence and the reasoning behind your adjustments.
+* **Alterative worlds:** You MUST think about at least the following alternative worlds: what would need to be true for the event to have a probability of 0.01; 0.1, 0.25, 0.5, 0.75, 0.9, 0.99 - make a list in your internal research notes. Then think about the probability if the timeline was twice as long and half as long - make another list in your internal research notes. Do this exercise before you assign your final probability.
+* **Final Note:** First express your confidence in terms of percentages (0-100%) with one decimal. Then convert that into probability between 0.001 and 0.999. Avoid imprecise estimates such as '0.5' just because something is 'uncertain', or of '0.15' because it's 'unlikely but possible' or '0.85' because it's 'likely but not certain' - these are usually shortcuts and there is a much better, more accurate estimate if you think ultra hard and in terms of bayesian probability, and base rates.
+
+
 # Output Format
 Your entire response MUST be a single JSON object. The structure of this JSON object, which will be the value for a key named \`response\`, must be:
 \`\`\`json
@@ -148,7 +182,7 @@ Your entire response MUST be a single JSON object. The structure of this JSON ob
     "response": {
         "probability": <number between 0.001 and 0.999>,
         "rationalSummary": "<string - brief rationale summary>",
-        "rationalDetails": "<string - detailed rationale (optional)>",
+        "rationalDetails": "<string - detailed rationale (use markdown formatting, use labels like **PRO:**, **CON:**, **UNCERTAINTY:**, **NOTE:**, **CONCLUSION:**, etc.)>",
         "dossier": ["<string - URL1 (optional)>", "<string - URL2 (optional)>", ...],
         "comment": "<string - optional internal comment>"
     }
@@ -159,8 +193,8 @@ Ensure your output is valid JSON. Do NOT include any text before or after this J
 
 Carefully review the \`scenario\`, \`description\` (if provided), and \`resolutionCriteria\` before commencing your deep research and generating your forecast.`;
 
-  // 5. USER PROMPT
-  const userPrompt = `# Question: 
+    // 5. USER PROMPT
+    const userPrompt = `# Question: 
 ${scenario.questionNew || scenario.question}
 
 # Description:
@@ -171,64 +205,87 @@ ${scenario.resolutionCriteria}
 
 Please generate a forecast for the scenario.`;
 
-  let maxRetries = 3;
-  let retryCount = 0;
-  while (retryCount < maxRetries) {
-    try {
-      if(log) console.log(`[${meta.name}] invoking LLM...`);
-      const completion = await client.chat.completions.create({
-        model: 'gpt-4o-search-preview',
-        web_search_options: {
-          search_context_size: 'high',
+    
+    const messages = [
+        {
+            role: 'system',
+            content: SYSTEM_PROMPT,
         },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      });
-      if(log) console.log(`[${meta.name}] parsing response...`);
-      const parsed = extractJsonFromString(
-        completion.choices[0].message.content
-      );
-        if(!parsed || !parsed.response) {
-            throw new Error('Failed to parse JSON');
-        }
-      if (save) {
-        if(log) console.log(`[${meta.name}] saving...`);
-            await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response });
-      } 
-      
-      if(log) console.log(`[${meta.name}] done!`);
+        {
+            role: 'user',
+            content: userPrompt,
+        },
+    ]
+    
+    let maxRetries = 3;
+    let retryCount = 0;
 
-      return {
-        forecaster: meta.name,
-        scenarioId,
-        forecasterId,
-        predictionData: parsed.response,
-      };
-    } catch (error) {
-      console.error(`[${meta.name}] error parsing JSON:`, error);
-      retryCount++;
+    while (retryCount < maxRetries) {
+        try {
+            let researchOngoing = true;
+            let lastLLMResponse;
+
+            while (researchOngoing) {
+                if(log) console.log(`[${meta.name}] invoking LLM...`);
+                lastLLMResponse = await client.invoke(messages);
+
+                if (lastLLMResponse.tool_calls && lastLLMResponse.tool_calls.length > 0) {
+                    messages.push(lastLLMResponse);
+
+                    const toolCall = lastLLMResponse.tool_calls[0];
+
+                    if(log) console.log(`[${meta.name}] invoking exaSearch...`);
+                    const toolResp = await exaSearch.invoke(toolCall.args);
+                    const toolOutputDataObj = (toolResp && toolResp.messages && toolResp.messages.length > 0)
+                        ? { ...toolResp.messages[0] }
+                        : {};
+
+                    delete toolOutputDataObj.image;
+                    delete toolOutputDataObj.favicon;
+                    delete toolOutputDataObj.author;
+                    delete toolOutputDataObj.id;
+
+                    messages.push({
+                        role: 'tool',
+                        content: JSON.stringify(toolOutputDataObj),
+                        tool_call_id: toolCall.id || Math.random().toString(36).substring(2, 15)
+                    });
+                } else {
+                    messages.push(lastLLMResponse);
+                    researchOngoing = false;
+                }
+            }
+
+            if(log) console.log(`[${meta.name}] parsing response...`);
+            const parsed = extractJsonFromString(lastLLMResponse.content);
+            if (!parsed || !parsed.response) {
+                throw new Error('Failed to parse JSON from LLM final response');
+            }
+            if (save) {
+                if(log) console.log(`[${meta.name}] saving...`);
+                await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response });
+            }
+            if(log) console.log(`[${meta.name}] done!`);
+            return {
+                forecaster: meta.name,
+                scenarioId,
+                forecasterId,
+                predictionData: parsed.response,
+            };
+        } catch (error) {
+            if(log) console.error(`[${meta.name}] error during agent execution (attempt ${retryCount + 1}/${maxRetries}):`, error);
+            retryCount++;
+        }
     }
-  }
-  throw new Error(`[${meta.name}] Failed after ${maxRetries} retries`);
+    throw new Error(`[${meta.name}] Failed to get a valid response after ${maxRetries} retries`);
 };
+
 
 // test
 // (async () => {
 //   const { closeMongoConnection } = await import('../utils/agentUtils.js');
 //   const scenarioId = '6816f8069a446c44b935505e';
-//   const result = await forecasterNate(scenarioId, true);
+//   const result = await forecasterSibyl(scenarioId, false);
 //   console.log(result);
 //   await closeMongoConnection();
-// })();
-
-// TESTING
-// (async () => {
-//     // dynmaic import mongoose
-//     const mongoose = await import('mongoose');
-//     const scenarioId = '6816f8069a446c44b935505e';
-//     forecasterNate.config.test = true;
-//     await forecasterNate.forecast(scenarioId);
-//     await mongoose.disconnect();
 // })();

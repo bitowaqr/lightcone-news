@@ -1,14 +1,18 @@
-import { defineEventHandler, createError } from 'h3';
+import { defineEventHandler, createError, getQuery } from 'h3';
 import Article from '../models/Article.model'; // Import Article model
 import Scenario from '../models/Scenario.model'; // Import Scenario model
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 
-const ARTICLES_LIMIT = 20;
+const ARTICLES_LIMIT = 10;
 const SCENARIOS_LIMIT = 5;
 const FEATURED_SCENARIOS_CACHE_DURATION_MS = 60 * 30 * 1000; // 30 minutes
 const newsfeedCache = new Map();
 
 export default defineEventHandler(async (event) => { // Make handler async
+  
+  // Get page number from query params, default to 1
+  const page = parseInt(getQuery(event).page) || 1;
+  const skip = (page - 1) * ARTICLES_LIMIT;
   
   // Check cache for featuredScenarios first
   const cachedFeaturedScenariosItem = newsfeedCache.get('featuredScenariosList');
@@ -25,9 +29,12 @@ export default defineEventHandler(async (event) => { // Make handler async
     // Fetch published articles, sorted by published date (newest first)
     const articles = await Article.find({ status: 'PUBLISHED' })
       .sort({ publishedDate: -1 })
+      .skip(skip)
       .limit(ARTICLES_LIMIT)
       .lean(); 
     
+    // Get total count for pagination
+    const totalArticles = await Article.countDocuments({ status: 'PUBLISHED' });
     
     articles.sort((a, b) => {
       const aDate = new Date(a.publishedDate);
@@ -105,7 +112,6 @@ export default defineEventHandler(async (event) => { // Make handler async
       newsfeedCache.set('featuredScenariosList', { data: featuredScenarios, timestamp: Date.now() });
     }
 
-
     // Prepare Scenarios Feed using fetched scenarios
     const scenariosFeed = scenarios.map(scenario => ({
       scenarioId: scenario._id.toString(),
@@ -122,7 +128,13 @@ export default defineEventHandler(async (event) => { // Make handler async
     return {
       teaserGroups,
       scenariosFeed,
-      featuredScenarios
+      featuredScenarios,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalArticles / ARTICLES_LIMIT),
+        totalArticles,
+        hasMore: skip + articles.length < totalArticles
+      }
     };
 
   } catch (error) {

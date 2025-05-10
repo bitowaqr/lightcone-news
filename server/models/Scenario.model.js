@@ -9,7 +9,7 @@ const scenarioSchema = new mongoose.Schema({
   description: { type: String },
   
   // PLATFORM & SOURCE INFO
-  platform: { type: String, trim: true }, // e.g., 'Metaculus', 'Polymarket', 'Manifold', 'Lightcone Forecast'
+  platform: { type: String, trim: true }, // e.g., 'Metaculus', 'Polymarket', 'Manifold', 'Futuur', 'Lightcone Forecast'
   platformScenarioId: { type: String, trim: true }, 
   conditionId: { type: String, trim: true },
   clobTokenIds: { type: Object, default: {} }, // keys = token outcome and values token prices

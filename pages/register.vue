@@ -64,7 +64,7 @@
         </form>
 
         <!-- Registration Form (Step 1: Credentials) -->
-        <form v-if="viewState === 'register' && registerStep === 1" @submit.prevent="goToSectorStep" class="space-y-6 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
+        <form v-if="viewState === 'register' && registerStep === 1" @submit.prevent="goToSectorStep" class="space-y-6 p-6 bg-article shadow-md rounded-lg border border-accent-bg">
           <!-- Email Input -->
           <div>
             <label for="register-email" class="block text-sm font-medium text-fg-muted">Email</label>

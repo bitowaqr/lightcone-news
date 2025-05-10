@@ -3,12 +3,21 @@ import mongoose from 'mongoose';
 import Scenario from '../../models/Scenario.model.js'; // Adjust path as needed
 import { getPolymarketPriceHistory } from '../../scraper-scenarios/polymarket.js'; // Adjust path as needed
 import { getManifoldMarketProbHistory } from '../../scraper-scenarios/manifold.js'; // <-- Import Manifold history function
+import { getFutuurMarketProbHistory } from '../../scraper-scenarios/futuur.js'; // <-- Import Futuur history function
 import { useRuntimeConfig } from '#imports'; // Import useRuntimeConfig
 
 // Simple cache (optional, but recommended for performance)
 const cache = new Map();
-const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
+// const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
 const FETCH_TIMEOUT_MS = 15_000; // 15 seconds timeout
+
+// Function to get cache duration based on platform
+function getCacheDurationMs(platform) {
+  if (platform === 'Lightcone') {
+    return 10 * 1000; //  10 seconds for Lightcone
+  }
+  return 1 * 60 * 1000; // 1 minute for others
+}
 
 async function fetchPolymarketHistory(scenario) {
   if (!scenario || scenario.platform !== 'Polymarket' || !scenario.clobTokenIds || Object.keys(scenario.clobTokenIds).length === 0) {
@@ -250,6 +259,39 @@ async function fetchManifoldHistory(scenario) {
     }
 }
 
+// --- Futuur History Fetcher ---
+async function fetchFutuurHistory(scenario) {
+  const marketId = scenario.platformScenarioId;
+  if (!marketId) {
+    console.warn(`[Scenario History] Missing Futuur market ID (platformScenarioId) for scenario: ${scenario._id}`);
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    // getFutuurMarketProbHistory already tries real_money then play_money if real_money is empty for "Yes"
+    const historyResult = await getFutuurMarketProbHistory(marketId /*, 'real_money' */); // Default currency mode logic is within getFutuurMarketProbHistory
+    clearTimeout(timeoutId);
+
+    if (historyResult && ( (historyResult.Yes && historyResult.Yes.length > 0) || (historyResult.No && historyResult.No.length > 0) )) {
+      return historyResult; // Contains { Yes: [...], No: [...] } or just one if the other is empty
+    } else {
+      console.warn(`[Scenario History] No history data found or invalid structure from getFutuurMarketProbHistory for ${marketId}`);
+      return { Yes: [], No: [] }; // Return empty for binary case on failure or empty response
+    }
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+        console.warn(`[Scenario History] Timeout fetching Futuur history for ${marketId}`);
+        throw createError({statusCode: 504, statusMessage: `Timeout fetching Futuur history after ${FETCH_TIMEOUT_MS / 1000}s`});
+    }
+    console.error(`[Scenario History] Error fetching Futuur history for ${marketId}:`, error);
+    throw createError({statusCode: 502, statusMessage: `Failed to fetch history data from Futuur: ${error.message}`});
+  }
+}
+
 // --- Lightcone History Fetcher --- Calculate Median History at Each Timestamp ---
 async function fetchLightconeHistory(scenario) {
     if (!scenario) {
@@ -352,7 +394,7 @@ export default defineEventHandler(async (event) => {
   const cachedItem = cache.get(cacheKey);
 
   // Check cache
-  if (cachedItem && (Date.now() - cachedItem.timestamp < CACHE_DURATION_MS)) {
+  if (cachedItem && (Date.now() - cachedItem.timestamp < getCacheDurationMs(platform))) {
     // console.log(`[Scenario History] Cache hit for ${cacheKey}`);
     return cachedItem.data;
   }
@@ -386,6 +428,9 @@ export default defineEventHandler(async (event) => {
         break;
       case 'Manifold':
         history = await fetchManifoldHistory(scenario);
+        break;
+      case 'Futuur':
+        history = await fetchFutuurHistory(scenario);
         break;
       case 'Lightcone':
         // Calculate the median history for the chart

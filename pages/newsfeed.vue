@@ -6,22 +6,24 @@
     <div class="md:col-span-3">
       <!-- Loading State -->
       <CommonWelcomeBanner />
-      <div v-if="pending && !newsfeedData">Loading newsfeed...</div>
+      <div v-if="pending && allTeaserGroups.length === 0">Loading newsfeed...</div>
 
       <!-- Fetch Error State -->
-      <div v-else-if="fetchError">
+      <div v-else-if="fetchError && allTeaserGroups.length === 0">
         <p class="text-red-600">Error loading newsfeed: {{ error.data?.message || error.message }}. Please try again later.</p>
       </div>
 
 
       <!-- Success State - Article Teasers -->
-      <div v-else-if="newsfeedData?.teaserGroups?.length > 0" class="">
+      <div v-else-if="allTeaserGroups.length > 0" class="">
           <!-- Start Inlined TeaserFeed -->
             <div class="flex flex-col space-y-4 pb-4 pt-2 md:pt-4">
-              <template v-for="(group,i) in newsfeedData.teaserGroups" :key="i" >
-                <div :class="{
-                  'border-b border-dotted border-fg-muted': i < newsfeedData.teaserGroups.length - 1, // Apply border always for separation
-                  'pt-2': true, // Add padding top except for the first item
+              <template v-for="(group, index) in allTeaserGroups" :key="group.groupId">
+                <div 
+                  :id="`article-group-${group.groupId}`"
+                  :class="{
+                  'border-b border-dotted border-fg-muted': index < allTeaserGroups.length - 1, 
+                  'pt-2': true, 
                   }">
 
                   <ArticleTeaser 
@@ -30,20 +32,41 @@
                     class="" 
                   />
                 </div>
-                <WelcomeBannerInside v-if="i === 4" class="my-6 md:my-8" />
+                <WelcomeBannerInside v-if="index === 4" class="my-6 md:my-8" />
               </template>
             </div>
+
+            <!-- Load More Button -->
+            <div v-if="currentPaginationData?.hasMore" class="flex justify-center pb-6">
+              <button 
+                @click="loadMoreArticles" 
+                :disabled="loadingMore"
+                class="inline-flex items-center px-4 py-1.5 border border-primary text-sm font-medium rounded-md text-primary bg-transparent hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon 
+                  v-if="loadingMore" 
+                  name="line-md:loading-twotone-loop" 
+                  class="w-5 h-5 mr-2 animate-spin" 
+                />
+                {{ loadingMore ? 'Loading...' : 'Load 5 More Articles' }}
+              </button>
+            </div>
+
+            <!-- End of Feed Message -->
+            <div v-else-if="allTeaserGroups.length > 0 && currentPaginationData && !currentPaginationData.hasMore" class="text-center pt-2 pb-10 text-fg-muted">
+              <Icon name="heroicons:check-circle" class="w-6 h-6 mx-auto opacity-50" />
+               <p class="text-sm font-medium opacity-50">End of the feed.</p>
+            </div>
           
-          <!-- REMOVED: Old Scenarios Feed Section -->
       </div>
 
        <!-- Fallback if no teaser groups -->
-      <div v-else-if="!pending && newsfeedData?.teaserGroups?.length === 0">
+      <div v-else-if="!pending && allTeaserGroups.length === 0">
         <p class="p-4 text-center text-fg-muted">No news stories found.</p>
       </div>
 
       <!-- Fallback if no data and no specific error -->
-      <div v-else-if="!pending && !newsfeedData">
+      <div v-else-if="!pending && !newsfeedPageResult"> <!-- Check newsfeedPageResult for initial no-data -->
         <p class="p-4 text-center text-fg-muted">No newsfeed data available.</p>
       </div>
     </div>
@@ -87,17 +110,16 @@
 
         <!-- Featured Scenarios Section (Inside Scrollable Container) -->
         <div> 
-           <!-- REMOVED hidden md:block, padding, border, bg, sticky, top, max-h, overflow -->
           <!-- Loading indicator (Simplified - shows if main feed loads slow) -->
-          <div v-if="pending && !newsfeedData" class="text-center py-4"> 
+          <div v-if="pending && allTeaserGroups.length === 0" class="text-center py-4"> 
               <Icon name="line-md:loading-twotone-loop" class="w-6 h-6 text-fg-muted animate-spin inline-block" />
           </div> 
           <!-- Content -->
-          <div v-else-if="newsfeedData?.featuredScenarios?.length > 0">
+          <div v-else-if="newsfeedPageResult?.featuredScenarios?.length > 0">
            <h2 class="text-base font-semibold text-fg mb-3 pb-2 border-b border-bg-muted">Featured Scenarios</h2>
             <div class="flex flex-col gap-1">
                <ScenarioTeaser 
-                  v-for="scenario in newsfeedData.featuredScenarios" 
+                  v-for="scenario in newsfeedPageResult.featuredScenarios" 
                   :key="scenario.scenarioId" 
                   :scenario="scenario" 
                />
@@ -114,98 +136,174 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'; // Ensure onMounted is imported
+import { computed, onMounted, ref, nextTick, watch, watchEffect } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
-import { useBookmarkStore } from '~/stores/bookmarks'; // Import bookmark store
-// Import components used in the template
+import { useBookmarkStore } from '~/stores/bookmarks';
+import { useReadArticlesStore } from '~/stores/readArticlesStore';
 import ArticleTeaser from '~/components/article/Teaser.vue';
 import ScenarioTeaser from '~/components/scenario/Teaser.vue';
-import WelcomeBannerInside from '~/components/common/WelcomeBannerInside.vue'; // Added import
+import WelcomeBannerInside from '~/components/common/WelcomeBannerInside.vue';
 
 const authStore = useAuthStore();
-const bookmarkStore = useBookmarkStore(); // Initialize bookmark store
+const bookmarkStore = useBookmarkStore();
+const readArticlesStore = useReadArticlesStore();
 
-// Attempt to fetch newsfeed data
-const { data: newsfeedData, pending, error, refresh } = await useFetch('/api/newsfeed', {
-  key: 'newsfeedPageData' // Add key for potential caching benefits
+const currentPage = ref(1);
+const loadingMore = ref(false);
+const allTeaserGroups = ref([]);
+const currentPaginationData = ref(null);
+const restoredFromSessionThisMount = ref(false); // Flag for session restoration
+
+const NEWSFEED_SCROLL_KEY = 'newsfeedScrollPosition';
+const NEWSFEED_PAGE_KEY = 'newsfeedCurrentPage';
+const NEWSFEED_GROUPS_KEY = 'newsfeedAllTeaserGroups';
+const NEWSFEED_PAGINATION_DATA_KEY = 'newsfeedPaginationData';
+
+const { data: newsfeedPageResult, pending, error, refresh } = useFetch('/api/newsfeed', {
+  key: 'newsfeedPageData',
+  query: computed(() => ({ page: currentPage.value })),
+  immediate: false,
 });
 
-// We assume the user is authenticated to reach this page (handled by middleware or index redirect)
+watch(newsfeedPageResult, (newResult) => {
+  if (newResult && newResult.teaserGroups) {
+    if (loadingMore.value) {
+      const existingIds = new Set(allTeaserGroups.value.map(g => g.groupId));
+      const newUniqueGroups = newResult.teaserGroups.filter(g => !existingIds.has(g.groupId));
+      allTeaserGroups.value.push(...newUniqueGroups);
+    } else if (currentPage.value === 1 && !restoredFromSessionThisMount.value) {
+      // This is a true page 1 fetch, not from a restored state that already populated allTeaserGroups
+      allTeaserGroups.value = [...newResult.teaserGroups];
+    }
+    // If restoredFromSessionThisMount.value is true and not loadingMore,
+    // allTeaserGroups was already set from session. The refresh() call in onMounted
+    // for a restored page (even page 1) will update newsfeedPageResult,
+    // but allTeaserGroups should remain as restored from session in that case.
+    currentPaginationData.value = newResult.pagination;
+  } else if (newResult === null && !pending.value) {
+    if (loadingMore.value || currentPage.value > 1) {
+      currentPaginationData.value = { ...(currentPaginationData.value || {}), hasMore: false };
+    }
+  }
+}, { deep: true });
+
 const fetchError = computed(() => error.value && error.value.statusCode !== 401);
 
-// ADDED: Fetch bookmarks when the newsfeed component mounts
-onMounted(() => {
-  if (authStore.isAuthenticated) {
-    // console.log('[NewsfeedPage] Component mounted, fetching bookmarks...');
-    bookmarkStore.fetchBookmarks();
+const loadMoreArticles = async () => {
+  if (loadingMore.value || !(currentPaginationData.value?.hasMore)) return;
+  loadingMore.value = true;
+  let lastVisibleArticleGroupId = null;
+  if (allTeaserGroups.value.length > 0) {
+    lastVisibleArticleGroupId = allTeaserGroups.value[allTeaserGroups.value.length - 1].groupId;
+  }
+  currentPage.value++; 
+  try {
+    await refresh(); 
+    await nextTick();
+    if (lastVisibleArticleGroupId) {
+      const elementId = `article-group-${lastVisibleArticleGroupId}`;
+      const lastVisibleArticleElement = document.getElementById(elementId);
+      if (lastVisibleArticleElement) {
+        lastVisibleArticleElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  } catch (err) {
+    console.error('Error loading more articles:', err);
+    currentPage.value--;
+  } finally {
+    loadingMore.value = false;
+  }
+};
+
+onBeforeRouteLeave(() => {
+  sessionStorage.setItem(NEWSFEED_SCROLL_KEY, window.scrollY.toString());
+  sessionStorage.setItem(NEWSFEED_PAGE_KEY, currentPage.value.toString());
+  sessionStorage.setItem(NEWSFEED_GROUPS_KEY, JSON.stringify(allTeaserGroups.value));
+  if (currentPaginationData.value) {
+    sessionStorage.setItem(NEWSFEED_PAGINATION_DATA_KEY, JSON.stringify(currentPaginationData.value));
   }
 });
 
-// You might also want to refetch if the user logs in WHILE on this page
-// watch(() => authStore.isAuthenticated, (isAuth) => {
-//   if (isAuth) {
-//     bookmarkStore.fetchBookmarks();
-//   }
-// });
+onMounted(async () => {
+  restoredFromSessionThisMount.value = false; // Reset for this mount instance
 
-// Corrected: Compute aggregated scenarios from teaserGroups
-// const aggregatedScenarios = computed(() => { // REMOVE THIS ENTIRE COMPUTED PROPERTY
-//   if (!newsfeedData.value?.teaserGroups) {
-//     return [];
-//   }
+  const savedPage = sessionStorage.getItem(NEWSFEED_PAGE_KEY);
+  const savedGroups = sessionStorage.getItem(NEWSFEED_GROUPS_KEY);
+  const savedPaginationData = sessionStorage.getItem(NEWSFEED_PAGINATION_DATA_KEY);
 
-//   const allScenarios = newsfeedData.value.teaserGroups.reduce((acc, group) => {
-//     if (group.scenarios) {
-//       acc.push(...group.scenarios);
-//     }
-//     return acc;
-//   }, []);
+  if (savedPage && savedGroups) {
+    try {
+      const parsedPage = parseInt(savedPage, 10);
+      const parsedGroups = JSON.parse(savedGroups);
+      if (Array.isArray(parsedGroups) && !isNaN(parsedPage)) {
+        currentPage.value = parsedPage;
+        allTeaserGroups.value = parsedGroups;
+        if (savedPaginationData) {
+          currentPaginationData.value = JSON.parse(savedPaginationData);
+        }
+        if (parsedGroups.length > 0) { // If we actually restored groups
+          restoredFromSessionThisMount.value = true;
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring newsfeed state from sessionStorage:", e);
+    }
+  }
 
-//   // Ensure uniqueness based on scenarioId
-//   const uniqueScenarios = [];
-//   const seenIds = new Set();
-//   for (const scenario of allScenarios) {
-//     if (scenario.scenarioId && !seenIds.has(scenario.scenarioId)) {
-//       uniqueScenarios.push(scenario);
-//       seenIds.add(scenario.scenarioId);
-//     }
-//   }
+  // Always refresh to get latest non-accumulated data (like featuredScenarios)
+  // and to ensure data is present if not restored and it's page 1.
+  try {
+    await refresh();
+  } catch (e) {
+    console.error("Newsfeed refresh on mount failed:", e);
+  }
   
-//   // Optional: Sort the scenarios if needed (e.g., by platform, name?)
-//   uniqueScenarios.sort((a, b) => a.name.localeCompare(b.name));
+  sessionStorage.removeItem(NEWSFEED_PAGE_KEY);
+  sessionStorage.removeItem(NEWSFEED_GROUPS_KEY);
+  sessionStorage.removeItem(NEWSFEED_PAGINATION_DATA_KEY);
 
-//   // let randomOrder = Math.random(); // REMOVE THIS LINE - CAUSES HYDRATION MISMATCH
-//   // max 7 scenarios shown
-//   return uniqueScenarios.slice(0, 7); // REMOVE THE RANDOM SORT, use the deterministic sort from above
-// });
+  if (authStore.isAuthenticated) {
+    bookmarkStore.fetchBookmarks();
+    readArticlesStore.loadFromLocalStorage();
+  }
 
-// Watch for authentication changes to refresh data if needed
-// Note: This might be less relevant if this page requires auth via middleware
-// watch(() => authStore.isAuthenticated, (isAuth, wasAuth) => {
-//   // Refresh if the user logs out and then logs back in *while on this page*
-//   // or if an initial fetch failed due to auth and they subsequently log in.
-//   if (isAuth && !wasAuth && error.value && error.value.statusCode === 401) {
-//     console.log('User authenticated, refreshing newsfeed data...');
-//     refresh();
-//   }
-//   // Consider if redirection should happen if user logs out while on this page
-//   // else if (!isAuth && wasAuth) {
-//   //   navigateTo('/login'); // Or index, depending on desired flow
-//   // }
-// });
+  const savedPositionString = sessionStorage.getItem(NEWSFEED_SCROLL_KEY);
+  if (savedPositionString) {
+    const savedPosition = parseInt(savedPositionString, 10);
+    let unwatchScroll = null;
+    unwatchScroll = watchEffect(() => {
+      const groupsReady = allTeaserGroups.value.length > 0 || savedPosition === 0;
+      // Data is considered ready if not pending OR if we restored state from session (since groups are already set)
+      const dataFetchedOrRestored = !pending.value || restoredFromSessionThisMount.value;
 
-// Add middleware if this page strictly requires authentication
-// definePageMeta({
-//   middleware: 'auth' // Assuming an 'auth' middleware exists
-// });
+      if (groupsReady && dataFetchedOrRestored) {
+        nextTick(() => {
+          window.scrollTo(0, savedPosition);
+          sessionStorage.removeItem(NEWSFEED_SCROLL_KEY);
+        });
+        if (typeof unwatchScroll === 'function') unwatchScroll();
+      }
+    });
+  }
+});
+
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    readArticlesStore.loadFromLocalStorage();
+  } else {
+    readArticlesStore.readArticleIds = new Set();
+    readArticlesStore.hasLoadedFromStorage = false;
+  }
+});
 
 </script>
 
 <style scoped>
-.sticky { /* Basic sticky positioning */
+.sticky {
   position: sticky;
 }
-.top-20 { /* Keep updated based on current value */
-  top: 80px; /* Example: 5rem */
+.top-20 {
+  top: 80px;
 }
 </style>

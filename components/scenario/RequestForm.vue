@@ -23,7 +23,7 @@
           rows="1"
           required
           class="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:border-primary bg-bg-input text-fg placeholder-fg-muted/60 focus:outline-none"
-          placeholder="e.g., Will the woolly mammoth be de-extincted before 2030?"
+          placeholder="Will the woolly mammoth be de-extincted before 2030?"
           style="resize: none;"
         ></textarea>
         <p class="text-xs text-fg">Read <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">this guide</a> on how to ask good scenario questions.</p>
@@ -182,7 +182,7 @@
 
       <!-- Submission Area -->
       <div class="pt-1 flex items-center justify-end gap-3"> 
-         
+         <div v-if="isSubmittingLongerThan5Seconds" class="text-xs text-fg-muted mt-auto py-2">Sorry, sometimes this can take a while. Please wait a moment.</div>
           <!-- Submit button styling -->
         <button
           type="submit"
@@ -212,28 +212,36 @@
      <div v-if="showRevisionDialog && revisedData" 
          class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 flex items-center justify-center p-4"
          @click.self="closeRevisionDialog"> 
-      <div class="bg-article rounded-lg shadow-xl max-w-2xl w-full border border-bg-muted overflow-hidden">
+      <div class="bg-article rounded-md shadow-xl max-w-2xl w-full border border-bg-muted overflow-hidden">
         <div class="p-6">
            <h2 class="text-xl font-semibold mb-4 flex items-center text-fg">
             <Icon name="heroicons:light-bulb" class="w-6 h-6 mr-2 text-primary" />
             Suggestion for Improvement
           </h2>
-          <p class="text-sm text-fg-muted mb-4">
+          <p class="text-sm text-fg-muted mb-6">
             {{ revisionExplanation || 'We suggest some changes to clarify your request:' }}
           </p>
-          <div class="space-y-4 bg-bg/50 dark:bg-bg-muted/20 p-4 rounded border border-bg-muted mb-6 max-h-75vh overflow-y-auto">
-            <!-- ... revision display logic ... -->
-             <h3 class="text-lg font-medium text-fg">Proposed Changes:</h3>
-            <div v-if="revisedData.question !== formData.question">
-              <p class="text-xs font-medium text-fg-muted uppercase tracking-wider">Question:</p>
-              <p class="line-through text-fg-muted/70">{{ formData.question }}</p>
-              <p class="text-primary font-medium">{{ revisedData.question }}</p>
+          <div class="space-y-5 bg-bg/50 dark:bg-bg-muted/20 p-4 rounded border border-bg-muted mb-6 max-h-[50vh] overflow-y-auto">
+            
+            <!-- Consistent Display for All Revised Fields -->
+            <div v-if="revisedData.question && revisedData.question !== formData.question">
+              <p class="text-xs font-medium text-fg-muted uppercase tracking-wider mb-1">Suggested Question:</p>
+              <p class="text-sm line-through text-fg-muted/70 p-2 bg-fg-muted/5 rounded">{{ formData.question }}</p>
+              <p class="text-sm text-primary font-medium p-2 bg-primary/5 rounded border border-primary/20 mt-1">{{ revisedData.question }}</p>
             </div>
-            <div v-if="revisedData.resolutionCriteria !== formData.resolutionCriteria" class="mt-2">
-              <p class="text-xs font-medium text-fg-muted uppercase tracking-wider">Resolution Criteria:</p>
-              <pre class="whitespace-pre-wrap text-xs line-through text-fg-muted/70 p-2 bg-fg-muted/5 rounded">{{ formData.resolutionCriteria }}</pre>
-              <pre class="whitespace-pre-wrap text-xs text-primary font-medium p-2 bg-primary/5 rounded border border-primary/20 mt-1">{{ revisedData.resolutionCriteria }}</pre>
+
+            <div v-if="revisedData.resolutionCriteria && revisedData.resolutionCriteria !== formData.resolutionCriteria">
+              <p class="text-xs font-medium text-fg-muted uppercase tracking-wider mb-1">Suggested Resolution Criteria:</p>
+              <pre class="whitespace-pre-wrap text-sm line-through text-fg-muted/70 p-2 bg-fg-muted/5 rounded">{{ formData.resolutionCriteria }}</pre>
+              <pre class="whitespace-pre-wrap text-sm text-primary font-medium p-2 bg-primary/5 rounded border border-primary/20 mt-1">{{ revisedData.resolutionCriteria }}</pre>
             </div>
+
+            <div v-if="revisedData.resolutionDate && revisedData.resolutionDate !== formData.resolutionDate">
+              <p class="text-xs font-medium text-fg-muted uppercase tracking-wider mb-1">Suggested Resolution Date:</p>
+              <p class="text-sm line-through text-fg-muted/70 p-2 bg-fg-muted/5 rounded">{{ formData.resolutionDate }}</p>
+              <p class="text-sm text-primary font-medium p-2 bg-primary/5 rounded border border-primary/20 mt-1">{{ revisedData.resolutionDate }}</p>
+            </div>
+            
           </div>
            <!-- Show error message within the dialog if submission fails -->
            <div v-if="submissionStatus === 'error' && submissionMessage" 
@@ -308,6 +316,7 @@ const formData = ref({
 });
 
 const isSubmitting = ref(false);
+const isSubmittingLongerThan5Seconds = ref(false);
 const submissionStatus = ref(null); // 'success', 'error', 'rejected', 'revision_needed'
 const submissionMessage = ref('');
 
@@ -403,7 +412,6 @@ onMounted(async () => {
 
 // --- Combobox Interaction Handlers ---
 const handleComboboxFocus = (event) => {
-    console.log('Combobox focused');
     // Store the current selection when focus starts
     previousSelection.value = selectedArticle.value;
     selectionMade.value = false; // Reset flag
@@ -415,14 +423,12 @@ const handleComboboxFocus = (event) => {
 };
 
 const handleComboboxBlur = () => {
-    console.log('Combobox blurred');
     setTimeout(() => {
         if (!selectionMade.value) {
              // If no selection was made, revert selectedArticle to its pre-focus state
              // Check if the selection actually changed during typing (e.g. user typed exact match but didnt select)
              // Or more simply, just revert if the current state doesn't match the pre-focus state.
              if (selectedArticle.value !== previousSelection.value) {
-                console.log('Reverting selection to:', previousSelection.value?.title);
                 selectedArticle.value = previousSelection.value; 
              }
              
@@ -430,7 +436,6 @@ const handleComboboxBlur = () => {
              if (comboboxInputRef.value?.el) { // Check if ref and element exist
                 // Use the final value of selectedArticle after potential revert
                 comboboxInputRef.value.el.value = selectedArticle.value?.title ?? ''; 
-                console.log('Set input value to:', comboboxInputRef.value.el.value);
              }
         }
         // Reset the query variable used for filtering options
@@ -442,7 +447,6 @@ const handleComboboxBlur = () => {
 
 // Track when a selection is actually made via the Combobox v-model update
 const handleSelectionUpdate = (value) => {
-    console.log('Combobox v-model updated (selection made):', value);
     selectionMade.value = true; // Set flag when a valid option is selected
     // Ensure previousSelection is updated if user selects via dropdown without focus/blur cycle
     previousSelection.value = value; 
@@ -457,6 +461,17 @@ watch(selectedArticle, (newArticle) => {
 // Submit function - use selectedArticle._id
 async function submitForm() {
   isSubmitting.value = true;
+  isSubmittingLongerThan5Seconds.value = false;
+
+  const submittingTimeout = setTimeout(() => {
+    isSubmittingLongerThan5Seconds.value = true;
+  }, 5000);
+
+  // Clear the timeout if the form is submitted before 5 seconds
+  const clearSubmittingTimeout = () => {
+    clearTimeout(submittingTimeout);
+  };
+
   submissionStatus.value = null;
   submissionMessage.value = '';
   showRevisionDialog.value = false;
@@ -469,7 +484,6 @@ async function submitForm() {
     ...(selectedArticle.value?._id && { articleId: selectedArticle.value._id })
   };
 
-  console.log('Submitting form data (from component):', JSON.parse(JSON.stringify(payload)));
 
   try {
     const result = await $fetch('/api/scenarios/request', {
@@ -477,7 +491,6 @@ async function submitForm() {
       body: payload,
     });
 
-    console.log('API Response:', result);
     if (result.status === 'success') {
       submissionStatus.value = 'success';
       submissionMessage.value = result.message;
@@ -485,11 +498,9 @@ async function submitForm() {
 
       // --- New Auto-Bookmark Logic ---
       if (result.scenarioId) {
-        console.log(`Scenario created successfully with ID: ${result.scenarioId}. Attempting to bookmark.`);
         try {
           // Wait for bookmark action to complete (or handle potential errors)
           await bookmarkStore.toggleBookmark(result.scenarioId, 'scenario', true); // Force add
-          console.log(`Scenario ${result.scenarioId} bookmarked.`);
           // Emit event for parent page (scenarios/index.vue)
           emit('scenario-created', result.scenarioId);
         } catch (bookmarkError) {
@@ -526,6 +537,8 @@ async function submitForm() {
      nextTick(() => { errorMessageRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   } finally {
     isSubmitting.value = false;
+    clearSubmittingTimeout();
+    isSubmittingLongerThan5Seconds.value = false;
   }
 }
 
@@ -545,7 +558,6 @@ async function acceptRevision() {
   };
   // ... rest of acceptRevision ...
 
-  console.log('Accepting and resubmitting revised data (from component):', JSON.parse(JSON.stringify(payload)));
   
    try {
     const result = await $fetch('/api/scenarios/request', {
@@ -561,10 +573,8 @@ async function acceptRevision() {
 
       // --- New Auto-Bookmark Logic (also for accepted revisions) ---
       if (result.scenarioId) {
-        console.log(`Revised scenario accepted, ID: ${result.scenarioId}. Attempting to bookmark.`);
          try {
            await bookmarkStore.toggleBookmark(result.scenarioId, 'scenario', true); // Force add
-           console.log(`Scenario ${result.scenarioId} bookmarked.`);
            emit('scenario-created', result.scenarioId);
          } catch (bookmarkError) {
            console.error(`Failed to auto-bookmark revised scenario ${result.scenarioId}:`, bookmarkError);
