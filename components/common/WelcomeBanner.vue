@@ -55,37 +55,34 @@ function dismissPermanently() {
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
   >
-    <div v-if="showBanner" class="pointer-events-none md:px-2 lg:px-6">
+    <header v-if="showBanner" class="pointer-events-none md:px-2 lg:px-6" role="banner">
       <div
         class="w-full bg-article pointer-events-auto flex flex-col relative"
       >
         <div
-          class="flex flex-col items-center justify-between gap-1 max-w-4xl mx-auto px-4 pt-8 pb-6"
+          class="flex flex-col items-center justify-between gap-1 mx-auto px-4 pt-10 pb-6"
         >
           <div class="flex items-start justify-center">
-            <div class="flex flex-col gap-2 text-lg w-full text-center">
+            <div class="flex flex-col text-lg w-full text-center">
 
               <img src="~/assets/logos/logo-naked.svg" alt="Lightcone News Logo" class="w-12 h-12 mx-auto dark:invert" />
 
-              <h3 class="text-lg font-semibold mb-1">
+              <h1 class="text-lg font-semibold mt-2 mb-1.5">
                 Lightcone News
-              </h3>
-            <p class="text-base text-fg text-center grow  font-medium">
-              Important news with useful context and probabilistic forecasts.
-            </p>
-            <p class="text-base text-fg text-center grow  font-medium">
-              To help you make more sense of the world.
+              </h1>
+            <p class="text-base text-fg text-center grow font-medium">
+              Navigate by numbers &ndash; not narratives.
             </p>
             </div>
             <button title="Don't show this again"
             aria-label="Close welcome banner"
-            class="p-1 hover:text-primary -mt-2 rounded-full absolute right-4 top-4"
+            class="p-1 hover:text-primary rounded-full absolute right-4 top-4 focus-visible:ring focus-visible:ring-primary outline-none"
+              @click="dismissPermanently"
             >
 
             <Icon
               icon="heroicons:x-mark-20-solid"
               class="w-6 h-6 text-fg hover:opacity-70 dark:text-primary-900"
-              @click="dismissPermanently"
             />
             </button>
           </div>
@@ -94,7 +91,7 @@ function dismissPermanently() {
           <div class="flex justify-center mb-2 mt-4">
           <button
             @click="learnMore"
-            class="px-4 py-1.5 border bg-primary hover:bg-primary-dark  rounded text-sm font-medium transition-colors focus:outline-none focus:none focus:ring-none text-white "
+            class="px-4 py-1.5 border bg-primary hover:bg-primary-dark  rounded text-sm font-medium transition-colors focus:outline-none focus:ring-primary focus:ring-offset-primary-50 text-white "
           >
             About Us
           </button>
@@ -110,7 +107,7 @@ function dismissPermanently() {
           </div> -->
         </div>
       </div>
-    </div>
+    </header>
   </transition>
 </template>
 
