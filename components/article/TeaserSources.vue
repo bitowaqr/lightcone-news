@@ -44,7 +44,7 @@
       
     </summary>
 
-    <div class="mt-1.5 ml-1 pl-0.5 space-y-1.5"> <!-- Indented list of sources -->
+    <div class="mt-1.5 pl-4 space-y-1.5"> <!-- Indented list of sources -->
       <a
         v-for="(source, index) in sources"
         :key="`expanded-${source.id || index}`"
