@@ -47,8 +47,8 @@ export default defineNuxtConfig({
       name: process.env.APP_NAME || 'Lightcone News',
       short_name: 'Lightcone',
       description: process.env.APP_DESCRIPTION || 'Contextualised News. Future-oriented.',
-      theme_color: '#ffffff', // You can customize this
-      background_color: '#ffffff', // You can customize this
+      theme_color: '#c97240', 
+      background_color: '#EAE2D6', 
       display: 'standalone',
       start_url: '/',
       icons: [
@@ -73,6 +73,9 @@ export default defineNuxtConfig({
     devOptions: {
       enabled: true,
       type: 'module',
+    },
+    client: {
+      installPrompt: true,
     },
   },
   sitemap: {
