@@ -41,4 +41,5 @@ onMounted(() => {
     <NuxtPage />
   </NuxtLayout>
   <NuxtRouteAnnouncer />
+  <NuxtPwaManifest/>
 </template>

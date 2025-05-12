@@ -23,7 +23,7 @@
         </div>
         <!-- Chevron Icon -->
         <div class="flex items-center h-full">
-           <Icon name="heroicons:chevron-right-20-solid" class="w-6 h-6 text-fg-muted opacity-50 group-hover:opacity-100 group-hover:text-primary transition-all duration-100" />
+           <Icon name="heroicons:chevron-right-20-solid" class="w-5 h-5 opacity-0" />
         </div>
       </div>
     </div>

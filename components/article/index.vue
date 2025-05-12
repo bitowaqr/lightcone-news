@@ -5,7 +5,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-5 lg:gap-x-8">
 
         <!-- Main Content Column (Desktop: 2 cols, Mobile: 1 col) -->
-        <div class="lg:col-span-3 space-y-6 px-2">
+        <div class="lg:col-span-3 space-y-4 px-2">
           <!-- Title + Meta -->
           <div> 
              <h2 class="text-3xl lg:text-4xl font-bold mb-2">{{ articleData.title }}</h2>
@@ -70,7 +70,7 @@
       </div>
           
           <div v-if="isDesktop" class="interaction-area-desktop mt-3 pt-3 border-bg-muted space-y-0"> 
-             <div class="mb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
+             <div class="mb-1 pb-1 border-b border-bg-muted text-xs font-semibold text-fg-muted px-2">Ask questions about the story:</div>
              <!-- Timeline Instance -->
              <MobileInteraction 
                v-if="articleData.timeline?.length"
@@ -103,7 +103,7 @@
           <!-- Scenarios -->
           <div class="scenarios-sidebar-section">
             <div class="text-xs font-semibold text-fg-muted mb-2">
-              How the story might continue:
+              Forecasts:
             </div>
             <div class="grid grid-cols-1 gap-1">
               <!-- Real Scenarios -->
@@ -133,7 +133,7 @@
       <div
         v-if="!isDesktop" class="mt-4 pt-4">
         <div class="text-xs font-semibold text-fg-muted mb-1">
-          How the story might continue:
+          Forecasts:
         </div>
         <div class="grid grid-cols-1 gap-1">
           <!-- Displayed Real Scenarios -->
@@ -284,7 +284,12 @@ const summaryAlt = computed(() => props.articleData ? renderMarkdown(props.artic
 
 // <-- Add computed property for formatted date
 const formattedPublishedDate = computed(() => {
-  return props.articleData?.publishedDate ? formatRelativeTime(props.articleData.publishedDate) : '';
+  if (!props.articleData?.publishedDate) return '';
+  const publishedDate = new Date(props.articleData.publishedDate);
+  const isLongerThanSixHours = (Date.now() - publishedDate.getTime()) > 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+  return isLongerThanSixHours ? publishedDate.toLocaleString('en-GB', { 
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+  }) : formatRelativeTime(props.articleData.publishedDate);
 });
 
 // Placeholder functions for new icons

@@ -3,13 +3,33 @@
     <h1 class="text-4xl font-semibold mb-10 text-fg">About Lightcone News</h1>
 
     <article class="text-lg leading-relaxed text-fg">
-      <blockquote class="text-xl italic text-fg-muted border-l-4 border-primary pl-4 pr-2 py-2 my-8">
-        Lightcone News uses AI to curate a feed of the most important global news stories, with additional context and probabilistic forecasts &ndash; to help you make better sense of the world.
+      <blockquote class="text-xl italic text-fg-muted border-l-4 border-primary pl-4 pr-2 py-2 my-8 font-medium">
+
+        Lightcone News is an AI-enabled news aggregator and forecasting platform designed for intellectually curious readers. We curate important global stories and pair them with probabilistic forecasts &ndash; helping you make better sense of the world.
       </blockquote>
 
+
+
+
+
+<section class="mb-10 mt-12">
+  <h2 class="text-2xl font-semibold mb-4 text-fg">What makes us different?</h2>
+  <p class="mb-4">
+    Lightcone News connects current events directly to their potential future outcomes. By integrating high-quality forecasts and additional contexts, we aim to offer practical tools to navigate uncertainty and foster realistic optimism. Ultimately, we hope to support constructive action towards shaping a better future. </p>
+<blockquote class="text-sm text-fg-muted italic mt-4 mb-8 ps-4 hidden">
+Will only ashes remain, and chaos,<br>
+Hurled into the abyss by storm?<br>
+Or will there remain<br>
+A starry diamond deep within the ashes –<br>
+The dawn of everlasting triumph?
+</blockquote>
+</section>
+
+
+
       <!-- Core Features Section -->
-      <section>
-        <h2 class="text-2xl font-semibold mb-6 text-fg">Core Features</h2>
+      <!-- <section>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Core Features</h2>
         <ol class="list-decimal">
           <li>
             A <strong class="font-semibold text-fg">Curated Feed</strong> focusing on important news.
@@ -24,19 +44,18 @@
             Probabilistic forecasts for possible <strong class="font-semibold text-fg">Future Scenarios</strong>.
           </li>
         </ol>
-      </section>
+      </section> -->
 
       <!-- Understanding Scenarios Section -->
       <section>
-        <h2 class="text-2xl font-semibold mb-6 text-fg">Understanding Future Scenarios</h2>
-        <p class="mb-6">
-          Exploring potential futures helps put current events in perspective. Lightcone News integrates probabilistic forecasts from different sources:
-        </p>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">How it works</h2>
+        <p class="mb-4">
+          Lightcone News brings together three types of forecasting:        </p>
         <div class="space-y-6">
           <!-- Prediction Markets -->
           <div>
             <p class="mb-2">
-              <strong class="font-semibold text-fg">Prediction Markets:</strong> These are exchanges where people trade contracts based on the outcome of future events. The current price reflects the crowd's collective probability estimate for an event.
+              <strong class="font-semibold text-fg">Prediction Markets:</strong> Platforms where people trade outcomes as contracts. The price indicates collective confidence in a specific future event.
             <span class="whitespace-nowrap">
               <em class="text-fg-muted">Sources:</em>
               <a href="https://www.polymarket.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline"> Polymarket</a>,
@@ -48,7 +67,7 @@
           <!-- Forecasting Platforms -->
           <div>
              <p class="mb-2">
-              <strong class="font-semibold text-fg">Forecasting Platforms:</strong> These are places where people submit explicit probability forecasts, and the platform aggregates these into community estimates.
+              <strong class="font-semibold text-fg">Forecasting Platforms:</strong> Communities of skilled forecasters who explicitly estimate the likelihood of future events.
             <span class="whitespace-nowrap">
               <em class="text-fg-muted">Source: </em>
               <a href="https://www.metaculus.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Metaculus</a>
@@ -58,24 +77,18 @@
           <!-- AI Agents -->
           <div>
             <p class="mb-2">
-              <strong class="font-semibold text-fg">AI Agents:</strong> LLMs with access to web search tools analyse the news and generate forecasts.
-             <span class="">
-              <em class="text-fg-muted">Sources:</em> Internal AI forecasting agents (based on various large language models).
-            </span>
-              <em class="text-sm text-fg-muted block">Note: AI forecasts are experimental. Accuracy and calibration data will be provided when available.</em>
+              <strong class="font-semibold text-fg">AI-Generated Forecasts:</strong> Our internal AI agents analyse news coverage and other data sources to generate research dossiers and forecasts.
+              <em class="text-sm text-fg-muted block">Note: AI forecasts are experimental. Accuracy and calibration data will be reported when available.</em>
             </p>
           </div>
         </div>
       </section>
 
-      <!-- How to Read Scenarios Section -->
+      <!-- How to Read Forecasts Section -->
       <section>
-        <h2 class="text-2xl font-semibold mb-6 text-fg">How to Read Future Scenarios</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Interpreting Forecasts</h2>
         <p class="mb-4">
-          Future scenarios include a probabilistic forecast, shown as a percentage (0-100%). This number represents the estimated likelihood of a specific outcome occurring by a given time.
-        </p>
-        <p class="mb-4">
-          Remember that these are probabilities, not certainties. A 60% chance means the outcome is considered more likely than not, but it's still possible it won't happen.
+          All future scenarios are presented as probabilistic forecasts (0-100%). A forecast of 70% means the event is considered more likely to happen than not &ndash; but uncertainty remains. Forecasts are not certainties; they are informed estimates based on available data.
         </p>
         <!-- <p>
           Different sources may give different probabilities for the same event due to varying data and methodologies.
@@ -84,12 +97,9 @@
 
       <!-- Accuracy Section -->
       <section>
-        <h2 class="text-2xl font-semibold mb-6 text-fg">How Accurate Are the Forecasts?</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Accuracy and Trust</h2>
         <p class="mb-4">
-          Extensive evidence demonstrates that aggregating forecasts from many individuals tends to give more accurate and reliable predictions than relying on even highly qualified individual experts.
-        </p>
-        <p class="mb-4">
-          <a href="https://calibration.city/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Calibration.city</a> tracks historical data from various platforms and shows that forecasts are extremely well-calibrated: Events predicted to have e.g. a 75% chance of occuring, do in fact occur about 75% of the time.
+          Forecasts aggregated from diverse perspectives typically outperform even expert predictions. <a href="https://calibration.city/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Calibration.city</a> tracks historical data from various platforms and shows that forecasts are extremely well-calibrated: Events predicted to have e.g. a 75% chance of occuring, do in fact occur about 75% of the time.  
         </p>
         <!-- <p>
           We are actively monitoring and will share calibration data for our internal AI forecasts as soon as we have a sufficient track record.
@@ -98,11 +108,11 @@
 
       <!-- Contact Us Section (Moved from contact.vue) -->
       <section>
-        <h2 class="text-2xl font-semibold mb-6 text-fg">Contact Us</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-fg">Contact Us</h2>
 
         <p class="mb-4">
-            Have questions or feedback? We'd love to hear from you!
-            <br>Reach out via email:
+          Questions, feedback, or suggestions? We'd love to hear from you:
+            <br>
             <a href="mailto:contact@priorb.com" class="font-medium text-primary-600 dark:text-primary-400 hover:underline">contact@priorb.com</a>
         </p>
 
@@ -118,10 +128,10 @@
     </article>
 
     <!-- Disclaimer Section -->
-    <section class="mt-16 pt-8 border-t border-bg-muted">
-      <h3 class="text-xl font-semibold mb-4 text-fg-muted">Disclaimer</h3>
-      <p class="font-mono text-xs leading-relaxed text-fg-muted">
-        LIGHTCONE NEWS UTILIZES ARTIFICIAL INTELLIGENCE WHICH MAY OCCASIONALLY HALLUCINATE, FABRICATE INFORMATION, OR MAKE FACTUAL ERRORS. ALWAYS VERIFY INFORMATION WITH TRUSTED SOURCES BEFORE MAKING DECISIONS, SHARING WITH OTHERS, OR FORMING STRONG OPINIONS. DO NOT OPERATE HEAVY MACHINERY WHILE CONSUMING AI-GENERATED CONTENT. LIGHTCONE NEWS AGGREGATES CONTENT FROM VARIOUS THIRD-PARTY SOURCES. ALL RIGHTS TO ORIGINAL CONTENT BELONG TO THEIR RESPECTIVE COPYRIGHT HOLDERS. LINKS TO EXTERNAL SOURCES ARE PROVIDED FOR ATTRIBUTION AND REFERENCE PURPOSES ONLY. LIGHTCONE NEWS DOES NOT CLAIM OWNERSHIP OF THIRD-PARTY CONTENT AND OPERATES UNDER FAIR USE PRINCIPLES FOR THE PURPOSE OF NEWS REPORTING, COMMENTARY, AND RESEARCH. IF YOU ARE A COPYRIGHT HOLDER AND BELIEVE YOUR CONTENT HAS BEEN USED INAPPROPRIATELY, PLEASE CONTACT US IMMEDIATELY.
+    <section class="mt-8 pt-8 border-t border-bg-muted text-fg">
+      <h3 class="text-xl font-semibold mb-4">Disclaimer</h3>
+      <p class="font-mono text-xs leading-relaxed text-fg">
+        Lightcone News uses AI systems which occasionally produce incorrect or incomplete information. Always verify critical details independently before making important decisions, forming strong opinions, or sharing content. We aggregate and reference content from third-party sources for informative and commentary purposes under fair use. If you are a rights-holder concerned about content usage, please contact us immediately.
       </p>
     </section>
   </div>

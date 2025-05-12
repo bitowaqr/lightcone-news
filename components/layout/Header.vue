@@ -95,28 +95,28 @@ function handleDropdownNav(close, path) {
 <template>
   <header 
     :class="[
-      'sticky top-0 z-50 transition-transform duration-300 bg-bg shadow-sm',
+      'sticky top-0 z-50 transition-transform duration-300 bg-bg shadow',
       { '-translate-y-full': !isHeaderVisible }
     ]"
   >
     <div class="bg-bg relative">
-      <nav class="container mx-auto px-4 py-2 flex justify-between items-center">
+      <nav class="container mx-auto px-4 py-2 flex justify-between items-center max-w-7xl">
         <!-- Left Section: Logo + Main Nav Links -->
         <div class="flex items-center space-x-4">
           <NuxtLink 
             to="/" 
             class="flex items-center"
           >
-          <div class="p-1 rounded-full hover:bg-bg-muted transition-colors duration-150">
-            <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-8 h-8 dark:invert" />
+          <div class="ml-1 md:ml-2 p-1 rounded-full hover:bg-bg-muted transition-colors duration-150">
+            <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-8 h-8 dark:invert" title="Lightcone News" />
           </div>
-            <span class="ml-2 pt-0.5 text-fg text-lg font-medium font-serif block md:hidden whitespace-nowrap">Lightcone News</span>
+            <!-- <span class="ml-2 pt-0.5 text-fg text-lg font-medium font-serif md:block hidden whitespace-nowrap">Lightcone News</span> -->
           </NuxtLink>
           <!-- Desktop Main Navigation Links -->
-          <div class="hidden md:flex space-x-4 items-center text-base">
+          <div class="flex md:space-x-4 space-x-8 pl-4 items-center">
             <NuxtLink to="/" class="text-fg hover:text-primary transition-colors duration-100">News</NuxtLink>
-            <NuxtLink to="/scenarios" class="text-fg hover:text-primary transition-colors duration-100">Scenarios</NuxtLink>
-            <NuxtLink to="/about" class="text-fg hover:text-primary transition-colors duration-100">About</NuxtLink>
+            <NuxtLink to="/scenarios" class="text-fg hover:text-primary transition-colors duration-100">Forecasts</NuxtLink>
+            <NuxtLink to="/about" class="text-fg hover:text-primary transition-colors duration-100 md:block hidden">About</NuxtLink>
           </div>
         </div>
 
@@ -226,7 +226,7 @@ function handleDropdownNav(close, path) {
                 to="/register"
                 class="bg-primary text-white px-3 py-1 rounded text-sm hover:opacity-90 transition-opacity duration-200"
               >
-                Register
+                Sign up
               </NuxtLink>
             </template>
 
@@ -244,8 +244,8 @@ function handleDropdownNav(close, path) {
           v-show="mobileMenuOpen"
           class="md:hidden absolute top-full left-0 right-0 bg-bg z-50 shadow-lg border-t border-bg-muted"
         >
-          <div class="container mx-auto px-4 py-4 flex flex-col space-y-1">
-            <NuxtLink
+          <div class="container mx-auto px-4 py-2 flex flex-col space-y-1 text-center">
+            <!-- <NuxtLink
               to="/"
               class="text-fg hover:text-primary px-2 py-2 rounded hover:bg-bg-muted"
               @click="mobileMenuOpen = false"
@@ -258,7 +258,7 @@ function handleDropdownNav(close, path) {
               @click="mobileMenuOpen = false"
             >
               Scenarios
-            </NuxtLink>
+            </NuxtLink> -->
             
             <NuxtLink
               to="/about"
@@ -309,7 +309,7 @@ function handleDropdownNav(close, path) {
 
             <div class="flex items-center justify-between pt-2 border-t border-bg-muted">
               <div class="flex items-center space-x-2">
-                <span class="text-fg">Theme:</span>
+                <span class="text-fg text-base">Theme:</span>
                 <button @click="toggleDarkMode" class="p-2 rounded text-fg hover:bg-bg-muted focus:outline-none">
                   <Icon :icon="isDark ? 'heroicons:sun-20-solid' : 'heroicons:moon-20-solid'" class="w-5 h-5" />
                 </button>
@@ -321,9 +321,9 @@ function handleDropdownNav(close, path) {
                   v-if="authStore.isAuthenticated"
                   @click="handleLogout"
                   :disabled="authStore.isLoading"
-                  class="flex items-center px-3 py-1.5 rounded-md text-sm disabled:opacity-50 text-fg bg-bg hover:bg-bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200"
+                  class="flex items-center px-3 py-1.5 rounded-md text-base disabled:opacity-50 text-fg bg-bg hover:bg-bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200"
                 >
-                  <Icon icon="heroicons:arrow-right-on-rectangle-20-solid" class="w-4 h-4 mr-1" />
+                  <Icon icon="heroicons:arrow-right-on-rectangle-20-solid" class="w-5 h-5 mr-1" />
                   Logout
                 </button>
 

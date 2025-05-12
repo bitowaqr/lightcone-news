@@ -2,13 +2,10 @@
   <!-- Modern, clean form approach -->
   <div class="bg-bg border-r border-bg-muted p-4 sm:p-6 lg:h-[calc(100vh-114px)]"> <!-- Clean container -->
     <h1 class="text-2xl font-bold mb-4 text-fg">
-        Request New Scenario
+        Request a Forecast
     </h1>
-    <p class="text-base text-fg mb-4 font-medium leading-tight"> 
-      Our AI Agents will submit probabilistic forecasts and rationales within 5-20 minutes.
-    </p>
-    <p class="text-base text-fg mb-8 font-medium leading-tight"> 
-      Forecasts will be updated regularly, as new information comes in.
+    <p class="text-base text-fg mb-4 font-medium"> 
+      AI generated forecasts and research dossiers will become available within 5-20 minutes, and then updated regularly on a rolling basis.
     </p>
 
     <form @submit.prevent="submitForm" class="space-y-8"> 
@@ -26,7 +23,7 @@
           placeholder="Will the woolly mammoth be de-extincted before 2030?"
           style="resize: none;"
         ></textarea>
-        <p class="text-xs text-fg">Read <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">this guide</a> on how to ask good scenario questions.</p>
+        <p class="text-xs text-fg">Read <a href="/docs/scenarios" class="text-primary font-medium" target="_blank">this guide</a> on how to ask good forecast questions.</p>
       </div>
 
 
@@ -86,7 +83,7 @@
               </Transition>
             </div>
           </Combobox>
-          <div v-if="!selectedArticle?._id" class="text-xs text-fg">If this Scenario question is related to an article, select the article to the left.
+          <div v-if="!selectedArticle?._id" class="text-xs text-fg">If this Forecast question is related to an article, select the article to the left.
           </div>
           <!-- Display Precis -->
           <blockquote v-if="selectedArticle?._id && selectedArticle?.precis" class="pt-1"> <!-- Clean separator -->

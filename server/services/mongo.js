@@ -5,6 +5,7 @@ import Article from '../models/Article.model.js';
 import Scenario from '../models/Scenario.model.js';
 import StoryIdeas from '../models/StoryIdeas.model.js';
 import Forecaster from '../models/Forecaster.model.js';
+import SourceDocument from '../models/SourceDocument.model.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -108,10 +109,11 @@ class MongoService {
   //   return lineup;
   // }
 
-  async saveStoryIdeas(storyIdeas) {
+  async saveStoryIdeas(storyIdeasData) {
     await this.connect();
-    const _storyIdeas = await StoryIdeas.create(storyIdeas);
-    return _storyIdeas;
+    // StoryIdeas.create() returns a promise that resolves with the created document(s)
+    const savedStoryIdeas = await StoryIdeas.create(storyIdeasData);
+    return savedStoryIdeas; // Return the saved documents which include _ids
   }
 
   // Add the new saveScenario function here
@@ -176,12 +178,40 @@ class MongoService {
 
   async getStoryIdeasFromLatestLineup(ideaStatusOnly = true) {
     await this.connect();
-    const storyIdeaFromLatestLineup = await StoryIdeas.findOne({ lineupId: { $exists: true } }).sort({ createdAt: -1 });
-    const lastLineupId = storyIdeaFromLatestLineup.lineupId;
-    const storyIdeas = await StoryIdeas.find({ lineup: lastLineupId._id }).sort({ priority: 1 });
-    if (ideaStatusOnly) return storyIdeas.filter(story => story.status === 'idea');
-    
+    // Corrected: Find the most recent StoryIdea document to get its lineupId
+    const latestStoryIdeaWithLineup = await StoryIdeas.findOne({ lineupId: { $exists: true } }).sort({ createdAt: -1 });
+    if (!latestStoryIdeaWithLineup) {
+        console.warn('[MongoService] No story ideas with a lineupId found to determine the latest lineup.');
+        return [];
+    }
+    const lastLineupId = latestStoryIdeaWithLineup.lineupId;
+    console.log(`[MongoService] Fetching story ideas for latest lineupId: ${lastLineupId}`);
+
+    const query = { lineupId: lastLineupId };
+    if (ideaStatusOnly) {
+        query.status = 'idea';
+    }
+    const storyIdeas = await StoryIdeas.find(query).sort({ priority: 1 }).lean(); // Added lean()
     return storyIdeas;
+  }
+
+  async getStoryIdeaById(storyIdeaId) {
+    if (!this.isConnected) await this.connect();
+    if (!storyIdeaId) {
+        console.warn('[MongoService] getStoryIdeaById called with no storyIdeaId.');
+        return null;
+    }
+    if (!mongoose.Types.ObjectId.isValid(storyIdeaId)) {
+        console.warn(`[MongoService] getStoryIdeaById called with invalid ObjectId: ${storyIdeaId}`);
+        return null;
+    }
+    try {
+        const storyIdea = await StoryIdeas.findById(storyIdeaId).lean();
+        return storyIdea;
+    } catch (error) {
+        console.error(`[MongoService] Error fetching StoryIdea with ID ${storyIdeaId}:`, error);
+        throw error; // Re-throw to be handled by caller
+    }
   }
 
   async updateStoryStatus(storyId, status) {
@@ -335,6 +365,71 @@ class MongoService {
     } catch (error) {
         console.error(`Error fetching article with ID ${articleId}:`, error);
         throw error; // Re-throw to be handled by caller
+    }
+  }
+
+  async findSourceDocumentByUrl(url) {
+    if (!this.isConnected) await this.connect();
+    if (!url) {
+        console.warn('findSourceDocumentByUrl called with no URL.');
+        return null;
+    }
+    try {
+        const document = await SourceDocument.findOne({ url: url }).lean();
+        return document;
+    } catch (error) {
+        console.error(`Error fetching SourceDocument with URL ${url}:`, error);
+        throw error;
+    }
+  }
+
+  async saveOrUpdateSourceDocument(sourceData) {
+    if (!this.isConnected) await this.connect();
+    if (!sourceData || !sourceData.url) {
+        console.warn('saveOrUpdateSourceDocument called with invalid data or missing URL.');
+        throw new Error('SourceDocument data must include a URL.');
+    }
+
+    try {
+        const existingDocument = await SourceDocument.findOne({ url: sourceData.url });
+
+        if (existingDocument) {
+            // Update existing document
+            // Only update fields that are explicitly provided in sourceData
+            // and ensure scrapedDate is updated
+            const updateData = { ...sourceData, scrapedDate: new Date() };
+            Object.keys(updateData).forEach(key => {
+                if (key !== '_id') { // Don't try to update _id
+                    existingDocument[key] = updateData[key];
+                }
+            });
+            // If meta is being updated, handle it carefully
+            if (sourceData.meta) {
+                existingDocument.meta = { ...existingDocument.meta, ...sourceData.meta };
+            }
+
+            const updatedDocument = await existingDocument.save();
+            console.log(`[MongoService] Updated SourceDocument with URL: ${updatedDocument.url}`);
+            return updatedDocument;
+        } else {
+            // Create new document
+            const newDocument = new SourceDocument({
+                ...sourceData,
+                scrapedDate: new Date(), // Ensure scrapedDate is set
+            });
+            const savedDocument = await newDocument.save();
+            console.log(`[MongoService] Saved new SourceDocument with URL: ${savedDocument.url}`);
+            return savedDocument;
+        }
+    } catch (error) {
+        if (error.code === 11000) { // Duplicate key error
+            console.warn(`[MongoService] Attempted to save duplicate SourceDocument URL (this should ideally be caught by findOne first): ${sourceData.url}. Re-fetching.`);
+            // If a duplicate error occurs despite the check, it means a race condition.
+            // It's safer to just return the existing document.
+            return SourceDocument.findOne({ url: sourceData.url }).lean();
+        }
+        console.error(`Error saving/updating SourceDocument with URL ${sourceData.url}:`, error);
+        throw error;
     }
   }
 }

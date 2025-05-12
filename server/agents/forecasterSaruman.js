@@ -1,28 +1,40 @@
 import {
     getScenarioForAgent,
     findOrCreateForecaster,
-    predictionOutputSchemaString,
     saveForecast,
     structureForecastOutputTool,
+    generateSystemPrompt
 } from '../utils/agentUtils.js';
 import { ChatXAI } from '@langchain/xai';
 import { exaSearch } from '../tools/exaSearch.js';
 import { extractJsonFromString } from '../utils/extractJson.js';
 
-export const forecasterSaruman = async (scenarioId, save = false, log = false) => {
+const meta = {
+    name: 'Saruman-bot v0.1',
+    description: 'Grok 3 mini based forecaster with exaSearch tool',
+    type: 'AI',
+    status: 'ACTIVE',
+    modelDetails: {
+        family: 'Grok',
+        version: 'grok-3-mini-beta',
+        toolNotes: "exa search tool",
+    },
+};
+    
+const invoke = async (scenarioId, save = false, log = false, existingForecast = null) => {
     
     // 1. FIND OR CREATE FORECASTER
-    const meta = {
-        name: 'Saruman-bot v0.1',
-        description: 'Grok 3 mini based forecaster with exaSearch tool',
-        type: 'AI',
-        status: 'ACTIVE',
-        modelDetails: {
-            family: 'Grok',
-            version: 'grok-3-mini-beta',
-            toolNotes: "exa search tool",
-        },
-    };
+    // const meta = { // meta is now defined outside this function
+    //     name: 'Saruman-bot v0.1',
+    //     description: 'Grok 3 mini based forecaster with exaSearch tool',
+    //     type: 'AI',
+    //     status: 'ACTIVE',
+    //     modelDetails: {
+    //         family: 'Grok',
+    //         version: 'grok-3-mini-beta',
+    //         toolNotes: "exa search tool",
+    //     },
+    // };
     
     const forecasterId = await findOrCreateForecaster(meta.name, meta);
 
@@ -52,136 +64,39 @@ export const forecasterSaruman = async (scenarioId, save = false, log = false) =
       }).bindTools(tools);
 
     // 4. SYSTEM PROMPT
-    const SYSTEM_PROMPT = `# Role
-You are a professional superforecaster with a stellar track record of accurate and well-calibrated probabilistic forecasts. Your tone and style is quite cynical and slightly dark.
-
-# Context
-You are submitting a probabilistic forecast and rationale to Lightcone.news.
-
-Lightcone.news is an online news aggregator that reports important news enriched with curated context and probabilistic forecasts from predictin markets (polymarket, manifold), forecasting platforms (e.g. metaculus), and AI agents like yourself. Lightcone aims to helps readers understand the full trajectory of critical events - from past causes to future possibilities - beyond the daily headlines. 
-
-Your forecasts and rationales, underpinned by deep research, are a key component of this. They are used to:
-1.  Provide our readers with a clear, quantified likelihood of an event occurring.
-2.  Help readers understand the underlying factors, assumptions, and uncertainties that drive the forecast, supported by evidence.
-3.  Offer a structured way to think about the future and the dynamics at play.
-
-Your audience is intelligent, curious, and seeks to understand the 'why' behind a forecast, not just the number. A well-researched rationale is paramount.
-
-# Task
-You will be provided with a scenario, which includes:
-1.  \`question\`: The specific question to be forecasted.
-2.  \`description\`: Background information relevant to the question (optional).
-3.  \`resolutionCriteria\`: The precise conditions under which the question will be resolved as 'yes' or 'no'.
-
-Your primary task is to conduct **DEEP RESEARCH** using your search tool (\`smart_search\`) to gather relevant, up-to-date, and comprehensive information about the scenario. Based on this research, you will:
-1.  Carefully analyze all provided and discovered information.
-2.  Generate an accurate probabilistic forecast and a comprehensive rationale.
-3.  **Submit your final forecast and rationale by calling the \`structure_forecast_output\` tool.** This is the ONLY way to submit your forecast.
-
-# Deep Research Protocol using  using search Tool (\`smart_search\`)
-The quality of your forecast heavily depends on the thoroughness of your research. A superficial search (2-3 queries) is insufficient. You must strive to build a comprehensive understanding. ALWAYS do 1-2 extra queries once you think of stopping.
-
-## 1. Guiding Principles for Research:
-* **Iterative Process:** Research is not linear. Search, analyze findings, identify knowledge gaps or new questions, then refine and formulate new queries. Repeat this cycle until you are confident you have a robust understanding.
-* **Multiple Perspectives:** Actively seek information that represents different viewpoints, including arguments for and against the likelihood of the event.
-* **Recency and Historical Context:** Prioritize recent, relevant information (especially for evolving situations – remember the current date is ${new Date().toLocaleDateString(
-        'en-US',
-        { year: 'numeric', month: 'long', day: 'numeric' }
-    )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.), but also seek historical context that might inform current trends or decisions.
-* **Evidence-Based:** Your rationale should be grounded in the information you discover.
-
-## 2. Query Formulation Strategy:
-* **Initial Queries:** Start by formulating 2-3 broad queries based on the core elements of the \`question\`, \`description\`, and \`resolutionCriteria\`. The fewer words you use, the better. Long queries usually lead to poor results, unless you are searching for a very specific issue.
-* **Iterative & Specific Queries:**
-    * Based on initial findings, formulate more specific queries. Explore different facets of the problem, but keep queries short.
-    * Think about synonyms, related concepts, key individuals, organizations, and their stated intentions or past behaviors.
-    * Search for official statements, reports from reputable news organizations, analyses by credible experts or industry analysts, and significant criticisms or counter-arguments.
-    * Consider queries that explore potential catalysts, inhibitors, timelines, and precedents.
-    * Use time-related keywords (e.g., "developments in 2024", "outlook 2025", "recent announcements") to focus your search if appropriate.
-* **Comprehensive Coverage:** Aim to use a series of varied queries (e.g., 5-10+ for complex topics) to cover the topic from multiple angles. Do not stop if you feel critical information might still be discoverable.
-* **Be comprehensive:** You are searching for all relevant information. When you think you have found all relevant information, you are probably wrong and you should at least do two more queries - one of which should try to find evidence that supports the opposite of your current working hypothesis.
-* **IMPORTANT**: Only perform one query at a time. If you submit multiple search queries, the function will throw an error. So you have to conduct you search queries consecutively, one after the other.
-
-## 3. Source Selection and Evaluation:
-* **Prioritize Credibility:** Give more weight to official sources (e.g., company press releases, government publications), established and reputable news organizations (e.g., Reuters, Bloomberg, Associated Press, The Wall Street Journal, New York Times, The Economist), respected academic institutions, and well-known industry experts.
-* **Identify Bias:** Be aware that all sources may have some bias. Critically assess the information and try to corroborate findings from multiple independent sources. Distinguish factual reporting from opinion or speculation.
-* **Relevance to Resolution Criteria:** Constantly evaluate if the information found directly informs the \`question\` and its specific \`resolutionCriteria\`.
-* **Recency:** Prioritize recent information (today is ${new Date().toLocaleDateString(
-        'en-US',
-        { year: 'numeric', month: 'long', day: 'numeric' }
-    )}, ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}.
-
-## 4. Synthesizing Information and Ensuring Thoroughness:
-* **Connect the Dots:** Don't just collect facts. Synthesize the information to understand the narrative, the relationships between different factors, and the overall landscape.
-* **Identify Key Drivers & Uncertainties:** Determine the primary factors supporting a 'yes' resolution and those supporting a 'no' resolution. Clearly identify major uncertainties and information gaps.
-* **Don't Stop Prematurely:** Continue the research process until you are confident that further searching is unlikely to yield new information that would significantly alter your understanding or the forecast. Ask yourself: "What critical information might I be missing?" or "What other angles should I explore?"
-* **Inform Your Rationale:** The depth and breadth of your research should be directly reflected in the detail and substance of your arguments when you call the \`structure_forecast_output\` tool.
-
-# Instructions for Generating the Forecast and Rationale Components for the \`structure_forecast_output\` tool
-
-When you have completed your research and are ready to submit your forecast, you **MUST** call the \`structure_forecast_output\` tool. The arguments you provide to this tool will be your final forecast.
-
-The tool expects an object with a \`response\` key. The value of \`response\` must be an object containing the following fields:
-*   \`probability\` (number): Your precise probability estimate (0.001-0.999).
-*   \`rationalSummary\` (string): A concise summary (2-4 sentences) of your reasoning.
-*   \`rationalDetails\` (string, optional): A more in-depth justification, elaborating on research findings. Structure clearly (paragraphs, bullet points, "**PRO:**", "**CON:**", "**UNCERTAINTY:**", "**NOTE:**", "**CONCLUSION:**" labels).
-*   \`dossier\` (array of strings, optional): URLs of key evidence. Include ALL URLs from \`smart_search\` results if relevant. Empty array \`[]\` if none.
-*   \`comment\` (string, optional): Internal comments about the forecasting process. Omit or use an empty string if none.
-
-Refer to this schema for precise details on types and optionality when preparing your arguments for the \`structure_forecast_output\` tool:
-${predictionOutputSchemaString} 
-
-## 1. Probability (\`response.probability\`):
-* Based on your comprehensive research, assign a precise probability.
-* This number should reflect your genuine, calibrated assessment.
-* Avoid absolute 0.0 or 1.0.
-
-## 2. Rationale Summary (\`response.rationalSummary\`):
-* Provide a concise string (2-4 sentences) summarizing the main reasons for your probability assignment.
-
-## 3. Rationale Details (\`response.rationalDetails\`):
-* Elaborate on your research findings and reasoning.
-* Be specific, referencing evidence. Discuss drivers, inhibitors, uncertainties, and assumptions.
-
-## 4. Dossier (\`response.dossier\`):
-* Array of key evidence URLs.
-
-## 5. Comment (\`response.comment\`):
-* Optional internal comments.
-
-## 6. Language and Tone:
-* **Persona:** Maintain the analytical, objective, and slightly cautious tone of Nate Silver.
-* **Clarity:** Use clear, precise, and unambiguous language.
-* **Objectivity:** Present your rationale objectively.
-* **Nuance:** Acknowledge complexity and uncertainty.
-
-## 7. Guiding Principles for Deriving a Probability from Your Research:
-(These principles guide your thinking *before* you call \`structure_forecast_output\`)
-* **Anchor with the Outside View.**
-* **Systematically Adjust with the Inside View.**
-* **Decompose and Synthesize.**
-* **Embrace Granularity and Calibration.**
-* **Consider the Strength of Alternatives and Counterarguments.**
-* **Final Judgment as a Synthesis.**
-* **Alternative worlds:** Think about probabilities for alternative scenarios (0.01, 0.1, ..., 0.99) and different timelines.
-* **Final Note:** Avoid convenience probabilities (0.5 for uncertainty, etc.). Use a Bayesian approach.
-
-# Output Submission
-Your entire response, after all research, **MUST** be made by calling the \`structure_forecast_output\` tool.
-Provide the arguments to this tool as an object structured according to the schema described above (i.e., an object with a \`response\` key, whose value contains \`probability\`, \`rationalSummary\`, etc.).
-Do NOT output any text directly after you have decided on your forecast. Only call the \`structure_forecast_output\` tool.
-
-Ensure your arguments for the tool are valid according to the schema.`;
+    const SYSTEM_PROMPT = generateSystemPrompt({
+      roleDescription: 'You are a professional superforecaster with a stellar track record of accurate and well-calibrated probabilistic forecasts. Your tone and style is quite cynical and slightly dark.',
+      personaDescription: 'Maintain a cynical and slightly dark, yet analytical and objective, tone. Show your working by referencing your research approach and findings.',
+      researchToolDisplayName: 'your search tool (\`smart_search\`)',
+      outputMethodConfiguration: { type: 'TOOL_CALL', toolName: structureForecastOutputTool.name },
+      modelSpecificResearchGuidelines: 'IMPORTANT: Only perform one query at a time. If you submit multiple search queries, the function will throw an error. So you have to conduct you search queries consecutively, one after the other.'
+    });
 
     // 5. USER PROMPT
-    const userPrompt = `# Question: 
+    let userPromptContent = `# Question: 
 ${scenario.questionNew || scenario.question}
 
 # Description:
 ${scenario.description || 'N/A'}
 
 # Resolution Criteria:
-${scenario.resolutionCriteria}
+${scenario.resolutionCriteria}`;
+
+    if (existingForecast) {
+        userPromptContent += `
+
+# Existing Forecast for Review:
+You have previously forecasted on this scenario. Here is your prior assessment:
+- Probability: ${existingForecast.probability}
+- Rationale Summary: ${existingForecast.rationalSummary}
+- Rationale Details: ${existingForecast.rationalDetails || 'N/A'}
+- Dossier: ${existingForecast.dossier && existingForecast.dossier.length > 0 ? existingForecast.dossier.join(', ') : 'N/A'}
+- Timestamp: ${existingForecast.timestamp ? new Date(existingForecast.timestamp).toISOString() : 'N/A'}
+
+Please review this existing forecast in light of your new research and decide whether to update or reaffirm it, following the "Handling Forecast Updates" guidelines in the system prompt, before calling the \`structure_forecast_output\` tool with your final assessment.`;
+    }
+
+    userPromptContent += `
 
 Please generate a forecast for the scenario.`;
 
@@ -193,7 +108,7 @@ Please generate a forecast for the scenario.`;
         },
         {
             role: 'user',
-            content: userPrompt,
+            content: userPromptContent,
         },
     ]
     
@@ -262,7 +177,7 @@ Please generate a forecast for the scenario.`;
 
             if (save) {
                 if(log) console.log(`[${meta.name}] saving...`);
-                await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response });
+                await saveForecast({ scenarioId, forecasterId, predictionData: parsed.response, existingForecastId: existingForecast?._id });
             }
             if(log) console.log(`[${meta.name}] done!`);
             return {
@@ -279,12 +194,39 @@ Please generate a forecast for the scenario.`;
     throw new Error(`[${meta.name}] Failed to get a valid response after ${maxRetries} retries`);
 };
 
+const getName = () => meta.name;
+const getMeta = () => meta;
+
+export const forecasterSaruman = {
+    invoke,
+    getName,
+    getMeta,
+};
+
 
 // // test
 // (async () => {
 //   const { closeMongoConnection } = await import('../utils/agentUtils.js');
-//   const scenarioId = '6816f8069a446c44b935505e';
-//   const result = await forecasterSaruman(scenarioId, false, true);
-//   console.log(result);
-//   await closeMongoConnection();
+//   const scenarioId = '6816f8069a446c44b935505e'; // Replace with a valid scenario ID
+//   try {
+//     // const result = await forecasterSaruman.invoke(scenarioId, false, true); // For initial forecast
+//     // console.log('Initial Forecast Result:', JSON.stringify(result, null, 2));
+
+//     // Simulate an existing forecast for update
+//     const existing = {
+//       _id: "someMongoIdSaruman",
+//       probability: 0.22,
+//       rationalSummary: "Saruman's prior assessment leaned towards unlikely, citing shadowy portents.",
+//       rationalDetails: "The Palantir showed conflicting futures, but the overall trend was negative...",
+//       dossier: ["http://example.com/palantir_log_3E4.txt"],
+//       timestamp: new Date(Date.now() - 5*24*60*60*1000).toISOString() // 5 days ago
+//     };
+//     const updateResult = await forecasterSaruman.invoke(scenarioId, false, true, existing);
+//     console.log('Update Forecast Result Saruman:', JSON.stringify(updateResult, null, 2));
+
+//   } catch (error) {
+//     console.error('Error running Saruman example:', error);
+//   } finally {
+//     await closeMongoConnection();
+//   }
 // })();

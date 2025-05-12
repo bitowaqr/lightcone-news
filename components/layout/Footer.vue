@@ -1,9 +1,10 @@
 <template>
-  <footer class="bg-bg-muted text-fg-muted text-sm py-6 px-4 border-t border-bg-muted mt-auto">
-    <div class="container mx-auto">
+  <footer class="bg-bg-muted text-fg-muted text-sm py-4 px-4 border-t border-bg-muted mt-auto">
+    <div class="container mx-auto max-w-7xl">
       <div class="flex flex-col md:flex-row justify-between items-center">
-        <div class="mb-4 md:mb-0">
-          <NuxtLink to="/" class="font-semibold text-fg hover:opacity-80">Lightcone News</NuxtLink>
+        <div class="mb-4 md:mb-0 flex items-center gap-2">
+          <img src="~/assets/logos/logo-naked.svg" alt="Logo" class="w-5 h-5 dark:invert" title="Lightcone News" />
+          <NuxtLink to="/" class="font-medium text-fg hover:opacity-80">Lightcone News</NuxtLink>
         </div>
         
         <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-4 md:mb-0">

@@ -15,7 +15,7 @@
           <img
             :src="getSourceFavicon(source.url)"
             :alt="getSourceDomain(source.url)"
-            class="w-full h-full object-contain"
+            class="w-full h-full object-contain filter"
             @error="onFaviconError($event, `desktop-${source.id || index}`)"
             v-if="!faviconErrors[`desktop-${source.id || index}`]"
           />
@@ -41,36 +41,7 @@
        <!-- Flex-grow div for icons and label -->
        <div class="flex items-center flex-grow min-w-0">
           <!-- Collapsed Icons -->
-          <div class="flex items-center -space-x-3 mr-2">
-            <div 
-              v-for="(source, idx) in collapsedSources" 
-              :key="`mobile-collapsed-${source.id || idx}`"  
-              class="w-5 h-5 rounded-full overflow-hidden border border-bg flex items-center justify-center bg-white shadow-sm"
-              :style="{ zIndex: 10 - idx }"
-            >
-              <img
-                :src="getSourceFavicon(source.url)"
-                :alt="getSourceDomain(source.url)"
-                class="w-full h-full object-contain filter"
-                @error="onFaviconError($event, `mobile-collapsed-${source.id || idx}`)"
-                v-if="!faviconErrors[`mobile-collapsed-${source.id || idx}`]"
-              />
-              <div
-                v-if="faviconErrors[`mobile-collapsed-${source.id || idx}`]"
-                class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
-              >
-                <span class="text-[9px] font-medium text-gray-600">{{ getSourceInitial(source.url) }}</span>
-              </div>
-            </div>
-             <!-- More indicator -->
-             <div 
-               v-if="sources.length > 3" 
-               class="w-5 h-5 rounded-full border border-bg flex items-center justify-center bg-gray-200 text-gray-600 text-[10px] font-medium shadow-sm"
-               :style="{ zIndex: 10 - 3 }" 
-             >
-              +{{ sources.length - 3 }}
-             </div>
-          </div>
+          <!-- Removed the div for collapsed icons -->
           <!-- Collapsed Text Label -->
           <span class="text-xs text-fg-muted truncate">{{ collapsedSourcesLabel }}</span>
        </div>
@@ -91,7 +62,7 @@
             <img
               :src="getSourceFavicon(source.url)"
               :alt="getSourceDomain(source.url)"
-              class="w-full h-full object-contain "
+              class="w-full h-full object-contain filter"
               @error="onFaviconError($event, `mobile-expanded-${source.id || index}`)"
               v-if="!faviconErrors[`mobile-expanded-${source.id || index}`]"
             />
@@ -138,10 +109,8 @@ const collapsedSources = computed(() => props.sources.slice(0, 3));
 // Computed property for mobile collapsed label text
 const collapsedSourcesLabel = computed(() => {
   if (sourcesCount.value === 0) return 'No Sources';
-  const firstPublisher = props.sources[0]?.publisher || getSourceDomain(props.sources[0]?.url);
-  if (sourcesCount.value === 1) return firstPublisher || '1 Source';
-  const remainingCount = sourcesCount.value - 1;
-  return `${firstPublisher} + ${remainingCount} Sources`;
+  if (sourcesCount.value === 1) return 'Show Source (1)';
+  return `Show Sources (${sourcesCount.value})`;
 });
 
 const onFaviconError = (event, key) => {

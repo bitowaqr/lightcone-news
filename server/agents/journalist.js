@@ -41,7 +41,7 @@ const articleSchema = z.object({
     ),
 });
 
-export const callJournalist = async (story, sourceArticles = [], existingArticle = null) => {
+export const journalist = async (story, sourceArticles = [], existingArticle = null) => {
   if (!story || !story.title) {
     throw new Error('Story must have a title');
   }
@@ -183,7 +183,7 @@ Adhere strictly to all directives. Process the provided context, sources, and ex
 //   const sourceArticles = await scrapeArticles(sourcesToScrape);
 
 //   try {
-//     const draftArticle = await callJournalist(sampleStory, sourceArticles);
+//     const draftArticle = await journalist(sampleStory, sourceArticles);
 //     console.log('\n--- Generated Draft Article ---');
 //     console.log(JSON.stringify(draftArticle, null, 2));
 //     console.log('-----------------------------');

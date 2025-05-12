@@ -2,6 +2,15 @@ export const extractJsonFromString = (text) => {
   if (!text || typeof text !== 'string') {
     return null;
   }
+
+  try { 
+    const parsedJson = JSON.parse(text);
+    if (typeof parsedJson === 'object' && parsedJson !== null) {
+      return parsedJson;
+    }
+  } catch (error) {
+    // Do nothing
+  }
   
   try {
     // First try to find JSON in code blocks with ```json format
@@ -47,7 +56,9 @@ export const extractJsonFromString = (text) => {
           return fullParsedJson;
         }
       } catch (error) {
-        throw new Error('Failed to parse JSON string:', error);
+        console.error('Failed to parse the following fullJsonString:', fullJsonString);
+        console.error('Original parsing error for fullJsonString:', error);
+        throw new Error('Failed to parse full JSON string:', error);
       }
     }
     
@@ -66,6 +77,8 @@ export const extractJsonFromString = (text) => {
           return fullParsedJson;
         }
       } catch (error) {
+        console.error('Failed to parse the following fullJsonString:', fullJsonString);
+        console.error('Original parsing error for fullJsonString:', error);
         throw new Error('Failed to parse full JSON string:', error);
       }
     }

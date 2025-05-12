@@ -67,7 +67,6 @@ const ForecasterSchema = new Schema({
     type: modelDetailsSchema,
     default: {}
   },
-  // Potential future fields:
   numberOfForecasts: { type: Number, default: 0 },
   lastForecastDate: { type: Date },
 

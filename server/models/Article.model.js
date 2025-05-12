@@ -35,6 +35,8 @@ const articleSchema = new mongoose.Schema({
   // Metadata & Classification
   publishedDate: { type: Date, default: null },
   updatedDate: { type: Date, default: null },
+  isUpdate: { type: Boolean, default: false }, // Set by updateWriter if content was merged
+  replacesArticleId: { type: String, trim: true, index: true, sparse: true }, // ID of the article this one supersedes
   author: { type: String, default: 'Lightcone News' },
   tags: [{ type: String, trim: true }], 
   status: {
@@ -61,6 +63,9 @@ const articleSchema = new mongoose.Schema({
   storyTitle: { type: String, trim: true },
   storyDescription: { type: String, trim: true },
   storyNotes: { type: String, trim: true },
+
+  // internal notes
+  notes: { type: String, trim: true },
 }, {
   timestamps: true 
 });

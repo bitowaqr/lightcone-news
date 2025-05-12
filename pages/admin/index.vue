@@ -581,7 +581,6 @@ const deleteListedDocuments = async () => {
 
 // Function to apply filters from route query
 const applyRouteFilters = () => {
-  console.log("Checking route query:", route.query);
   if (route.query.storyId) {
     console.log("Found storyId in query:", route.query.storyId);
     selectedCollection.value = 'Article'; // Switch to Article collection

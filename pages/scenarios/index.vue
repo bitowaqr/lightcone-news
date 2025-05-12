@@ -13,9 +13,10 @@
       <!-- Left Column Header (Sticky Part) -->
       <div class="lg:px-4 pt-8 flex-shrink-0 bg-bg z-10 border-b border-bg-muted pb-2">
           <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-fg">Scenarios</h1> 
+            <h1 class="text-2xl font-bold text-fg">Forecasts</h1> 
              <!-- Request Button -->
              <button 
+                
                 @click="showRequestForm"
                 class="flex items-center gap-1 text-sm bg-primary text-white px-3 py-1 rounded hover:opacity-90 transition-opacity duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
               >
@@ -36,7 +37,7 @@
                   activeTab === 'all' ? 'border-primary text-primary' : 'border-transparent text-fg-muted hover:text-fg hover:border-gray-300'
                 ]"
               >
-                All Scenarios
+                All Forecasts
                 <span v-if="scenariosData?.pagination?.total > 0" class="ml-1.5 inline-block bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 rounded-full">
                   {{ scenariosData.pagination.total }}
                 </span>
@@ -184,7 +185,7 @@
     <!-- Right Column / Mobile Detail View -->
     <div 
       :class="{
-          'lg:col-span-3 lg:overflow-y-auto lg:max-h-[calc(100vh-130px)]': true, // Use calc() for max-height
+          'lg:col-span-3 lg:overflow-y-auto lg:max-h-[calc(100vh-114px)]': true, // Use calc() for max-height
           'fixed inset-0 bg-bg z-50 overflow-y-auto lg:static lg:z-auto lg:bg-transparent': !isDesktop && (rightColumnMode === 'detail' || rightColumnMode === 'requestForm' || rightColumnMode === 'requestSuccess'), 
           'hidden': rightColumnMode === 'placeholder' && !isDesktop  
       }"
@@ -207,7 +208,7 @@
       
        <!-- Desktop Placeholder -->
       <div v-if="isDesktop && rightColumnMode === 'placeholder'" class="hidden lg:flex h-full items-center justify-center text-center text-fg-muted px-6">
-        <p>Select a scenario or request a new one.</p>
+        <p>Select a forecast or request a new one.</p>
       </div>
 
       <!-- Detail Loading/Error/Content -->
@@ -217,12 +218,13 @@
           </div>
           <div v-else-if="rightColumnMode === 'detail' && detailError" class="text-center py-10 text-red-500">
               <Icon name="heroicons:exclamation-triangle" class="w-8 h-8 inline-block mb-2" />
-              <p>Error loading scenario details.</p>
+              <p>Error loading forecast details.</p>
           </div>
           <ScenarioDetail v-else-if="rightColumnMode === 'detail' && selectedScenarioData" :scenario="selectedScenarioData" :is-embedded="true" />
           
           <!-- Request Form View -->
           <template v-if="rightColumnMode === 'requestForm'">
+            <template v-if="authStore.isAuthenticated">
               <!-- Optionally pass article context if available -->
                <ScenarioRequestForm
                  :article-id="contextArticleId"
@@ -232,6 +234,30 @@
                  @cancelled="handleRequestCancelled"
                  @scenario-created="handleScenarioCreated"
                />
+            </template>
+            <template v-else>
+              <div class="text-center px-4 py-12 my-12">
+                <Icon name="heroicons:lock-closed" class="w-12 h-12 text-primary-500 mx-auto mb-4" />
+                <h2 class="text-2xl font-semibold mb-3 text-fg">Log in to request a forecast</h2>
+                <p class="text-lg text-fg-muted mb-6">
+                  If you don't have an account, sign up for free!
+                </p>
+                <NuxtLink
+                  to="/login"
+                  class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                >
+                  Log In / Sign Up
+                </NuxtLink>
+                <button
+                   v-if="!isDesktop"
+                   @click="closeRightColumn"
+                   type="button"
+                   class="mt-4 ml-2 inline-flex justify-center py-2 px-6 border border-fg-muted shadow-sm text-base font-medium rounded-md text-fg-muted bg-transparent hover:bg-bg-muted focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+               >
+                   Maybe Later
+               </button>
+              </div>
+            </template>
           </template>
 
           <!-- ADDED: Success View -->
@@ -241,6 +267,9 @@
                 <h2 class="text-2xl font-semibold mb-3 text-fg">Request Submitted!</h2>
                 <p class="text-lg text-fg-muted mb-6">
                   {{ successMessageContent || 'Thank you for your forecast request.' }}
+                </p>
+                <p class="text-sm mb-6 border border-primary/20 bg-primary/10 p-4 rounded-md w-fit mx-auto text-center text-primary-700 dark:text-primary-400">
+                  Your requested forecast has been added to your bookmarks.<br>The first predictions are usually available within 5 to 20 minutes.
                 </p>
                 <!-- ADDED: Mobile-only Primary Go Back Button -->
                 <button
@@ -713,7 +742,7 @@ const handleRequestCancelled = () => {
 
 // --- ADDED: Handler for Scenario Creation Event ---
 const handleScenarioCreated = (scenarioId) => {
-    console.log('Scenario created event received with ID:', scenarioId);
+    console.log('Forecast created event received with ID:', scenarioId);
     if (isDesktop.value) {
         // On desktop, automatically select and show the newly created scenario
         handleScenarioSelected(scenarioId);

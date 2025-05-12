@@ -83,7 +83,7 @@
       </div>
       <div class="mb-2 text-sm text-fg-muted h-6" v-else>
          <!-- Placeholder for height consistency when no data -->
-          Chance N/A
+         {{chance === null ? 'No data available' : 'Chance N/A'}}
       </div>
 
       <!-- History Chart Section -->

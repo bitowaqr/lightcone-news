@@ -4,41 +4,43 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import dotenv from 'dotenv';
 dotenv.config();
 
-
+const SHARE_NEW_STORIES_MIN = 0.33;
 const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
 
-const lineupSchema = zodToJsonSchema(z.object({
-  stories: z.array(z.object({
-    priority: z.number().int().min(0),
-    relevance: z.string().describe('Relevance of the story, should be one of: "critical", "important", "relevant", "noteworthy", "misc"'),
-    title: z.string().describe('Concise, informative title. For updates, should reflect the *new* development.'),
-    description: z.string().describe("Brief explanation (2-4 sentences) of why the story/update is important. If it's an update, clearly explain what was previously reported and what is new."),
-    update: z.boolean().describe('Whether the story is an update to an existing article. If true, the story is an update and the updateArticleId field is required.'),
-    sources: z.array(z.object({
-      title: z.string().describe('Original title from the source news item.'),
-      url: z.string().describe('Original URL from the source news item.'),
-      publisher: z.string().describe('Publisher of the source news item.'),
-      description: z.string().optional().describe('Optional: Original description from the source.'),
-      publishedDate: z.string().optional().describe('Optional: Original published date string from the source item.'),
-    })).min(1).describe("List of relevant source news items supporting the story or *update*. Order by importance."),
-    notes: z.string().optional().describe('Internal editorial notes: Reasoning for selection/priority, source assessment, potential angles, etc.'),
-    updatedArticleId: z.string().optional().describe('If update is true, provide the _id of the existing Lightcone Article being updated. Otherwise, omit or leave null.'),
-  })).describe("An array of story objects selected for the lineup."),
-}),
-);
-
-// --- LLM Configuration ---
-
-const model = new ChatGoogleGenerativeAI({
-  model: GEMINI_MODEL,
-  temperature: 0.3,
-  apiKey: process.env.GEMINI_API_KEY,
-})
-const structuredLlm = model.withStructuredOutput(lineupSchema);
 
 // --- Main Agent Function ---
 
-const callLineupCreator = async (newsItems, existingArticles = [], archivedArticles = [], maxStories = 10) => {
+const lineupCreator = async (newsItems, existingArticles = [], archivedArticles = [], maxStories = 5) => {
+  
+  const lineupSchema = zodToJsonSchema(z.object({
+    stories: z.array(z.object({
+      priority: z.number().int().min(0),
+      relevance: z.string().describe('Relevance of the story, should be one of: "critical", "important", "relevant", "noteworthy", "misc"'),
+      title: z.string().describe('Concise, informative title. For updates, should reflect the *new* development.'),
+      description: z.string().describe("Brief explanation (2-4 sentences) of why the story/update is important. If it's an update, summarise what was previously reported and list the next facts or events that are new."),
+      update: z.boolean().describe('Whether the story is an update to an existing article. If true, the story is an update and the updateArticleId field is required.'),
+      sources: z.array(z.object({
+        title: z.string().describe('Original title from the source news item.'),
+        url: z.string().describe('Original URL from the source news item.'),
+        publisher: z.string().describe('Publisher of the source news item.'),
+        description: z.string().optional().describe('Optional: Original description from the source.'),
+        publishedDate: z.string().optional().describe('Optional: Original published date string from the source item.'),
+      })).min(1).describe("List of relevant source news items supporting the story or *update*. Order by importance."),
+      notes: z.string().optional().describe('Internal editorial notes: Reasoning for selection/priority, source assessment, potential angles, etc.'),
+      updatedArticleId: z.string().optional().describe('If update is true, provide the _id of the existing Lightcone Article being updated. Otherwise, omit or leave null.'),
+    })).describe(`Array of story objects selected for the lineup. Maximum of ${maxStories} items.`),
+  }),
+  );
+  
+  // --- LLM Configuration ---
+  
+  const model = new ChatGoogleGenerativeAI({
+    model: GEMINI_MODEL,
+    temperature: 0.3,
+    apiKey: process.env.GEMINI_API_KEY,
+  })
+  const structuredLlm = model.withStructuredOutput(lineupSchema);
+  
 
   const formattedNewsList = newsItems
     .map(
@@ -98,17 +100,17 @@ Apart from the core directives and the style guide, which give clear guidance, i
 
 # Tasks:
 
-Your primary goal is to decide what makes it into the lightcone news lineup, based on novelty and significance *relative to what's already published*. The lineup is created multiple times per day. There are multiple, partially conflicting principles, that you need to balance. You should think extremely hard about these:
+Your primary goal is to decide what makes it into the lightcone news lineup, based on novelty and significance *relative to what's already published*. The lineup is updated multiple times per day. There are multiple, partially conflicting principles, that you need to balance:
 
 ## Guiding Principles:
 
-a) Publish the most important global stories. Do not publish stories that are not important or significant.
-b) Report timely and update existing stories, if there is significant new information.
-c) Updates to existing stories should not be based on a single new source, but rather on a combination of new sources and significant new information or developments.
-d) Do not repeat stories that have already been published and archived (Clarification: in rare circumstances, it can be fine to update a story multiple times, if it continues to develop and remains important, but once all versions of the story have been archived, we should avoid re-publishing the same story unless something truly unique and exceptional happened. Otheriwse we risk confusing the readers).
-e) Lightcone news is a news *aggregator*. Avoid publishing stories based on a single source or based on a single publisher (unless there is a very good reason to do so).
-f) Rather than the number of *individual source articles* reporting the same story, you should focus on the number of *publishers* reporting the same story. If there are multiple articles from just one publisher, we usually shouldn't include it in the lineup.
-g) While Lightcone news is updated multiple times per day, and it's important to update existing stories, we should also keep in mind that we should not overwhelm the reader with too many updates and new stories: for the duration of a new cycle, the lineup should not dramatically change multiple times. Unless many truly important developments happen, the lineup should be relatively stable over the course of a day (but not longer).
+a) Only publish important global stories.
+b) Update existing stories, only if there is significant new information from multiple sources.
+c) Do not repeat stories that have already been archived (Clarification: in rare circumstances, it can be fine to update a story multiple times, if it continues to develop and remains important, but once all versions of the story have been archived, we should avoid re-publishing the same story unless something truly unique and exceptional happened. Otheriwse we risk confusing the readers).
+d) Lightcone news is a news *aggregator*. Do NOT publish stories based on a single source or based on a single publisher. We should always include at least two independent sources.
+e) The main feed holds 10 articles before the 'more' button is shown (TOP STORIES), and then 5+5 more articles ('BELOW THE FOLD').
+f) Only alter the lineup incrementally, ie from update to update, users should see a gradual change in the lineup. (Explanation: The key challenge is orientation. Users need to know where they are in the lineup. When they start reading a few stories in the morning and then log back in a few hours later, 1-2 stories might have changed, but the top lineup should ideally stay relatively stable over the course of the news cycles. Of course, if there is a breaking news, it's important to update the lineup, but try to avoid shuffing it around too much or updating the same story multiple times with a new title and precis).
+g) At the very least ${SHARE_NEW_STORIES_MIN*100}% (i.e ${Math.floor(maxStories * SHARE_NEW_STORIES_MIN)}) of the stories should be new and not updates. This is a minimum. Depending on what is happending in the world, you might occasionally have ONLY new stories to publish, which is also fine, but even when there are multiple unfolding stories, you should aim for at least ${SHARE_NEW_STORIES_MIN*100}% new stories.
 
 
 ## Process:
@@ -143,7 +145,7 @@ ${JSON.stringify(lineupSchema, null, 2)}
     *   \`priority\`: Rank (0 = highest).
     *   \`relevance\`: use one of the following: "critical", "important", "relevant", "noteworthy", "misc".
     *   \`title\`: Concise title reflecting the *new* development for updates.
-    *   \`description\`: explain relevance of the story and summarise the story. **Crucially for updates:** outline previous context (implicitly referencing the existing story) AND clearly articulate **what is new, why it is significant, and what specific parts of the existing article might need revision based on the new sources**.
+    *   \`description\`: explain relevance of the story and summarise the story. **Crucially for updates:** outline previous context (summarise the key points of the existing article) AND clearly articulate **what is new, why it is significant, and what specific parts of the existing article might need revision based on the new sources. You should list all new FACTS and EVENTS which are NEW and NOT already mentioned in the existing article.** If there are no new facts or events, remove the story from the lineup.
     *   \`update\`: Boolean indicating if this is an update to an existing article.
     *   \`sources\`: List relevant source items from \`New Items List\` (and the old sources in case of an update). Include \`title\`, \`url\`, \`publisher\`, optional \`description\`, \`publishedDate\`. Order by importance. Must have at least one source.
     *   \`notes\` (Optional): Your reasoning, source assessment, instructions, or any other notes that may be useful for the journalists or the research assistants who will be working on the story.
@@ -160,7 +162,7 @@ ${formattedNewsList || 'No new items provided.'}
 
 -----
 # Task:
-You are the chief editor. Analyze the \`Scraped News Article List\` in relation to the \`Existing Lightcone Article List\` and the \`Archived Lightcone Article List\`. Identify significant new stories or updates. Provide the structured JSON object 'stories', adhering to all instructions in the system prompt.`;
+You are the chief editor. Analyze the \`Scraped News Article List\` in relation to the \`Existing Lightcone Article List\` and the \`Archived Lightcone Article List\`. Identify significant new stories or updates. Provide the structured JSON object 'stories', adhering to all instructions in the system prompt. Stories already included in the \`Existing Lightcone Article List\` should not be included in the \`Final New Items List\` as updates, unless there are new facts or events to report.`;
 
 
   const messages = [
@@ -171,5 +173,5 @@ You are the chief editor. Analyze the \`Scraped News Article List\` in relation 
   return { stories: response?.stories || [] };
 };
 
-export { callLineupCreator };
+export { lineupCreator };
 

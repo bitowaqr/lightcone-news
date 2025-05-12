@@ -14,12 +14,14 @@ import { nhk } from './nhk.js';
 import fs from 'fs';
 import Exa from 'exa-js';
 import dotenv from 'dotenv';
+import { mongoService } from '../services/mongo.js';
 dotenv.config();
 
 // --- Configuration ---
 const MAX_SCRAPED_CONTENT_LENGTH = 30_000;
 const EXA_MAX_RETRIES = 3;
 const EXA_RETRY_DELAY_MS = 10000;
+const CACHE_STALE_DAYS = 7; // Optional: Re-scrape if older than 7 days
 
 // --- Registries ---
 
@@ -207,56 +209,106 @@ const scrapeFeeds = async (includeSources = [], shuffle = false) => {
 };
 
 const scrapeArticles = async (sources) => {
-    console.log(`[ScrapeArticles] Starting to scrape articles for ${sources.length} sources.`);
-    
-    // Process sources sequentially to avoid rate limits
+    console.log(`[ScrapeArticles] Starting to scrape/retrieve articles for ${sources.length} sources.`);
+    await mongoService.connect(); // Ensure DB connection
+
     const results = [];
+
     for (const source of sources) {
-        const sourceKey = source.publisherKey || getSourceKeyFromUrl(source.url);
-        // Determine the scraper function
-        let scraperFunction = articleScraperRegistry[sourceKey] || exaArticleScraper; // Default to Exa if key unknown
-
         if (!source.url) {
-             console.error(`[ScrapeArticles] Source object missing URL. Skipping.`, source);
-             results.push({ ...source, text: '[Error: Source missing URL]', error: 'Source missing URL' });
-             continue;
+            console.error(`[ScrapeArticles] Source object missing URL. Skipping.`, source);
+            results.push({ ...source, text: '[Error: Source missing URL]', error: 'Source missing URL' });
+            continue;
         }
 
-        if (sourceKey === 'theguardian') {
-            scraperFunction = doNotScrapeArticle;
-        }
-
-        // console.log(`[ScrapeArticles] Using scraper "${scraperFunction.name || 'unknown'}" for source: ${source.url}`);
+        let articleDataToReturn = null;
+        let documentToSave = null;
+        let performScrape = true;
 
         try {
-            // Call the scraper function with error catching
-            const result = await scraperFunction(source);
-            results.push(result);
+            const cachedDoc = await mongoService.findSourceDocumentByUrl(source.url);
+            if (cachedDoc && cachedDoc.rawContent) {
+                console.log(`[ScrapeArticles] Using cached content for ${source.url.slice(0,50)}...`);
+                articleDataToReturn = {
+                    ...source, // Keep original source properties like publisherKey, etc.
+                    url: cachedDoc.url,
+                    title: cachedDoc.meta?.title || source.title, // Try to get title from meta, fallback to feed title
+                    text: cachedDoc.rawContent,
+                    publisher: cachedDoc.meta?.publisher || source.publisher,
+                };
+                performScrape = false;
+            }
         } catch (error) {
-          try {
-            console.log(`[ScrapeArticles] Error scraping ${source.url.slice(0, 50)}... with ${scraperFunction.name}:`, error);
-            console.log("Retrying...");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const result = await scraperFunction(source);
-            results.push(result);
-          } catch (error) {
-            console.error(`[ScrapeArticles] 2nd Error scraping ${source.url} with ${scraperFunction.name}:`, error);
-            const cleanedSource = { ...source };
-            delete cleanedSource.text;
-            results.push({ 
-                ...cleanedSource,
-                text: `[Error: Scraping failed unexpectedly - ${error.message}]`, 
-                error: `Scraping failed unexpectedly: ${error.message}` 
-            });
-          }
+            console.error(`[ScrapeArticles] Error checking cache for ${source.url.slice(0,50)}...:`, error.message);
+            // Proceed to scrape if cache check fails
+        }
+
+        if (performScrape) {
+            const sourceKey = source.publisherKey || getSourceKeyFromUrl(source.url);
+            let scraperFunction = articleScraperRegistry[sourceKey] || exaArticleScraper;
+            if (sourceKey === 'theguardian') scraperFunction = doNotScrapeArticle;
+
+            console.log(`[ScrapeArticles] Scraping ${source.url.slice(0,50)}... using ${scraperFunction.name || 'unknown'}`);
+            try {
+                const scrapedResult = await scraperFunction(source);
+                articleDataToReturn = scrapedResult; // This is what gets returned/used by journalist
+
+                // Prepare data for SourceDocument model
+                documentToSave = {
+                    url: source.url,
+                    rawContent: scrapedResult.text, // Main content from scraper
+                    meta: {
+                        title: scrapedResult.title || source.title, // Store title in meta
+                        publisher: source.publisher || publisherMap[sourceKey] || 'Unknown Publisher',
+                        // Exa specific fields, if available in scrapedResult
+                        ...(scrapedResult.author && { authors: [scrapedResult.author] }),
+                        ...(scrapedResult.publishedDate && { publishedDate: new Date(scrapedResult.publishedDate) }),
+                        // Add any other relevant fields from scrapedResult directly into meta
+                        // For example, if scrapedResult has 'tags', 'category', etc.
+                        // ...scrapedResult, // Be cautious with spreading entire object, select specific fields
+                        sourceType: 'RSS', // Assuming it came from an RSS feed initially
+                    },
+                    ...(scrapedResult.error && { processingError: scrapedResult.error }),
+                    scrapedDate: new Date(), // Explicitly set for clarity
+                };
+
+            } catch (scrapeError) {
+                console.error(`[ScrapeArticles] Failed scraping ${source.url.slice(0,50)}... with ${scraperFunction.name}:`, scrapeError.message);
+                articleDataToReturn = { 
+                    ...source, 
+                    text: `[Error: Scraping failed - ${scrapeError.message}]`, 
+                    error: `Scraping failed: ${scrapeError.message}` 
+                };
+                documentToSave = {
+                    url: source.url,
+                    meta: { 
+                        title: source.title, // Store title in meta
+                        publisher: source.publisher || publisherMap[sourceKey] || 'Unknown Publisher', 
+                        sourceType: 'RSS' 
+                    },
+                    processingError: `Scraping failed: ${scrapeError.message}`,
+                    scrapedDate: new Date(),
+                };
+            }
+            
+            // Save/Update SourceDocument regardless of scrape success/failure to record attempt
+            if (documentToSave) {
+                try {
+                    await mongoService.saveOrUpdateSourceDocument(documentToSave);
+                } catch (dbError) {
+                    console.error(`[ScrapeArticles] Failed to save SourceDocument for ${source.url.slice(0,50)}...:`, dbError.message);
+                    // The articleDataToReturn is already set, so we just log this error
+                }
+            }
         }
         
-        // Wait 1 second before processing the next source to avoid rate limits
+        results.push(articleDataToReturn);
+
         if (sources.indexOf(source) < sources.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Keep rate limiting
         }
     }
-    console.log(`[ScrapeArticles] Finished scraping ${results.length} articles.`);
+    console.log(`[ScrapeArticles] Finished scraping/retrieving ${results.length} articles.`);
     return results;
 };
 
@@ -285,7 +337,7 @@ export {
     
 // // // test 1: scrapeFeeds
 // (async () => {
-//   const feeds = await scrapeFeeds(['aljazeera', 'bbc', 'dw', 'euronews', 'france24', 'tagesschau', 'heute', 'semafor', 'theguardian', 'welt', 'cbc', 'npr', 'indiatimes', 'nhk']);
+//   const feeds = await scrapeFeeds(['bbc', 'dw', 'euronews']);
 //   console.log(feeds);
 //   // fs store to file
 //   fs.writeFileSync('feeds.json', JSON.stringify(feeds, null, 2));
@@ -305,8 +357,8 @@ export {
 // for(const publisher of publishers) {
 //   const publisherFeeds = feeds.filter(f => f.publisher === publisher);
 //   // console.log(publisherFeeds[0]);
-//   // const article = await scrapeArticles(publisherFeeds);
-//   // console.log(article);
+//   const article = await scrapeArticles(publisherFeeds);
+//   console.log(article);
 //   articlesToScrape.push(publisherFeeds[0]);
 // }
 // console.log(articlesToScrape);

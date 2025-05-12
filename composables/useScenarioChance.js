@@ -59,6 +59,13 @@ export function useScenarioChance(scenarioRef) {
       if (!isActive) return; // Stop if the effect was cleaned up
 
       // The proxy returns { chance: value } or { chance: null }
+      if(data.chance === null) {
+        chance.value = null;
+        volume.value = null;
+        status.value = null;
+        liquidity.value = null;
+        return; 
+      }
       if (data && data.chance !== undefined) {
           // Update the chance ref. It could be a number or null.
         chance.value = data.chance;

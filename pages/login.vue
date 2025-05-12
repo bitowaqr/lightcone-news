@@ -4,7 +4,7 @@
     <ClientOnly>
       <div>
         <!-- Merged Login Form -->
-        <form @submit.prevent="handleLogin" class="space-y-6 p-6 bg-article shadow-md rounded-md border border-accent-bg">
+        <form @submit.prevent="handleLogin" class="space-y-6 p-6 bg-article shadow-sm rounded border border-accent-bg">
           <div>
             <label for="email" class="block text-sm font-medium text-fg-muted">Email</label>
             <input 
@@ -18,7 +18,7 @@
             >
           </div>
           <div class="">
-            <label for="password" class="block text-sm font-medium text-fg-muted flex justify-between">Password 
+            <label for="password" class="text-sm font-medium text-fg-muted flex justify-between">Password 
               <NuxtLink to="/forgot-password" class="underline text-fg-muted hover:text-primary dark:hover:text-primary-400 transition-colors">
                 Forgot password?
               </NuxtLink>
@@ -91,8 +91,9 @@ onMounted(() => {
 
   // If already authenticated, redirect (handled by global middleware now, but keep as safeguard)
   if (authStore.isAuthenticated) {
-    const redirectPath = route.query.redirect?.toString() || '/';
-    router.push(redirectPath);
+    // If there's a redirect query param, use it. Otherwise, default to the root.
+    const redirectPath = route.query.redirect?.toString() || '/'; // Default to root
+    return navigateTo(redirectPath, { replace: true });
   }
 
   // Reset store status if stuck from previous attempt
@@ -115,7 +116,7 @@ async function handleLogin() {
 
     if (success) {
       // Redirect to intended page after successful login
-      const redirectPath = route.query.redirect?.toString() || '/newsfeed'; // Default to newsfeed
+      const redirectPath = route.query.redirect?.toString() || '/'; // Default to newsfeed
       await router.push(redirectPath);
     } else {
       // Use error from store if available

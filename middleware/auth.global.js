@@ -10,8 +10,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     await authStore.fetchUser();
   }
 
-  const publicPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*','/welcome'];
-  const guestPages = ['/','/login', '/register', '/newsfeed', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*','/welcome'];
+  const publicPages = ['/','/login', '/register', '/about', '/contact', '/privacy', '/terms', '/forgot-password', '/articles/*', '/scenarios/*','/welcome','/scenarios'];
+
   const isAuthenticated = authStore.isAuthenticated;
 
   const isApiPath = to.path.startsWith('/api/');
@@ -30,7 +30,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     // Handle exact matches
     return to.path === page;
   });
-  const isGuestPage = guestPages.includes(to.path);
+  
   const isAdminRoute = to.path.startsWith('/admin');
 
   // console.log(`Global Auth Middleware (${process.server ? 'Server' : 'Client'}): Path: ${to.path}, IsAuth: ${isAuthenticated}, IsAdminRoute: ${isAdminRoute}, IsPublicPage: ${isPublicPage}, Status: ${authStore.status}`);
@@ -49,11 +49,6 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   //     console.log(`Global Auth Middleware: Already authenticated, redirecting from guest page ${to.path} to /newsfeed`);
   //     return navigateTo('/newsfeed', { replace: true });
   // }
-
-  if (to.path === '/' ) {
-       // console.log('Global Auth Middleware: Authenticated user accessing /, redirecting to /newsfeed');
-       return navigateTo('/newsfeed', { replace: true });
-  }
 
   if (isAdminRoute && isAuthenticated) {
        // console.log('Global Auth Middleware: Authenticated user accessing /admin, allowing admin middleware to check role.');

@@ -1,21 +1,23 @@
 <template>
-  <!-- New wrapper div -->
+  <!-- isArticleRead is disabled for now ! -->
   <div 
     :class="{
-      'opacity-60': isArticleRead,
+      'opacity-60': false && isArticleRead,
       'transition-opacity duration-100': true
     }"
+    
   > 
+  <!-- PRIO: {{group.priority}} -->
     <div
-      class="h-full flex flex-col pt-0 pb-4 lg:px-4 lg:pb-6 relative" 
+      class="h-full flex flex-col py-4 lg:px-4 lg:pb-6 relative" 
     >
-      <!-- Mark as Read Button -->
+      <!-- Mark as Read Button DISABLED for now ! -->
       <button 
         v-if="authStore.isAuthenticated && group?.story?.articleId"
         :key="`read-status-btn-${group.story.articleId}-${isArticleRead}`" 
         @click.stop.prevent="toggleReadStatus"
         title="Mark as read/unread"
-        class="absolute -top-4 right-1 z-10 p-1 rounded-full text-fg-muted hover:text-primary hover:bg-bg-subtle transition-colors duration-150"
+        class="hidden absolute -top-4 right-1 z-10 p-1 rounded-full text-fg-muted hover:text-primary hover:bg-bg-subtle transition-colors duration-150"
       >
         <Icon 
           :name="isArticleRead ? 'mdi:check-box-outline' : 'mdi:check-box-outline-blank'" 
@@ -24,7 +26,7 @@
       </button>
 
       <!-- ARTICLE CLICKABLE PART -->
-      <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`" class="hover:opacity-80">
+      <NuxtLink v-if="group?.story?.slug" :to="`/articles/${group.story.slug}`" class="group">
         <div class="flex flex-col" :class="{
           'flex-col': layoutOption === 'vertical' || !group.imageUrl,
           'lg:flex-row': layoutOption === 'horizontal' && group.imageUrl
@@ -35,10 +37,11 @@
           
           <div class="w-full px-2 md:px-4">
             <h2 
-            class="text-xl md:text-2xl leading-tight font-medium" id="article-title">
+              ref="titleElement"
+              class="text-xl md:text-2xl leading-tight font-medium group-hover:underline transition-colors duration-150" id="article-title">
               {{ group.story.title }}
             </h2>
-            <div id="article-precis" class="text-fg mt-2 md:mt-4 mb-1">
+            <div id="article-precis" class="text-fg mt-2 md:mt-4 mb-1 group-hover:text-fg transition-colors duration-150">
               <span class="line-clamp-4">{{ group.story.precis }}</span> 
             </div>
           </div>
@@ -47,9 +50,15 @@
   
       <!-- SEPARATE ROW FOR SOURCES AND CONTINUE READING (outside the NuxtLink above) -->
       <div class="w-full" v-if="group?.story?.slug">
-        <div class="flex items-start justify-between mt-2">
+        <div class="flex items-center justify-between mt-2">
           <TeaserSources :sources="group.story.sources" />
-          <NuxtLink :to="`/articles/${group.story.slug}`" class="text-fg-muted hover:opacity-80 font-medium text-xs inline-flex items-center gap-0.5 flex-shrink-0 mr-2 md:mr-4 pt-1.5">continue reading <Icon name="heroicons:chevron-right" class="w-3 h-3" />
+          <NuxtLink 
+            :to="`/articles/${group.story.slug}`" 
+            class="text-fg-muted hover:opacity-80 font-medium text-xs inline-flex items-center gap-1 flex-shrink-0 pr-3 pl-4 "
+            @mouseenter="underlineTitle"
+            @mouseleave="removeUnderline"
+          >
+            Read more <Icon name="heroicons:arrow-right" class="w-3 h-3" />
           </NuxtLink>
         </div>
       </div>
@@ -92,7 +101,7 @@
       <div class="">
         <!-- Section Title -->
         <div class="mt-4 mb-1 text-xs font-semibold text-fg-muted ps-2" v-if="group.scenarios && group.scenarios.length > 0">
-          How the story might continue:
+          Forecasts:
         </div>
   
         <!-- UPDATED: Simple vertical list for Scenarios -->
@@ -200,6 +209,9 @@ const origin = useRequestURL().origin;
 const showAllScenarios = ref(false);
 const initialScenarioCount = 3; // Number of scenarios to show initially (Changed from 2 to 3)
 
+// ADDED: Ref for the title element
+const titleElement = ref(null);
+
 // Method to toggle scenario visibility
 const toggleShowAllScenarios = () => {
   showAllScenarios.value = !showAllScenarios.value;
@@ -213,6 +225,15 @@ const handleShare = () => {
   }
   articleToShare.value = story;
   showShareDialog.value = true;
+};
+
+// --- ADDED: Methods to toggle underline on title --- 
+const underlineTitle = () => {
+  titleElement.value?.classList.add('force-underline');
+};
+
+const removeUnderline = () => {
+  titleElement.value?.classList.remove('force-underline');
 };
 
 // Computed property to check if the article is read
@@ -237,4 +258,11 @@ const toggleReadStatus = () => {
 
 <style scoped>
 /* Remove any specific background here if present */
+
+/* ADDED: Class to force underline */
+.force-underline {
+  text-decoration: underline;
+  text-decoration-color: inherit; /* Optional: ensures underline color matches text */
+  text-underline-offset: 2px; /* Optional: Adjust spacing */
+}
 </style>

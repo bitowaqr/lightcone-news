@@ -7,18 +7,18 @@ import { formatRelativeTime } from '../../utils/formatRelativeTime.js'; // Use c
 
 dotenv.config();
 
-const GEMINI_MODEL = process.env.WORKER_MODEL || 'gemini-2.5-pro-preview-03-25';
+const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
 const MAX_FEED_SIZE = 30; 
 const MAX_AGE_HOURS = 36; 
 const NEWS_CYCLE_HOURS = 24;
 
 // --- Zod Schema for Structured Output ---
 const curatedArticleSchema = z.object({
-  _id: z.string().describe('The MongoDB _id of the article.'),
+  _id: z.string().describe('The MongoDB _id of the article being curated.'),
   currentStatus: z.string().describe('The current status of the article (e.g., DRAFT, PUBLISHED).'),
   currentPriority: z.number().optional().describe('The current priority of the article.'),
   newStatus: z
-    .enum(['PUBLISHED', 'ARCHIVED'])
+    .enum(['PUBLISHED', 'ARCHIVED', 'PENDING', 'REJECTED'])
     .describe('The proposed new status for the article.'),
   newPriority: z
     .number()
@@ -32,13 +32,15 @@ const curatedArticleSchema = z.object({
     .describe(
       'Brief explanation for the decision (e.g., "New critical story", "Archiving - superseded by update", "Archiving - old and lower relevance", "Adjusting priority for theme").'
     ),
+  // For internal tracking, not for LLM decision directly but good for logging/DB update
+  archiveOriginalArticleId: z.string().optional().describe('If this decision leads to publishing an update, this is the ID of the original article that should be archived. For LLM, this is informational.')
 });
 
 const feedCurationSchema = z.object({
   curatedFeed: z
     .array(curatedArticleSchema)
     .describe(
-      'An array representing the entire processed set of articles (drafts and previously published), each with its proposed new status and priority.'
+      'An array representing the entire processed set of articles, each with its proposed new status and priority.'
     ),
 });
 
@@ -55,54 +57,59 @@ const structuredLlm = model.withStructuredOutput(feedCurationSchema);
 export const feedCurator = async () => {
   console.log('[FeedCurator] Starting feed curation process...');
 
-  // 1. Fetch relevant articles
   let draftArticles = [];
   let publishedArticles = [];
   try {
-    console.log('[FeedCurator] Fetching DRAFT and PUBLISHED articles...');
-    [draftArticles, publishedArticles] = await Promise.all([
-      mongoService.getArticlesByStatus(['DRAFT','PENDING']), // Fetch articles ready for potential publishing
-      mongoService.getArticlesByStatus(['PUBLISHED']),   // Fetch currently live articles
-    ]);
-    console.log(`[FeedCurator] Fetched ${draftArticles.length} drafts and ${publishedArticles.length} published articles.`);
+    console.log('[FeedCurator] Fetching DRAFT, PENDING and PUBLISHED articles...');
+    // Fetch all articles that could be part of the feed or influence decisions
+    draftArticles = await mongoService.getArticlesByStatus(['DRAFT', 'PENDING']);
+    publishedArticles = await mongoService.getArticlesByStatus(['PUBLISHED']);
+    console.log(`[FeedCurator] Fetched ${draftArticles.length} drafts/pending and ${publishedArticles.length} published articles.`);
   } catch (error) {
     console.error('[FeedCurator] Error fetching articles:', error);
     throw new Error('Failed to fetch articles for curation.');
   }
 
-  const allArticles = [...draftArticles, ...publishedArticles];
+  const allArticlesToCurate = [...draftArticles, ...publishedArticles];
 
-  if (allArticles.length === 0) {
+  if (allArticlesToCurate.length === 0) {
       console.log('[FeedCurator] No articles found to curate. Exiting.');
       return { curatedFeed: [] };
   }
 
-  // 2. Prepare input for LLM
-  const formattedArticleList = allArticles
+  const formattedArticleList = allArticlesToCurate
     .map((article, index) => {
-        // Safely access nested properties
-        const updatedArticleId = article.storyId?.toString(); // Assuming storyId links updates
-        const updateIndicator = updatedArticleId ? ` (Update targeting Article ID: ${updatedArticleId})` : '';
-        const created = article.createdAt ? formatRelativeTime(article.createdAt) : 'N/A';
-        const published = article.publishedDate ? formatRelativeTime(article.publishedDate) : 'N/A';
+      const created = article.createdAt ? formatRelativeTime(article.createdAt) : 'N/A';
+      const updated = article.updatedAt ? formatRelativeTime(article.updatedAt) : 'N/A';
+      const published = article.publishedDate ? formatRelativeTime(article.publishedDate) : 'N/A';
+      
+      let updateInfo = '';
+      if (article.replacesArticleId) {
+        updateInfo = `(Intends to replace article ID: ${article.replacesArticleId})`;
+      }
+      if (article.isUpdate) { // Set by updateWriter if it merged content
+        updateInfo += ` (Content already merged by updateWriter. Title is original.)`;
+      }
 
-        return `
+      return `
 --- Article ${index + 1} ---
 _id: ${article._id}
-Current Status: ${article.status}
-Current Priority: ${article.priority ?? 'N/A'}
 Title: ${article.title}
 Precis: ${article.precis}
+Current Status: ${article.status}
+Current Priority: ${article.priority ?? 'N/A'}
 Relevance Score (from story): ${article.relevance || 'N/A'}
-Is Update?: ${!!updatedArticleId}${updateIndicator}
+Is Merged Update (isUpdate flag): ${!!article.isUpdate}
+Original Article to Replace (replacesArticleId): ${article.replacesArticleId || 'N/A'}
+${updateInfo ? `Update Info: ${updateInfo}` : ''}
 Created: ${created}
+Updated: ${updated}
 Published: ${published}
 Tags: [${(article.tags || []).join(', ')}]
 `;
     })
     .join('\n');
 
-  // 3. Define Prompts
   const systemPrompt = `# Role: AI Newsfeed Curator for Lightcone.news
 
 # Context:
@@ -112,23 +119,26 @@ You are the AI Chief Editor responsible for curating the main newsfeed of Lightc
 # News cycle
 The feed is updated multiple times per day. Despite the pace at which news breaks, Lightcone news tries to keep a ${NEWS_CYCLE_HOURS} hours news cycle and important news stories can stay relevant for the whole cycle.
 
-Lightcone news has an audience in the USA and Europe and thus major updates and feed curation decisions are made around the following times:
+Lightcone news has an audience in the USA and Europe. The feed is updated at around the following times:
 - 1am EST / 7am CEST
+- 4am EST / 9am CEST
 - 7am EST / 1pm CEST
+- 10am EST / 4pm CEST
 - 1pm EST / 7pm CEST
+- 4pm EST / 10pm CEST
+- 7pm EST / 1am CEST
+- 10pm EST / 4am CEST
 
-Important individual news stories can be published at any time, but the feed is updated regularly at the above times.
 
 TODAY IS ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('en-US', { weekday: 'long' })}), it is ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: 'America/New_York' })} in New York (EST).
 
 # Goal:
-Your task is to process a list of **DRAFT** (potentially ready for publication) and **PENDING** articles (queued for publication) and currently **PUBLISHED** articles. You must decide the final state of the newsfeed by assigning a \`newStatus\` ('PUBLISHED', 'PENDING', 'ARCHIVED', or 'REJECTED') and a \`newPriority\` (integer, 0=highest, shown at the top of the feed) to **every** article provided in the input. The output determines what readers see on the front page.
-
+Your task is to process a list of DRAFT, PENDING, and currently PUBLISHED articles. You must decide the final state of the newsfeed by assigning a \`newStatus\` (\'PUBLISHED\', \'ARCHIVED\', \'PENDING\', or \'REJECTED\') and a \`newPriority\` to EVERY article. The output determines the front page.
 
 # Core Curation Principles & Rules:
 
-1.  **Freshness & Relevance are Paramount:**
-    *   The feed must feel current and relevant. Prioritize newer, significant stories.
+1.  **Freshness & Relevance:**
+    *   The feed must be relevant, that is the most important goals, and feel current. Prioritize newer, significant stories.
     *   **Age Rule:** Articles older than ${MAX_AGE_HOURS} hours (based on \`Published\` or \`Created\` date if not published) are candidates for ARCHIVING unless they represent critical, ongoing situations. Use the relative time (\`Published\` / \`Created\`) provided. After ${MAX_AGE_HOURS} hours, they are almost always archived, (unless the article has been PENDING for a while and just recently got published). Use your best judgement here.
     *   **Relevance Score:** Use the \`Relevance Score (from story)\` as a strong indicator (\`critical\` > \`important\` > \`relevant\` > \`noteworthy\` > \`misc\`).
 
@@ -142,6 +152,11 @@ Your task is to process a list of **DRAFT** (potentially ready for publication) 
     *   Prioritize pending articles that have been pending for a while, if they are still relevant and high quality, and new drafts are not more relevant.
     *   However: Some pending articles may never get published, if the current feed is already full of relevant articles, and new drafts are consistently more relevant.
 
+3.  **Handle Updates & Replacements (Critical):**
+    *   **Scenario 1: Article with \`Is Merged Update: true\` (processed by updateWriter):**
+        *   This article (let's call it 'Integrated Draft') has already incorporated new information into an older story. Its \`Title\` is the *original story's title*.
+        *   The \`Original Article to Replace (replacesArticleId)\` field shows the ID of the actual original article.
+        *   If you decide to set \`newStatus: 'PUBLISHED'\` for this 'Integrated Draft', you **MUST** ensure the original article identified by \`replacesArticleId\` is ARCHIVED (by setting its \`newStatus: 'ARCHIVED'\` in its own entry in the output array).
 3.  **Handle Updates:**
     *   If a DRAFT article is marked as an **Update** (check \`Is Update?\` field and \`updatedArticleId\`), and you decide to PUBLISH it:
         *   Find the corresponding **original** PUBLISHED article (using the \`updatedArticleId\`).
@@ -202,8 +217,8 @@ Apply the curation principles. Decide the \`newStatus\` and \`newPriority\` for 
         console.error('[FeedCurator] Invalid response structure from LLM:', response);
         throw new Error('Invalid response structure from LLM.');
     }
-    if (response.curatedFeed.length !== allArticles.length) {
-        console.warn(`[FeedCurator] LLM output count (${response.curatedFeed.length}) doesn't match input count (${allArticles.length}).`);
+    if (response.curatedFeed.length !== allArticlesToCurate.length) {
+        console.warn(`[FeedCurator] LLM output count (${response.curatedFeed.length}) doesn't match input count (${allArticlesToCurate.length}).`);
         // Potentially add logic here to handle mismatches if critical
     }
 
@@ -287,3 +302,15 @@ Article ID: ${item._id}
 
 // Uncomment to run the test directly
 // testFeedCurator();
+
+// try {
+//   await mongoService.connect();
+//   const curationDecisions = await feedCurator();
+
+//   if (curationDecisions?.curatedFeed?.length > 0) {
+//       await mongoService.updateMultipleArticleStatusesAndPriorities(curationDecisions.curatedFeed);
+//       console.log(`[NewsFeedCreator] Applied ${curationDecisions.curatedFeed.length} curation decisions`);
+//   }
+// } catch (curationError) {
+//   console.error("[NewsFeedCreator] Feed curation failed:", curationError);
+// }

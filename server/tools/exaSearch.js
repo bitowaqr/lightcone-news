@@ -7,25 +7,21 @@ dotenv.config()
 const exa = new Exa(process.env.EXA_API_KEY);
 
 export const exaSearch = tool(
-    async ({ query, numResults = null, searchPrompt = null, fullText = true }, config) => {
+    async ({ query, numResults = 10, searchPrompt = null, fullText = true }) => {
 
+        let livecrawl = true;
         const params = {
-            type: "keyword",
-            numResults: numResults || 10,
-            text: { 
-                includeHtmlTags: true,
-                maxCharacters: 1_000 
-            },
-            highlights: { 
-                highlightsPerUrl: 3,
-                numSentences: 2,
-                query: "highlight query"
-            }
+            type: "auto",
+            numResults: Math.min(numResults, 25),
         }
         if (searchPrompt) params.summary = {query: searchPrompt}
         if (fullText) {
-            params.text = { maxCharacters: 1_000 }
+            params.text = {
+                maxCharacters: 5_000,
+                includeHtmlTags: false,
+            }
         }
+        if(livecrawl) params.livecrawl = "always"
          
 
         const result = await exa.searchAndContents(
@@ -41,7 +37,7 @@ export const exaSearch = tool(
         schema: z.object({
             query: z.string().describe("The search query (keywords) to find relevant information"),
             numResults: z.number().describe("The number of results to return. Default is 10. Maximum is 25.").optional(),
-            searchPrompt: z.string().describe("A prompt to summarize the search results with respect to a specific question. If not provided, the search results will not be summarized. For example you can search for 'FC Barcelona vs Real Madrid betting odds' and then provide a prompt to 'Extract the odds for each team', or you could search for 'Election results Germany' and then provide a prompt to 'extract the results for each party as a percentage in the form 'Party X: 25%, Party Y: 30%, ...'. If used, you should add instructions on how to respond if no relevant information is not found, e.g. 'If no relevant information is found, respond with 'No relevant information found (no need to explain)'").optional(),
+            searchPrompt: z.string().describe("A prompt to summarize the search results with respect to a specific question. If not provided, the search results will not be summarized. For example you can search for 'FC Barcelona vs Real Madrid betting odds' and then provide a prompt to 'Extract the odds for each team', or you could search for 'Election results Germany' and then provide a prompt to 'extract the results for each party as a percentage in the form 'Party X: 25%, Party Y: 30%, ...'. If used, you should add instructions on how to respond if no relevant information is not found, e.g. 'If no relevant information is found, respond with 'No relevant information found (no need to explain)'. You can leave this blank to receive the full text of the search results.and summarise them yourself.").optional(),
         }),
     }
 );

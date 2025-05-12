@@ -6,7 +6,7 @@ const cronExpression = '0 1-23/3 * * *'; // Run at 1:00, 4:00, 7:00, 10:00, 13:0
 console.log(
   `[Scheduler] Initializing cron job: "${cronExpression}"`
 );
-cron.schedule(cronExpression, createNewsfeed, {
+cron.schedule(cronExpression, () => createNewsfeed({ updateScenarios: false, maxNewStories: 5 }), {
   scheduled: true,
   timezone: 'America/New_York',
 });

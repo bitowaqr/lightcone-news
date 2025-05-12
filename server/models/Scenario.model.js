@@ -114,6 +114,9 @@ const scenarioSchema = new mongoose.Schema({
   textForEmbedding: { type: String },
   aiVectorEmbedding: { type: [Number], select: false },
 
+  // Lightcone AI Forecast specific fields
+  lastAiUpdateTimestamp: { type: Date },
+  lastAiForecasterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Forecaster' },
 
   // auth
   visibility: {

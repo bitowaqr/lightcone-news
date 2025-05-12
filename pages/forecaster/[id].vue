@@ -99,21 +99,18 @@
             AI Agent Details
           </h2>
           <div class="space-y-3 text-sm">
-            <div v-if="forecaster.modelDetails?.family" class="flex">
-              <span class="font-medium text-fg-muted w-36 flex-shrink-0">Model Family:</span>
-              <span class="text-fg">{{ forecaster.modelDetails.family }}</span>
+            <div  class="flex">
+              <span class="font-medium text-fg-muted w-24 flex-shrink-0">Provider:</span>
+              <span class="text-fg">{{ forecaster.modelDetails?.family || forecaster.modelDetails?.provider || 'N/A' }}</span>
             </div>
-            <div v-if="forecaster.modelDetails?.version" class="flex">
-              <span class="font-medium text-fg-muted w-36 flex-shrink-0">Model Version:</span>
-              <span class="text-fg">{{ forecaster.modelDetails.version }}</span>
+            <div v-if="forecaster.type === 'AI'" class="flex">
+              <span class="font-medium text-fg-muted w-24 flex-shrink-0">Model:</span>
+              <span class="text-fg">{{ forecaster.modelDetails?.version || forecaster.modelDetails?.model || 'N/A' }}</span>
             </div>
-            <div v-if="forecaster.modelDetails?.toolNotes" class="flex">
-              <span class="font-medium text-fg-muted w-36 flex-shrink-0">Tool Notes:</span>
-              <span class="text-fg whitespace-pre-wrap">{{ forecaster.modelDetails.toolNotes }}</span>
+            <div  class="flex">
+              <span class="font-medium text-fg-muted w-24 flex-shrink-0">Tool Notes:</span>
+              <span class="text-fg whitespace-pre-wrap">{{ forecaster.modelDetails.toolNotes || 'N/A' }}</span>
             </div>
-            <p v-if="!forecaster.modelDetails?.family && !forecaster.modelDetails?.version && !forecaster.modelDetails?.toolNotes" class="text-fg-muted italic font-mono text-xs">
-              No model details available.
-            </p>
           </div>
         </section>
         

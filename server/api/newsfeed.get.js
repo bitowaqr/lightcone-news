@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => { // Make handler async
   try {
     // Fetch published articles, sorted by published date (newest first)
     const articles = await Article.find({ status: 'PUBLISHED' })
-      .sort({ publishedDate: -1 })
+      .sort({ priority: 1 })
       .skip(skip)
       .limit(ARTICLES_LIMIT)
       .lean(); 
@@ -36,23 +36,23 @@ export default defineEventHandler(async (event) => { // Make handler async
     // Get total count for pagination
     const totalArticles = await Article.countDocuments({ status: 'PUBLISHED' });
     
-    articles.sort((a, b) => {
-      const aDate = new Date(a.publishedDate);
-      const bDate = new Date(b.publishedDate);
+    // articles.sort((a, b) => {
+    //   const aDate = new Date(a.publishedDate);
+    //   const bDate = new Date(b.publishedDate);
       
-      // Calculate time difference in milliseconds
-      const timeDiff = Math.abs(aDate - bDate);
-      const hoursDiff = timeDiff / (1000 * 60 * 60);
+    //   // Calculate time difference in milliseconds
+    //   const timeDiff = Math.abs(aDate - bDate);
+    //   const hoursDiff = timeDiff / (1000 * 60 * 60);
       
-      // If articles are published within 24 hours of each other
-      if (hoursDiff <= 24) {
-        // Sort by priority (lower priority value comes first)
-        return (a.priority || 0) - (b.priority || 0);
-      } else {
-        // Sort by publishedDate (newer first)
-        return bDate - aDate;
-      }
-    });
+    //   // If articles are published within 24 hours of each other
+    //   if (hoursDiff <= 24) {
+    //     // Sort by priority (lower priority value comes first)
+    //     return (a.priority || 0) - (b.priority || 0);
+    //   } else {
+    //     // Sort by publishedDate (newer first)
+    //     return bDate - aDate;
+    //   }
+    // });
 
     // console.log('articles', articles.map(a => a.title.slice(0, 45) + '... ' + a.publishedDate.toISOString().slice(0, 10)));
 
@@ -97,7 +97,8 @@ export default defineEventHandler(async (event) => { // Make handler async
         // Placeholder - adapt if needed
         additionalInfo: `Related Scenarios: ${article.relatedScenarioIds?.length || 0}`,
         nScenarios: article.relatedScenarioIds?.length || 0,
-        imageUrl: article.imageUrl
+        imageUrl: article.imageUrl,
+        priority: article.priority
       };
     });
 

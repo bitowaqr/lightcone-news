@@ -1,6 +1,6 @@
 import { mongoService } from '../server/services/mongo.js';
 import dotenv from 'dotenv';
-import { callJournalist } from '../server/agents/journalist.js';
+import { journalist } from '../server/agents/journalist.js';
 import { timelineResearcher } from '../server/agents/timelineResearcher.js';
 import { timelineAssistant } from '../server/agents/timelineAssistant.js';
 import { findScenariosForArticle } from '../server/services/findScenariosforArticle.js';
@@ -39,24 +39,21 @@ export const writeArticle = async (story) => {
     console.error(error);
   }
 
-  // 1b. Fetch existing article if this is an update
-  let existingArticle = null;
+  // 1b. Fetch existing article if this is an update (for journalist context)
+  let existingArticleForJournalistContext = null;
   if (story.update && story.updatedArticleId) {
-    console.log(`This is an update for article ${story.updatedArticleId}. Fetching existing article...`);
+    console.log(`This is an update for article ${story.updatedArticleId}. Fetching existing article for journalist context...`);
     try {
-      // Use the newly added mongoService method
-      existingArticle = await mongoService.getArticleById(story.updatedArticleId);
-
-      if (existingArticle) {
-        console.log(`Fetched existing article titled: ${existingArticle.title}`);
+      existingArticleForJournalistContext = await mongoService.getArticleById(story.updatedArticleId);
+      if (existingArticleForJournalistContext) {
+        console.log(`Fetched existing article (for journalist context) titled: ${existingArticleForJournalistContext.title}`);
       } else {
-        console.warn(`Could not find existing article with ID: ${story.updatedArticleId}. Proceeding as new article.`);
-        story.update = false; // Treat as new if original not found
+        console.warn(`Could not find existing article ${story.updatedArticleId} for journalist context. Journalist will proceed without it.`);
+        // Do not set story.update = false here, as the intent to replace still exists.
       }
     } catch (fetchError) {
-      console.error(`Error fetching existing article ${story.updatedArticleId}:`, fetchError);
-      console.warn('Proceeding as if it were a new article due to fetch error.');
-      story.update = false; // Treat as new on error
+      console.error(`Error fetching existing article ${story.updatedArticleId} for journalist context:`, fetchError);
+      console.warn('Journalist will proceed without existing article context due to fetch error.');
     }
   }
 
@@ -69,13 +66,37 @@ export const writeArticle = async (story) => {
 
   // 3. Call the Journalist Agent
   console.log('Journalist Agent started.');
-  const draftArticle = await callJournalist(story, scrapedSources, existingArticle); // Pass existingArticle
+  const draftArticle = await journalist(story, scrapedSources, existingArticleForJournalistContext); 
   console.log('Journalist Agent finished.');
 
   // Filter source objects to include only those used by the journalist
-  const sourcesObjs = story.sources.filter((source) =>
-    draftArticle.sourceUrls?.includes(source.url) // Use optional chaining
-  );
+  // AND sanitize date fields for Article model compatibility
+  const sourcesObjs = story.sources
+    .filter((source) => draftArticle.sourceUrls?.includes(source.url))
+    .map(s => {
+        let publishedDate = null;
+        let updatedDate = null;
+
+        // Attempt to parse story.sources.publishedDate (which is string from StoryIdea model)
+        if (s.publishedDate && s.publishedDate !== 'N/A') {
+            const parsedPubDate = new Date(s.publishedDate);
+            if (!isNaN(parsedPubDate.getTime())) {
+                publishedDate = parsedPubDate;
+            }
+        }
+        // Assuming StoryIdea.sources doesn't have an 'updatedDate', 
+        // but if it did, it would be handled similarly. For Article.model, it might come from elsewhere or be null.
+        // If s.updatedDate exists and is a string:
+        // if (s.updatedDate && s.updatedDate !== 'N/A') { ... }
+
+        return {
+            url: s.url,
+            publisher: s.publisher,
+            publishedDate: publishedDate, // Now a Date object or null
+            updatedDate: updatedDate, // Placeholder, assuming not in StoryIdea.sources, default to null
+            meta: s.meta || {}, // Ensure meta is at least an empty object if not present
+        };
+    });
 
   // 4. Create the article markdown for downstream agents
   const articleMd = `# Title:${draftArticle.title}\n\n# Precis:\n${draftArticle.precis}\n\n# Summary:\n${draftArticle.summary}`;
@@ -141,11 +162,11 @@ export const writeArticle = async (story) => {
     newSuggestedPrompts: contextContent.prompts,
     newTags: contextContent.tags,
     // Existing context (if available)
-    existingArticleContext: existingArticle ? {
-      timeline: existingArticle.timeline,
-      scenarios: existingArticle.relatedScenarioIds, // Pass IDs, copy editor needs to fetch if details needed
-      suggestedPrompts: existingArticle.suggestedPrompts,
-      tags: existingArticle.tags
+    existingArticleContext: existingArticleForJournalistContext ? {
+      timeline: existingArticleForJournalistContext.timeline,
+      scenarios: existingArticleForJournalistContext.relatedScenarioIds, // Pass IDs, copy editor needs to fetch if details needed
+      suggestedPrompts: existingArticleForJournalistContext.suggestedPrompts,
+      tags: existingArticleForJournalistContext.tags
     } : null,
   };
 
@@ -154,38 +175,38 @@ export const writeArticle = async (story) => {
   console.log('Copy Editor Agent finished.');
 
   // Assemble the final article object for saving
-  const article = {
-    // Use existing article ID if this is an update
-    ...(existingArticle ? { _id: existingArticle._id } : {}),
+  const articleToSave = {
+    // Use existing article ID if this is an update being directly overwritten by journalist/copyeditor
+    // This case should be rare now with updateWriter handling merges.
+    // For a new draft that *replaces* an old one, it gets a new _id.
+    // ...(existingArticleForJournalistContext && story.update && !process.env.DISABLE_DIRECT_OVERWRITE ? { _id: existingArticleForJournalistContext._id } : {}),
 
-    // Content from copy editor
+    // Content from copy editor (or journalist if copyEditor is skipped)
     ...editedArticle, // This should contain final title, precis, summary, timeline, scenarios, prompts, tags
 
     // Meta-data
     sources: sourcesObjs,
-    sourceUrls: draftArticle.sourceUrls, // Take source URLs from journalist (might include old+new)
+    sourceUrls: draftArticle.sourceUrls,
     priority: story.priority,
     relevance: story.relevance,
     lineupId: story.lineupId,
-    storyId: existingArticle ? existingArticle.storyId : story._id, // Link to the *original* story idea if updating
-    storyTitle: story.title, // Keep the story idea title for reference
+    storyId: story._id, // Link to the StoryIdea that generated this article
+    storyTitle: story.title, 
     storyDescription: story.description,
     storyNotes: story.notes,
     status: 'DRAFT', // Start as DRAFT, feedCurator will decide final status
+    isUpdate: false, // Default to false. updateWriter will set this to true if it merges.
   };
 
-  // try {
-  //   fs.writeFileSync(
-  //     'article' + story.priority + '.md',
-  //     JSON.stringify(article, null, 2)
-  //   );
-  // } catch (error) {
-  //   console.error(error);
-  // }
+  // If the original StoryIdea indicated this was an update to a specific article,
+  // store that target article's ID in `replacesArticleId`.
+  if (story.update && story.updatedArticleId) {
+    articleToSave.replacesArticleId = story.updatedArticleId;
+    console.log(`[WriteArticle] Marking article to replace: ${story.updatedArticleId}`);
+  }
 
-  // 8. Save the article
   console.log('Saving final article...');
-  const savedArticle = await mongoService.saveArticle(article);
+  const savedArticle = await mongoService.saveArticle(articleToSave);
   try {
     await mongoService.updateStoryStatus(story._id, 'articleWritten');
   } catch (error) {

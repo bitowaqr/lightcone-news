@@ -6,7 +6,7 @@
     <ClientOnly>
       <div>
         <!-- Waitlist Form -->
-        <form v-if="viewState === 'waitlist'" @submit.prevent="handleJoinWaitlist" class="space-y-4 p-6 bg-article shadow-md rounded-lg border border-accent-bg">
+        <form v-if="viewState === 'waitlist'" @submit.prevent="handleJoinWaitlist" class="space-y-4 p-6 bg-article shadow-sm rounded border border-accent-bg">
           <p class="text-sm text-fg-muted text-center">Lightcone News is currently in closed beta.<br>Sign up to get notified when it launches publicly.</p>
           <div>
             <label for="waitlist-email" class="sr-only">Email</label>
@@ -17,14 +17,14 @@
               required
               autocomplete="email"
               :disabled="isLoading"
-              class="block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
+              class="block w-full px-3 py-2 border border-accent-bg rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
               placeholder="your.email@example.com"
             />
           </div>
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
+            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
           >
             {{ isLoading ? 'Joining...' : 'Join Waitlist' }}
           </button>
@@ -39,7 +39,7 @@
         </form>
 
         <!-- Activation Code Input -->
-        <form v-if="viewState === 'waitlist' && showActivationInput" @submit.prevent="handleCheckCode" class="mt-4 space-y-3 p-4 bg-bg-muted rounded-lg border border-accent-bg">
+        <form v-if="viewState === 'waitlist' && showActivationInput" @submit.prevent="handleCheckCode" class="mt-4 space-y-3 p-4 bg-article shadow-sm rounded border border-accent-bg">
            <label for="activation-code" class="block text-sm font-medium text-fg-muted">Activation Code</label>
            <div class="flex space-x-2">
               <input
@@ -47,13 +47,13 @@
                 id="activation-code"
                 v-model="activationCode"
                 :disabled="isLoading"
-                class="flex-grow block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
+                class="flex-grow block w-full px-3 py-2 border border-accent-bg rounded  focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
                 placeholder="Enter code"
               />
               <button
                 type="submit"
                 :disabled="isLoading || !activationCode"
-                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
+                class="px-4 py-2 border border-transparent rounded shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
               >
                 Activate
               </button>
@@ -64,7 +64,7 @@
         </form>
 
         <!-- Registration Form (Step 1: Credentials) -->
-        <form v-if="viewState === 'register' && registerStep === 1" @submit.prevent="goToSectorStep" class="space-y-6 p-6 bg-article shadow-md rounded-lg border border-accent-bg">
+        <form v-if="viewState === 'register' && registerStep === 1" @submit.prevent="goToSectorStep" class="space-y-6 p-6 bg-article shadow-md rounded border border-accent-bg">
           <!-- Email Input -->
           <div>
             <label for="register-email" class="block text-sm font-medium text-fg-muted">Email</label>
@@ -75,7 +75,7 @@
               required
               autocomplete="email"
               :disabled="isLoading"
-              class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
+              class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
             >
           </div>
           <!-- Password Input -->
@@ -88,7 +88,7 @@
               required
               autocomplete="new-password"
               :disabled="isLoading"
-              class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
+              class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
               placeholder="Min. 6 characters"
             >
           </div>
@@ -102,7 +102,7 @@
                 required
                 autocomplete="new-password"
                 :disabled="isLoading"
-                class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
+                class="mt-1 block w-full px-3 py-2 border border-accent-bg rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm bg-bg text-fg disabled:opacity-60 disabled:bg-bg-muted"
               >
           </div>
           <!-- Error Message -->
@@ -111,7 +111,7 @@
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
+            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
           >
             Next
           </button>
@@ -122,7 +122,7 @@
           </div>
         </form>
         <!-- Registration Form (Step 2: Sector Selection) -->
-        <form v-if="viewState === 'register' && registerStep === 2" @submit.prevent="handleRegister" class="space-y-6 p-6 bg-bg shadow-md rounded-lg border border-accent-bg">
+        <form v-if="viewState === 'register' && registerStep === 2" @submit.prevent="handleRegister" class="space-y-6 p-6 bg-bg shadow-md rounded border border-accent-bg">
           <!-- Instruction Label -->
           <div class="text-sm font-medium text-fg mb-3">Which feeds do you want to subscribe to?</div>
           <!-- News Section -->
@@ -172,7 +172,7 @@
           </div>
           <!-- Info Note -->
           <div class="text-xs text-fg-muted mt-2 text-left">
-            Currently, only the <span class="font-semibold text-primary">Global</span> feed is available. More options coming soon.
+            Currently, only the <span class="font-semibold bg-primary text-white px-1.5 py-0.5 rounded-full mx-0.5">Global</span> feed is available. More options coming soon.
           </div>
           <!-- Back/Submit Buttons -->
           <div class="flex justify-between items-center pt-2">
@@ -182,7 +182,7 @@
             <button
               type="submit"
               :disabled="isLoading"
-              class="py-2.5 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
+              class="py-2.5 px-6 border border-transparent rounded shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:bg-primary-300 dark:disabled:bg-primary-800 dark:disabled:text-fg-muted transition-colors"
             >
               Sign up
             </button>
@@ -211,7 +211,7 @@
          <div class="flex justify-center py-8">
           <div class="animate-pulse w-full max-w-sm">
             <div class="h-6 bg-bg-muted rounded w-32 mb-8 mx-auto"></div>
-            <div class="space-y-6 p-6 bg-bg-muted shadow-md rounded-lg border border-accent-bg">
+            <div class="space-y-6 p-6 bg-bg-muted shadow-md rounded border border-accent-bg">
               <div class="h-4 bg-accent-bg rounded w-1/4"></div>
               <div class="h-10 bg-accent-bg rounded"></div>
               <div class="h-10 bg-primary-300 dark:bg-primary-800 rounded mt-2"></div>

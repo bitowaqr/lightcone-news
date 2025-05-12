@@ -3,7 +3,7 @@ import { createNewsfeed } from '~~/workers/createNewsfeed.js';
 
 // Default values and constraints
 const DEFAULT_UPDATE_SCENARIOS = true;
-const DEFAULT_MAX_STORIES = 10;
+const DEFAULT_MAX_STORIES = 5;
 const MIN_MAX_STORIES = 0;
 const MAX_MAX_STORIES = 20;
 

@@ -4,42 +4,8 @@
       <div class="flex items-center flex-grow min-w-0"> <!-- Wrapper for icons and label -->
         <div class="flex items-center">
           <Icon name="heroicons:chevron-right-20-solid" class="w-4 h-4 text-fg-muted transition-transform duration-150 group-open:rotate-90 flex-shrink-0" />
-          <div 
-            v-for="(source, idx) in displayedSources" 
-            :key="source.id || idx"  
-            class="w-5 h-5 overflow-hidden border border-gray-100 flex items-center justify-center bg-white rounded-full"
-            :style="{ 
-              marginLeft: idx === 1 ? '-8px' : idx > 1 ? '-10px' : '0', 
-              zIndex: 10 - idx 
-            }"
-          >
-            <div class="w-full h-full flex items-center justify-center rounded-full overflow-hidden">
-               <img
-                  :src="getSourceFavicon(source.url)"
-                  :alt="getSourceDomain(source.url)"
-                  class="w-full h-full object-contain filter" 
-                  @error="onFaviconError($event, source.id || idx)"
-                  v-if="!faviconErrors[source.id || idx]"
-                />
-            </div>
-            <div
-              v-if="faviconErrors[source.id || idx]"
-              class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-full"
-            >
-              <span class="text-[10px] font-medium text-gray-600">
-                {{ getSourceInitial(source.url) }}
-              </span>
-            </div>
-          </div>
-          <div 
-              v-if="sourcesCount > maxDisplayedSources" 
-              class="w-5 h-5 overflow-hidden border border-gray-100 flex items-center justify-center bg-gray-200 rounded-full text-gray-600"
-               :style="{ marginLeft: '-10px', zIndex: 0 }"
-            >
-             <span class="text-[10px] font-medium">+{{ sourcesCount - maxDisplayedSources }}</span>
-           </div>
         </div>
-        <span class="text-fg-muted leading-none ml-1.5 ">{{ sourcesCount }} {{ sourcesCount === 1 ? 'source' : 'sources' }}</span>
+        <span class="text-fg-muted leading-none ml-1.5 font-medium">{{ sourcesCount }} {{ sourcesCount === 1 ? 'Source' : 'Sources' }}</span>
       </div>
       
     </summary>
@@ -58,7 +24,7 @@
           <img
             :src="getSourceFavicon(source.url)"
             :alt="getSourceDomain(source.url)"
-            class="w-full h-full object-contain"
+            class="w-full h-full object-contain filter"
             @error="onFaviconError($event, `expanded-${source.id || index}`)"
             v-if="!faviconErrors[`expanded-${source.id || index}`]"
           />
@@ -90,29 +56,15 @@ const props = defineProps({
   },
 });
 
-const maxDisplayedSources = 4; // Show first 4 icons. If count > 4, replace 4th with "+N". Max 4 elements shown.
 const faviconErrors = ref({});
 
 const sourcesCount = computed(() => props.sources?.length || 0);
-
-// Show max 4 icons unless count > 4, then show 3 icons + indicator placeholder
-const displayedSources = computed(() => {
-  const limit = sourcesCount.value > maxDisplayedSources ? maxDisplayedSources -1 : maxDisplayedSources;
-  return props.sources?.slice(0, limit) || [];
-}); 
 
 // Tooltip text
 const sourcesTeaserString = computed(() => {
   if (sourcesCount.value === 0) return '0 sources';
   const names = props.sources.map(s => s.publisher || getSourceDomain(s.url)).filter(Boolean);
-  const shownNames = names.slice(0, displayedSources.value.length);
-  const remainingCount = sourcesCount.value - displayedSources.value.length;
-
-  if (remainingCount > 0) {
-      return shownNames.join(', ') + ` and ${remainingCount} more`;
-  } else {
-      return names.join(', ');
-  }
+  return names.join(', ');
 });
 
 

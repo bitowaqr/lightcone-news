@@ -1,8 +1,8 @@
 <template>
   <div class="relative h-64 md:h-80 bg-bg-muted/50 rounded-lg p-2">
-    <Line v-if="chartData && chartOptions" :data="chartData" :options="chartOptions" />
-    <div v-else-if="!historyData || Object.keys(historyData).length === 0" class="absolute inset-0 flex items-center justify-center">
-      <p class="text-sm text-fg-muted">No history data available.</p>
+    <Line v-if="chartData" :data="chartData" :options="chartOptions" />
+    <div v-else class="absolute inset-0 flex items-center justify-center">
+      <p class="text-2xl text-fg-muted opacity-30 font-medium">No history data available.</p>
     </div>
      <!-- Consider adding a loading/error state specifically for the chart if needed,
           although the parent component will likely handle the main loading/error -->

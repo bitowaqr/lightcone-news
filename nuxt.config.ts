@@ -1,6 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindTypography from '@tailwindcss/typography';
-
+const sw = true;
 export default defineNuxtConfig({
   compatibilityDate: '2025-04-04',
   devtools: { enabled: true },
@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxtjs/sitemap',
     'nuxt-gtag',
+    '@vite-pwa/nuxt',
   ],
   imports: {
     dirs: ['composables', 'stores'],
@@ -40,15 +41,49 @@ export default defineNuxtConfig({
     description: process.env.APP_DESCRIPTION || 'AI-powered news aggregator...',
     image: '/favicon.ico',
   },
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: process.env.APP_NAME || 'Lightcone News',
+      short_name: 'Lightcone',
+      description: process.env.APP_DESCRIPTION || 'Contextualised News. Future-oriented.',
+      theme_color: '#ffffff', // You can customize this
+      background_color: '#ffffff', // You can customize this
+      display: 'standalone',
+      start_url: '/',
+      icons: [
+        {
+          src: 'pwa-192x192.png', // Ensure this file exists in public/
+          sizes: '192x192',
+          type: 'image/png',
+        },
+        {
+          src: 'pwa-512x512.png', // Ensure this file exists in public/
+          sizes: '512x512',
+          type: 'image/png',
+        },
+        {
+          src: 'pwa-512x512.png', // Maskable icon for adaptive icons
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
+    },
+    devOptions: {
+      enabled: true,
+      type: 'module',
+    },
+  },
   sitemap: {
     sitemapName: 'sitemap.xml',
     defaultSitemapsChunkSize: 1000,
     priority: 0.8,
     changefreq: 'daily',
-    routes: async () => {
-      const articles = await $fetch('/api/newsfeed'); // Fetch articles from the newsfeed API
-      return articles.map(article => `/articles/${article.id}`); // Adjust the route as needed
-    },
+    sources: [
+      '/api/__sitemap__/urls',
+    ],
+    exclude: ['/admin', '/admin/*'],
   },
   gtag: {
     enabled: process.env.ENV != 'DEVELOPMENT',

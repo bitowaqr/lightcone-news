@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
         summary: article.summary,
         summaryAlt: article.summaryAlt,
         imageUrl: article.imageUrl,
-        publishedDate: article.publishedDate ? new Date(article.publishedDate).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+        publishedDate: article.publishedDate,
         author: article.author,
         tags: article.tags,
         sources: article.sources, // Assuming frontend handles cited sources

@@ -1,60 +1,25 @@
 import { defineEventHandler, readBody } from 'h3';
-import { evaluateRequest } from '../../agents/requestEvalutor.js'; // Import the new agent
-import { mongoService } from '../../services/mongo.js'; // Import mongoService
-import { createError } from 'h3'; // Ensure createError is imported
-import { generateMockForecast } from '../../agents/forecaster1.js'; // Import the mock forecaster
+import { evaluateRequest } from '../../agents/requestEvalutor.js'; 
+import { mongoService } from '../../services/mongo.js'; 
+import { createError } from 'h3'; 
+import { generateForecastsSequential } from '../../services/generateForecasts.js';
 
-// Dummy function simulating an AI agent evaluating the request
-async function questionEvalAgent(formData) {
-  console.log('Evaluating formData:', formData);
-  // Basic validation (example)
-  if (!formData.question || !formData.resolutionCriteria || !formData.resolutionDate) {
-    return { status: 'rejected', message: 'Missing required fields: Question, Resolution Criteria, or Resolution Date.' };
-  }
 
-  // Simulate different outcomes randomly for now
-    let rand = Math.random();
-    rand = 0.1
-  if (rand < 0.5) { // 50% chance of confirmation
-    console.log('Agent decision: Confirmed');
-    return { status: 'confirmed', data: formData };
-  } else if (rand < 0.8) { // 30% chance of needing revision
-    console.log('Agent decision: Revision Needed');
-    const revisedData = {
-      ...formData,
-      question: formData.question + " (revised for clarity)",
-      resolutionCriteria: formData.resolutionCriteria + "\n(Clarification: Source must be one of [List sources])",
-    };
-    return {
-      status: 'revision_needed',
-      revisedData: revisedData,
-      explanation: 'The question or resolution criteria could be more specific. Please review the suggested changes.'
-    };
-  } else { // 20% chance of rejection
-    console.log('Agent decision: Rejected');
-    return { status: 'rejected', message: 'The question is too ambiguous or unforecastable in its current form.' };
-  }
-}
 
-// Dummy function simulating triggering forecasting bots - NOW CALLS MOCK
 async function callForecastingAgents(scenarioData) {
   console.log(`Triggering forecasting agents for scenario: ${scenarioData._id || scenarioData.question}`);
   if (!scenarioData._id) {
-    console.error('Cannot trigger mock forecast without scenario _id.');
+    console.error('Cannot trigger forecast without scenario _id.');
     return false;
   }
   try {
-    // Call the mock forecaster asynchronously (don't block API response unnecessarily)
-    // Using Promise.resolve().then() for a basic fire-and-forget
-    // Promise.resolve().then(() => generateMockForecast(scenarioData._id)).catch(err => {
-    //   console.error(`Error in background mock forecast for ${scenarioData._id}:`, err);
-    // });
-    // OR await it if we want to ensure it runs for testing/simplicity
-    await generateMockForecast(scenarioData._id);
-    console.log(`Mock forecast generation initiated for ${scenarioData._id}.`);
+    Promise.resolve().then(() => generateForecastsSequential(scenarioData._id)).catch(err => {
+      console.error(`Error in background forecast for ${scenarioData._id}:`, err);
+    });
+    console.log(`Forecast generation initiated for ${scenarioData._id}.`);
     return true; // Indicate initiation success
   } catch (err) {
-    console.error(`Failed to initiate mock forecast generation for ${scenarioData._id}:`, err);
+    console.error(`Failed to initiate forecast generation for ${scenarioData._id}:`, err);
     return false;
   }
 }
@@ -68,15 +33,6 @@ export default defineEventHandler(async (event) => {
       const user = event.context.user;
       const userId = user?.id;
 
-      console.log('Received request from user:');
-      console.log('Received request from user:');
-      console.log('Received request from user:');
-      console.log('Received request from user:');
-      console.log('Received request from user:');
-      console.log('Received request from user:');
-      console.log('Received request from user:');
-      console.log(user);
-
       if (!userId) {
         throw createError({ statusCode: 401, statusMessage: 'Unauthorized: only logged in users can submit requests.' });
       }
@@ -85,11 +41,7 @@ export default defineEventHandler(async (event) => {
     if ('isRevisionConfirmation' in scenarioData) {
       delete scenarioData.isRevisionConfirmation;
     }
-    // Keep articleId in scenarioData for linking
-    // if ('articleId' in scenarioData) {
-    //   // Don't delete, needed for linking
-    // }
-
+    
     console.log('Received forecast request:', {
       isRevision: isRevisionConfirmation,
       hasArticleId: !!articleId,
