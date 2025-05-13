@@ -151,10 +151,8 @@ Please evaluate this request based on the instructions and guidelines provided i
     { role: 'user', content: userPrompt },
   ];
 
-  console.log('Invoking Request Evaluator AI...');
   try {
     const response = await structuredLlm.invoke(messages);
-    console.log('Request Evaluator AI response received:', response);
     // Basic validation of the structured output
     if (!response || !response.status || !response.message) {
          console.error('Request Evaluator Error: Invalid or incomplete response structure.', response);
