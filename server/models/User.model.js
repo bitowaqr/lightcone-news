@@ -39,15 +39,45 @@ const UserSchema = new Schema({
     ref: 'Scenario',
     index: true // Index for potentially faster lookup of users who bookmarked a scenario
   }],
+  viewedArticles: [{
+    article: { type: Schema.Types.ObjectId, ref: 'Article', required: true },
+    articleTitle: { type: String },
+    viewCount: { type: Number, default: 1, required: true },
+    firstViewedAt: { type: Date, default: Date.now },
+    lastViewedAt: { type: Date, default: Date.now }
+  }],
+  viewedScenarios: [{
+    scenario: { type: Schema.Types.ObjectId, ref: 'Scenario', required: true },
+    scenarioQuestion: { type: String },
+    viewCount: { type: Number, default: 1, required: true },
+    firstViewedAt: { type: Date, default: Date.now },
+    lastViewedAt: { type: Date, default: Date.now }
+  }],
+  successfulForecastRequests: [{
+    scenario: { type: Schema.Types.ObjectId, ref: 'Scenario' },
+    scenarioQuestion: { type: String },
+    requestedAt: { type: Date, default: Date.now }
+  }],
+  attemptedForecastRequests: [{
+    question: { type: String },
+    resolutionCriteria: { type: String },
+    resolutionDate: { type: Date },
+    status: { type: String, enum: ['REJECTED', 'REVISION_NEEDED', 'VALIDATION_FAILED'] },
+    reason: { type: String },
+    attemptedAt: { type: Date, default: Date.now }
+  }],
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
   },
-  lastLogin: {
+  lastLogin: { // Timestamp of the last successful password-based login
     type: Date
   },
-  loginHistory: [{
+  lastActivityAt: { // Timestamp of the very last interaction (any authenticated API call)
+    type: Date
+  },
+  sessionActivityLog: [{ // Renamed from loginHistory, stores timestamps of new session starts
     type: Date
   }],
   joinDate: {

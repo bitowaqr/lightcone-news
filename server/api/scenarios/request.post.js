@@ -3,6 +3,7 @@ import { evaluateRequest } from '../../agents/requestEvalutor.js';
 import { mongoService } from '../../services/mongo.js'; 
 import { createError } from 'h3'; 
 import { generateForecastsSequential } from '../../services/generateForecasts.js';
+import User from '../../models/User.model.js'; // Import User model
 
 
 
@@ -25,36 +26,46 @@ async function callForecastingAgents(scenarioData) {
 }
 
 export default defineEventHandler(async (event) => {
+  let scenarioDataForLog = null; // Variable to hold data for logging attempts
+  let userId = null; // User ID for logging
+
   try {
     const body = await readBody(event);
     const isRevisionConfirmation = body?.isRevisionConfirmation === true;
     const articleId = body?.articleId; // Extract potential articleId
-      let scenarioData = { ...body };
-      const user = event.context.user;
-      const userId = user?.id;
+    let scenarioData = { ...body }; 
+    const user = event.context.user;
+    userId = user?.id; // Assign userId here
 
-      if (!userId) {
-        throw createError({ statusCode: 401, statusMessage: 'Unauthorized: only logged in users can submit requests.' });
-      }
+    if (!userId) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized: only logged in users can submit requests.' });
+    }
 
     // Remove helper flags from the data to be processed/saved
-    if ('isRevisionConfirmation' in scenarioData) {
-      delete scenarioData.isRevisionConfirmation;
-    }
-    
-    console.log('Received forecast request:', {
-      isRevision: isRevisionConfirmation,
-      hasArticleId: !!articleId,
-      articleId: articleId,
-      data: { ...scenarioData } // Log a copy
-    });
+    if ('isRevisionConfirmation' in scenarioData) delete scenarioData.isRevisionConfirmation;
+    if ('articleId' in scenarioData) delete scenarioData.articleId; // Don't save articleId within scenario
+
+    // Keep a copy for potential logging of failed attempts
+    scenarioDataForLog = { ...scenarioData }; 
 
     // --- Input Validation (Basic) ---
     if (!scenarioData || typeof scenarioData !== 'object') {
       throw createError({ statusCode: 400, statusMessage: 'Invalid request body.' });
     }
     if (!scenarioData.question || !scenarioData.resolutionCriteria || !scenarioData.resolutionDate) {
-       throw createError({ statusCode: 400, statusMessage: 'Request is missing required fields: question, resolution criteria, or resolution date.' });
+      // Log validation failure attempt
+      if (userId && scenarioDataForLog) {
+        User.findByIdAndUpdate(userId, {
+          $push: { attemptedForecastRequests: {
+            question: scenarioDataForLog.question,
+            resolutionCriteria: scenarioDataForLog.resolutionCriteria,
+            resolutionDate: scenarioDataForLog.resolutionDate,
+            status: 'VALIDATION_FAILED',
+            reason: 'Missing required fields',
+            attemptedAt: new Date()
+          }}}).catch(err => console.error('Error logging validation failed attempt:', err));
+      }
+      throw createError({ statusCode: 400, statusMessage: 'Request is missing required fields: question, resolution criteria, or resolution date.' });
     }
 
     let evaluationResult;
@@ -119,6 +130,17 @@ export default defineEventHandler(async (event) => {
           console.log('Saving confirmed scenario data:', dataToSave);
           const savedScenario = await mongoService.saveScenario(dataToSave);
 
+          // --- Log Successful Forecast Request --- 
+          if (userId && savedScenario) {
+            User.findByIdAndUpdate(userId, {
+              $push: { successfulForecastRequests: { 
+                  scenario: savedScenario._id,
+                  scenarioQuestion: savedScenario.question, // Use question from saved scenario
+                  requestedAt: new Date()
+              }}
+            }).catch(err => console.error('Error logging successful forecast request:', err));
+          }
+
           // Trigger forecasting agents with the *saved* scenario data (contains _id)
           const agentsCalled = await callForecastingAgents(savedScenario);
           if (!agentsCalled) {
@@ -139,7 +161,19 @@ export default defineEventHandler(async (event) => {
         }
 
       case 'REVISION_NEEDED':
-        // Ensure response matches what RequestForm expects
+        // --- Log Revision Needed Attempt --- 
+        if (userId && scenarioDataForLog) {
+           User.findByIdAndUpdate(userId, {
+             $push: { attemptedForecastRequests: {
+               question: scenarioDataForLog.question,
+               resolutionCriteria: scenarioDataForLog.resolutionCriteria,
+               resolutionDate: scenarioDataForLog.resolutionDate,
+               status: 'REVISION_NEEDED',
+               reason: evaluationResult.explanation,
+               attemptedAt: new Date()
+             }}
+           }).catch(err => console.error('Error logging revision needed attempt:', err));
+        }
         return {
           status: 'revision_needed',
           revisedData: evaluationResult.revisedData,
@@ -147,7 +181,19 @@ export default defineEventHandler(async (event) => {
         };
 
       case 'REJECTED':
-        // Return 200 OK but indicate rejection in the body
+        // --- Log Rejected Attempt --- 
+        if (userId && scenarioDataForLog) {
+           User.findByIdAndUpdate(userId, {
+             $push: { attemptedForecastRequests: {
+               question: scenarioDataForLog.question,
+               resolutionCriteria: scenarioDataForLog.resolutionCriteria,
+               resolutionDate: scenarioDataForLog.resolutionDate,
+               status: 'REJECTED',
+               reason: evaluationResult.message,
+               attemptedAt: new Date()
+             }}
+           }).catch(err => console.error('Error logging rejected attempt:', err));
+        }
         console.log('Request rejected by evaluator:', evaluationResult.message);
         return { status: 'rejected', message: evaluationResult.message };
 
@@ -169,6 +215,18 @@ export default defineEventHandler(async (event) => {
     // Ensure the status code is set correctly on the response
     if (!event.node.res.headersSent) {
         event.node.res.statusCode = statusCode;
+    }
+
+    // Log a generic failure if details weren't logged above
+    if (userId && scenarioDataForLog && !error.statusCode) {
+       User.findByIdAndUpdate(userId, {
+         $push: { attemptedForecastRequests: {
+           question: scenarioDataForLog.question,
+           status: 'ERROR', // Generic error status
+           reason: error.message || 'Unknown API error',
+           attemptedAt: new Date()
+         }}
+       }).catch(err => console.error('Error logging generic failed attempt:', err));
     }
 
     // Return a structured error response in the body

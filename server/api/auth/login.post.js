@@ -47,17 +47,33 @@ export default defineEventHandler(async (event) => {
 
     // --- Password is correct, proceed with JWT --- 
 
-    // Update lastLogin timestamp (optional)
-    user.lastLogin = new Date();
-    await user.save(); // Save the updated lastLogin time
+    // --- >>> START: Update Login/Session History <<< ---
+    const now = new Date();
+    user.lastLogin = now; // Timestamp of this specific login
+    user.lastActivityAt = now; // Also update last activity to now
+    
+    // Initialize sessionActivityLog if it doesn't exist
+    if (!user.sessionActivityLog) {
+      user.sessionActivityLog = [];
+    }
+    user.sessionActivityLog.push(now); // Record this login as a session start
+
+    // Optional: Limit the size of sessionActivityLog
+    // const maxHistory = 100;
+    // if (user.sessionActivityLog.length > maxHistory) {
+    //   user.sessionActivityLog = user.sessionActivityLog.slice(-maxHistory);
+    // }
+
+    await user.save(); // Save the updated timestamps and history
+    // --- >>> END: Update Login/Session History <<< ---
 
     // Create JWT Payload - Use userId consistently
     const payload = {
       userId: user._id,
       email: user.email,
       role: user.role,
-      joinDate: user.joinDate,
-      lastLogin: user.lastLogin,
+      // joinDate: user.joinDate, // These can be large, consider omitting if not needed in JWT
+      // lastLogin: user.lastLogin, // Use DB value if needed
       // Add any other non-sensitive info needed frequently
     };
 

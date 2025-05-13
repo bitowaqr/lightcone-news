@@ -2,6 +2,7 @@ import { defineEventHandler, createError, getRouterParams } from 'h3';
 import mongoose from 'mongoose'; // Import mongoose for ObjectId validation
 import Scenario from '../../models/Scenario.model'; // Adjusted path for Scenario model
 import { formatRelativeTime } from '../../utils/formatRelativeTime'; // Optional: if date formatting is needed
+import User from '../../models/User.model'; // Add User model import
 
 export default defineEventHandler(async (event) => {
   // Make handler async
@@ -42,12 +43,46 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // --- Log viewed scenario to user (with count logic) ---
+    if (event.context.user && scenario?._id) {
+      try {
+        const userId = event.context.user.id;
+        const scenarioQuestion = scenario.questionNew || scenario.question; // Get question
 
-    
-    // Optional: Check if scenario is 'OPEN' or meets other criteria for viewing
-    // if (scenario.resolutionData.status !== 'OPEN' /* && !isAdmin(event.context.user) */) {
-    //    throw createError({ statusCode: 403, statusMessage: 'Scenario not accessible' });
-    // }
+        // Find user and check if scenario is already in viewedScenarios
+        const user = await User.findById(userId);
+        if (user) {
+          const viewedEntryIndex = user.viewedScenarios.findIndex(entry => entry.scenario.equals(scenarioId));
+
+          if (viewedEntryIndex > -1) {
+            // Scenario exists, increment count and update lastViewedAt
+            await User.updateOne(
+              { _id: userId, 'viewedScenarios.scenario': scenarioId },
+              {
+                $inc: { 'viewedScenarios.$.viewCount': 1 },
+                $set: { 'viewedScenarios.$.lastViewedAt': new Date() }
+              }
+            );
+          } else {
+            // Scenario not viewed before, push new entry
+            await User.findByIdAndUpdate(userId, {
+              $push: {
+                viewedScenarios: {
+                  scenario: scenarioId,
+                  scenarioQuestion: scenarioQuestion,
+                  viewCount: 1,
+                  firstViewedAt: new Date(),
+                  lastViewedAt: new Date()
+                }
+              }
+            });
+          }
+        }
+      } catch (updateError) {
+        console.error('Error updating user viewedScenarios:', updateError);
+        // Non-critical
+      }
+    }
 
     // Format related scenarios from populated data
     const relatedScenarios = (scenario.relatedScenarioIds || []).map(

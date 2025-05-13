@@ -5,6 +5,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3';
 import mongoose from 'mongoose';
 import Article from '~/server/models/Article.model';
 import Scenario from '~/server/models/Scenario.model'; // Import Scenario model for populating
+import User from '~/server/models/User.model';
 
 export default defineEventHandler(async (event) => {
   // Try accessing the parameter directly from context
@@ -38,6 +39,49 @@ export default defineEventHandler(async (event) => {
         statusCode: 404,
         statusMessage: 'Published article not found'
       });
+    }
+
+    
+    // log viewed article to user
+    if (event.context.user && article?._id) {
+      try {
+        const userId = event.context.user.id;
+        const articleId = article._id;
+        const articleTitle = article.title; // Get title from fetched article
+
+        // Find user and check if article is already in viewedArticles
+        const user = await User.findById(userId);
+        if (user) {
+          const viewedEntryIndex = user.viewedArticles.findIndex(entry => entry.article.equals(articleId));
+
+          if (viewedEntryIndex > -1) {
+            // Article exists, increment count and update lastViewedAt
+            await User.updateOne(
+              { _id: userId, 'viewedArticles.article': articleId },
+              {
+                $inc: { 'viewedArticles.$.viewCount': 1 },
+                $set: { 'viewedArticles.$.lastViewedAt': new Date() }
+              }
+            );
+          } else {
+            // Article not viewed before, push new entry
+            await User.findByIdAndUpdate(userId, {
+              $push: {
+                viewedArticles: {
+                  article: articleId,
+                  articleTitle: articleTitle,
+                  viewCount: 1,
+                  firstViewedAt: new Date(),
+                  lastViewedAt: new Date()
+                }
+              }
+            });
+          }
+        }
+      } catch (updateError) {
+        console.error('Error updating user viewedArticles:', updateError);
+        // Non-critical, so don't fail the article request
+      }
     }
     
     // --- Data Transformation/Shaping for Frontend --- 
