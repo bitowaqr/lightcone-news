@@ -28,7 +28,7 @@ export default defineNuxtConfig({
       title: 'Lightcone News',
       titleTemplate: '%s - Lightcone News',
       meta: [
-        { name: 'description', content: 'Contextualised News. Future-oriented.' },
+        { name: 'description', content: 'AI news aggregator and forecasting platform: navigate by numbers, not narratives.' },
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
@@ -46,7 +46,7 @@ export default defineNuxtConfig({
     manifest: {
       name: process.env.APP_NAME || 'Lightcone News',
       short_name: 'Lightcone',
-      description: process.env.APP_DESCRIPTION || 'Contextualised News. Future-oriented.',
+      description: process.env.APP_DESCRIPTION || 'AI news aggregator and forecasting platform: navigate by numbers, not narratives.',
       theme_color: '#c97240', 
       background_color: '#EAE2D6', 
       display: 'standalone',

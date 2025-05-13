@@ -82,7 +82,7 @@ export default defineEventHandler(async (event) => {
 
   If user asks about Lightcone.news, you can use the following information to answer those queries accurately and helpfully:
 
-  "Lightcone.news is an AI-augmented online news aggregation platform designed to provide a contextualised, future-oriented news feed."
+  "Lightcone.news is an AI-enabled news aggregator and forecasting platform. It is designed to provide a contextualised, future-oriented feed of the most important news stories."
 
   Answering "Who is behind Lightcone.news?" or "Who made this?":
   "Lightcone.news is currently being developed. You can reach out to Paul Schneider at paul@priorb.com"
