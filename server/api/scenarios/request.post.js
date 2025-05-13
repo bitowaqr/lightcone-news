@@ -101,7 +101,7 @@ export default defineEventHandler(async (event) => {
           const dataToSave = {
               ...scenarioData, // Use the data that was confirmed
               platform: 'Lightcone',
-              status: 'PENDING',
+              status: 'OPEN',
               conditionId: randomId,
               platformScenarioId: 'lightcone-' + randomId,
               openDate: new Date(),
