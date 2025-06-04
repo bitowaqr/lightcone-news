@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const SHARE_NEW_STORIES_MIN = 0.33;
-const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
+const GEMINI_MODEL = 'gemini-2.5-flash-preview-04-17';
 
 
 // --- Main Agent Function ---
