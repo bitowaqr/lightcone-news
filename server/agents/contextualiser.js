@@ -84,7 +84,7 @@ Today is ${new Date().toISOString().split('T')[0]}.
 You will receive the following data:
 1.  "Article": The text content of the news article.
 2.  "Potentially Relevant Scenarios": scenarios related semantically to the article. Each scenario has a title or question, meta data (consisting of volume, liquidity, platform, distance to article, where lower distance means the scenario is semantically more similar), description, and tags.
-3.  "Timeline": Optional information for a historical timeline, each should contain a date, event description, and optional source URL.
+3.  "Timeline": Timeline functionality is currently disabled - no timeline data will be provided.
 
 # Tasks:
 Perform the following tasks based on the input, keeping the target audience and tone in mind:
@@ -104,12 +104,8 @@ Perform the following tasks based on the input, keeping the target audience and 
       5) Tags (if available)
       
 
-2.  **Review Timeline (If Applicable):**
-    * Evaluate timeline information. Generate a new timeline **only if** it provides useful contextual information that helps the user better understand or contextualize the event in "Article".
-    * **Omit the timeline entirely** if the historical context is trivial, generally considered common knowledge, irrelevant (e.g., a simple accident report), or if no data was provided. Do not create a timeline merely to fill space or state the obvious.
-    * If possible without losing important information, make each event description more concise. Use extremely clear,  direct language.
-    * Format *each* timeline point as: { "date": "YYYY-MM-DD or description", "event": "Concise event description", "sourceUrl": "URL or null" }. Only use the "sourceUrl" if provided in the input data for that event.
-    * Output this as a list of these formatted event objects. If no timeline is generated, output an empty list ([]) or null.
+2.  **Timeline (Disabled):**
+    * Timeline functionality is currently disabled. Always output an empty array ([]) for the timeline field.
 
 3.  **Suggest AI Chat Prompts:**
     * Generate **${numberOfPrompts} concise (3-6 words ideally)** 'Prompt Suggestions' for the article's AI chat feature.
@@ -157,7 +153,7 @@ ${articleMd}
 Now I will provide you with some additional context that needs review and editorial processing:
 
 # Timeline
-${timeline ?? 'No timeline data available.'}
+Timeline functionality is disabled - no timeline data provided.
 
 # Potentially Relevant Scenarios
 ${scenarios ?? 'No scenarios available.'}

@@ -37,7 +37,10 @@ export async function findScenariosForArticle(article, nResults = 50, filter = {
     let scenarios = [];
     if (_similarScenarios?.ids?.[0]?.length > 0) {
         await mongoService.connect();
-        scenarios = await Scenario.find({ _id: { $in: _similarScenarios?.ids?.[0] } }).lean();
+        scenarios = await Scenario.find({ 
+            _id: { $in: _similarScenarios?.ids?.[0] },
+            platform: { $regex: /^polymarket$/i } // Case-insensitive match for 'polymarket'
+        }).lean();
         scenarios.forEach((scenario, index) => {
             scenario.distance = _similarScenarios?.distances?.[0][index];
         });

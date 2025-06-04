@@ -1,12 +1,9 @@
 import { mongoService } from '../server/services/mongo.js';
 import dotenv from 'dotenv';
 import { journalist } from '../server/agents/journalist.js';
-import { timelineResearcher } from '../server/agents/timelineResearcher.js';
-import { timelineAssistant } from '../server/agents/timelineAssistant.js';
 import { findScenariosForArticle } from '../server/services/findScenariosforArticle.js';
 import { contextualiser } from '../server/agents/contextualiser.js';
 import { copyEditor } from '../server/agents/copyEditor.js';
-import { extractJsonFromString } from '../server/utils/extractJson.js';
 import fs from 'fs';
 import { scrapeArticles } from '../server/scrapers/index.js';
 import { withRetry } from './utils/withRetry.js';
@@ -101,30 +98,13 @@ export const writeArticle = async (story) => {
   // 4. Create the article markdown for downstream agents
   const articleMd = `# Title:${draftArticle.title}\n\n# Precis:\n${draftArticle.precis}\n\n# Summary:\n${draftArticle.summary}`;
 
-  // 5. Research the timeline and 6. Find potentially relevant scenarios (in parallel)
-  const timelineColleagues = async (articleMd) => {
-    let timeline;
-    const timelineData = await timelineResearcher(articleMd);
-    try {
-      timeline = extractJsonFromString(timelineData);
-    } catch (error) {
-      console.error('researchData format error, timelineAssistant started.');
-      timeline = await timelineAssistant(timelineData);
-      console.log('timelineAssistant finished.');
-    }
-    return timeline;
-  };
-  console.log('timelineResearcher started.');
-  const timelinePromise = timelineColleagues(articleMd);
-
+  // 5. Find potentially relevant scenarios
   console.log('findScenariosForArticle started.');
-  const scenariosPromise = findScenariosForArticle(articleMd, SCENARIOS_N);
-
-  const [newTimeline, newScenarios] = await Promise.all([
-    timelinePromise,
-    scenariosPromise,
-  ]);
-  console.log('timelineResearcher and findScenariosForArticle finished.');
+  const newScenarios = await findScenariosForArticle(articleMd, SCENARIOS_N);
+  console.log('findScenariosForArticle finished.');
+  
+  // Timeline functionality removed - set to empty array
+  const newTimeline = [];
 
   console.log('scenariosToMarkdown started.');
   const scenariosStr = newScenarios

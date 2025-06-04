@@ -2,7 +2,7 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import dotenv from 'dotenv';
 dotenv.config();
 
-const MODEL = process.env.WORKER_MODEL || "gemini-2.5-pro-preview-03-25";
+const MODEL = 'gemini-2.5-flash-preview-04-17';
 // const MODEL = "gemini-2.0-flash";
 
 const model = new ChatGoogleGenerativeAI({

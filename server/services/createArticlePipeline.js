@@ -11,9 +11,9 @@ export const createArticlePipeline = async (opts = {}) => {
 
     const {
         article,
-        addTimeline = true,
+        addTimeline = false,
         scenariosN = 20,
-        promptsN = 20,
+        promptsN = 5,
     } = opts;    
 
     if (!article || !article.title || !article.precis || !article.summary) {
@@ -31,6 +31,7 @@ if (addTimeline) {
     
     console.log('findScenariosForArticle started.');
     const scenarios = await findScenariosForArticle(articleMd, scenariosN);
+    const scenariosPolymarket = scenarios.filter(scenario => scenario.platform === 'polymarket');
     const scenariosStr = scenariosToMarkdown(scenarios);
     
     console.log('contextualiser started.');
