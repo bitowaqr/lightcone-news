@@ -2,6 +2,15 @@
   <div class="max-w-4xl mx-auto px-4 sm:px-8 py-12">
     <h1 class="text-4xl font-semibold mb-10 text-fg">About Lightcone News</h1>
 
+    <div class="my-8 p-4 bg-bg-muted rounded-lg border border-fg-muted/20">
+      <h2 class="text-xl font-semibold mb-2 text-fg">A Note on Project Status</h2>
+      <p class="text-fg">
+        Lightcone News was an active project from March to July 2025. Due to the high operational costs of its AI features and a lack of funding, the site is no longer being updated or maintained.
+        <br><br>
+        If you are interested in funding or collaborating to restart this project, please get in touch at <a href="mailto:contact@priorb.com" class="text-primary hover:underline">contact@priorb.com</a>.
+      </p>
+    </div>
+
     <article class="text-lg leading-relaxed text-fg">
       <blockquote class="text-xl italic text-fg-muted border-l-4 border-primary pl-4 pr-2 py-2 my-8 font-medium">
 
@@ -118,7 +127,7 @@ The dawn of everlasting triumph?
 
         <p class="text-fg-muted text-sm mt-6">Lightcone News is a service provided by:</p>
         <address class="not-italic text-fg-muted text-sm">
-              <a href="https://priorb.com" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline">PRIORB UG</a>,
+              <a href="https://priorb.com" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline">PRIORB GmbH</a>,
               Gewerkenstr 8,
               44805 Bochum,
               Germany
