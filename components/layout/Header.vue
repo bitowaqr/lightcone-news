@@ -5,6 +5,7 @@ import { Icon } from '@iconify/vue';
 import { useDarkMode } from '~/composables/useDarkMode';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
+import DeprecationNotice from '~/components/common/DeprecationNotice.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -99,6 +100,7 @@ function handleDropdownNav(close, path) {
       { '-translate-y-full': !isHeaderVisible }
     ]"
   >
+    <DeprecationNotice />
     <div class="bg-bg relative">
       <nav class="container mx-auto px-4 py-2 flex justify-between items-center max-w-7xl">
         <!-- Left Section: Logo + Main Nav Links -->
